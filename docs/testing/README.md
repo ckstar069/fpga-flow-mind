@@ -60,4 +60,4 @@ updated: 2026-06-11
 
 | 文档 | 状态 | 说明 | 推荐阅读时机 |
 |------|------|------|-------------|
-| （待补充） | — | — | — |
+| [`phase-1-workspace-scanning-validation.md`](phase-1-workspace-scanning-validation.md) | `draft` | Phase 1 workspace 扫描与阶段识别验证设计：样例矩阵、后端/前端/安全验证点、手工验证清单、自动化测试规划、验收标准 | Phase 1 实施前必读（约束编码验证策略）、Phase 1 验收前必读 |
