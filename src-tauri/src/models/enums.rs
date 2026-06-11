@@ -53,6 +53,7 @@ pub enum SourceKind {
 pub enum Language {
     Python,
     Verilog,
+    #[serde(rename = "systemverilog")]
     SystemVerilog,
     Markdown,
     Text,
@@ -60,4 +61,50 @@ pub enum Language {
     Yaml,
     Toml,
     Unknown,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn systemverilog_serializes_correctly() {
+        assert_eq!(
+            serde_json::to_string(&Language::SystemVerilog).unwrap(),
+            "\"systemverilog\""
+        );
+    }
+
+    #[test]
+    fn systemverilog_deserializes_correctly() {
+        let lang: Language = serde_json::from_str("\"systemverilog\"").unwrap();
+        assert_eq!(lang, Language::SystemVerilog);
+    }
+
+    #[test]
+    fn naming_anomaly_snake_case_is_stable() {
+        assert_eq!(
+            serde_json::to_string(&StageStatus::NamingAnomaly).unwrap(),
+            "\"naming_anomaly\""
+        );
+    }
+
+    #[test]
+    fn error_code_roundtrip() {
+        for code in [
+            ErrorCode::PathNotFound,
+            ErrorCode::NotDirectory,
+            ErrorCode::PermissionDenied,
+            ErrorCode::NoStageFound,
+            ErrorCode::StageEmpty,
+            ErrorCode::StageUnreadable,
+            ErrorCode::FileUnreadable,
+            ErrorCode::FileTooLarge,
+            ErrorCode::ScanTimeout,
+        ] {
+            let json = serde_json::to_string(&code).unwrap();
+            let back: ErrorCode = serde_json::from_str(&json).unwrap();
+            assert_eq!(code, back, "roundtrip failed for {}", json);
+        }
+    }
 }
