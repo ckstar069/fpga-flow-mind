@@ -79,7 +79,8 @@ updated: YYYY-MM-DD
 
 > 当前处于 **Phase 1 技术设计补强完成：Workspace 扫描与阶段识别**。
 > Phase 0 文档体系与需求契约已完成。
-> Phase 1 技术设计已拆分为：概要设计（`phase-1-architecture.md`）、数据/API 契约（`phase-1-data-and-api-contract.md`）、详细设计（`phase-1-scanner-detail-design.md`），均处于 `draft` 状态，可进入编码实施。
+> Phase 1 技术设计已拆分为：概要设计（`phase-1-architecture.md`）、数据/API 契约（`phase-1-data-and-api-contract.md`）、详细设计（`phase-1-scanner-detail-design.md`），均处于 `draft` 状态，需审核后收口。
+> 下一步应补 Phase 1 UI/UX 轻量设计、Phase 1 testing/validation 设计、Phase 1 implementation plan。在这些完成前，不进入编码实施。
 >
 > Phase 0 已完成：
 > - ✅ `docs/` 文档体系与索引规则

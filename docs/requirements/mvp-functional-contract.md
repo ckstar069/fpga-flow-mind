@@ -322,6 +322,7 @@ updated: 2026-06-11
 | `persist_failed` | 持久化保存失败 | story-persist-and-reopen |
 | `load_failed` | 产物加载失败 | story-persist-and-reopen |
 | `source_changed` | 源文件已变更 | story-persist-and-reopen |
+| `scan_timeout` | 扫描超时 | story-open-workspace, story-collect-evidence |
 
 ---
 

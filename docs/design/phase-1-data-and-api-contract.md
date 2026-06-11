@@ -36,12 +36,13 @@ updated: 2026-06-11
 | 枚举 | Rust 变体 | JSON 值 |
 |------|----------|---------|
 | **WorkspaceValidity** | `LikelyValid` / `Uncertain` / `Unlikely` | `"likely_valid"` / `"uncertain"` / `"unlikely"` |
-| **StageStatus** | `Available` / `Empty` / `NamingAnomaly` / `Unreadable` | `"available"` / `"empty"` / `"naming_anomaly"` / `"unreadable"` |
+| **StageStatus** | `Available` / `Empty` / `Missing` / `NamingAnomaly` / `Unreadable` | `"available"` / `"empty"` / `"missing"` / `"naming_anomaly"` / `"unreadable"` |
 | **SourceKind** | `PythonStage` / `Rtl` / `Test` / `Doc` / `Config` / `ExternalModule` | `"python_stage"` / `"rtl"` / `"test"` / `"doc"` / `"config"` / `"external_module"` |
 | **Language** | `Python` / `Verilog` / `SystemVerilog` / `Markdown` / `Text` / `Json` / `Yaml` / `Toml` / `Unknown` | `"python"` / `"verilog"` / `"systemverilog"` / `"markdown"` / `"text"` / `"json"` / `"yaml"` / `"toml"` / `"unknown"` |
 | **ErrorCode** (Phase 1 子集) | `PathNotFound` / `NotDirectory` / `PermissionDenied` / `NoStageFound` / `StageEmpty` / `StageUnreadable` / `FileUnreadable` / `FileTooLarge` / `ScanTimeout` | 对应 snake_case 字符串 |
 
-> `mvp-functional-contract.md` 定义了 14 个错误码，Phase 1 只使用上述 9 个，其余留到后续阶段。`StageStatus::Missing` 保留在枚举定义中，但 Phase 1 不通过 `stages[]` 使用。
+> `mvp-functional-contract.md` 定义了 15 个错误码（含 `scan_timeout`），Phase 1 只使用上述 9 个，其余留到后续阶段。
+> `StageStatus::Missing` 保留在枚举定义中（与功能契约的 `stage_status` 枚举一致），但 Phase 1 默认不在 `workspace_profile.stages[]` 中发出 `status=missing`；缺失阶段通过 `warnings[]` / `validity_reasons[]` 表示。
 
 ## 4. Rust 数据结构草案
 
@@ -119,7 +120,7 @@ struct CommandResult<T> {
 
 ```typescript
 type WorkspaceValidity = 'likely_valid' | 'uncertain' | 'unlikely';
-type StageStatus = 'available' | 'empty' | 'naming_anomaly' | 'unreadable';
+type StageStatus = 'available' | 'empty' | 'missing' | 'naming_anomaly' | 'unreadable';
 type SourceKind = 'python_stage' | 'rtl' | 'test' | 'doc' | 'config' | 'external_module';
 type Language = 'python' | 'verilog' | 'systemverilog' | 'markdown' | 'text' | 'json' | 'yaml' | 'toml' | 'unknown';
 type ErrorCode = 'path_not_found' | 'not_directory' | 'permission_denied' | 'no_stage_found' | 'stage_empty' | 'stage_unreadable' | 'file_unreadable' | 'file_too_large' | 'scan_timeout';
@@ -245,6 +246,24 @@ fn select_stage(root_path: String, stage_id: String) -> CommandResult<StageConte
 | `stage_empty` | `true` | 阶段列表中灰色展示，点击提示"该阶段为空" |
 | `stage_unreadable` | `false` | 禁用该阶段，提示选择其他阶段 |
 
+**CommandResult success / failure 语义**：
+
+`CommandResult.success` 决定前端走 `data` 分支还是 `error` 分支。以下按 error_code 明确语义：
+
+| error_code | `success` | `data` | `error` | 说明 |
+|-----------|-----------|--------|---------|------|
+| `path_not_found` | `false` | `None` | `Some(CommandError)` | 路径校验失败，阻塞 |
+| `not_directory` | `false` | `None` | `Some(CommandError)` | 路径校验失败，阻塞 |
+| `permission_denied` | `false` | `None` | `Some(CommandError)` | 权限校验失败，阻塞 |
+| `stage_unreadable` | `false` | `None` | `Some(CommandError)` | 阶段不可读，阻塞该阶段 |
+| `no_stage_found` | `true` | `Some(WorkspaceProfile)` | `None` | 正常返回，`stages[]` 为空，`error_codes[]` 含 `no_stage_found` |
+| `stage_empty` | `true` | `Some(StageContext)` | `None` | 正常返回，`files[]` 为空，`error_code` 字段为 `stage_empty` |
+| `file_unreadable` | `true` | `Some(...)` | `None` | 文件不可读，仅进入 `warnings[]` |
+| `file_too_large` | `true` | `Some(...)` | `None` | 文件过大，仅进入 `warnings[]` |
+| `scan_timeout` | `true` | `Some(WorkspaceProfile)` | `None` | 扫描超时返回已收集结果，仅进入 `warnings[]` |
+
+> 规则总结：路径校验类错误（`path_not_found`/`not_directory`/`permission_denied`/`stage_unreadable`）→ `success=false`；业务结果类（`no_stage_found`/`stage_empty`）→ `success=true` 携带 data；扫描过程中的非致命问题（`file_unreadable`/`file_too_large`/`scan_timeout`）→ `success=true`，仅出现在 `warnings[]`。
+
 ## 8. warnings[] 格式
 
 `WorkspaceWarning` 与 `CommandError` 的区别：
@@ -298,7 +317,7 @@ empty -> forced_continue_available（用户可强制继续）
 | `StageContext` | `stage_context.json` 对象 |
 | `StageFile` | `stage_context.json` 的 `files[]` 条目 |
 | `WorkspaceValidity` | `workspace_validity` 枚举 |
-| `StageStatus` | `stage_status` 枚举（不含 `missing` 的 Phase 1 使用方式） |
+| `StageStatus` | `stage_status` 枚举（含 `missing`；Phase 1 不在 stages[] 中发出） |
 | `SourceKind` | `source_kind` 枚举 |
 | `Language` | `language` 枚举 |
 | `ErrorCode` | `error_code` 枚举的 Phase 1 子集 |

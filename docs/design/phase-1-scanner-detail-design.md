@@ -80,14 +80,16 @@ updated: 2026-06-11
 | 校验项 | 方法 | 失败错误码 | 阻塞性 |
 |--------|------|-----------|--------|
 | 路径非空 | `!path.is_empty()` | `not_directory`（视为无效） | 是 |
+| 路径不是符号链接 | `std::fs::symlink_metadata(path)`，检查 `file_type.is_symlink()` | `permission_denied` | 是 |
 | 路径存在 | `std::fs::metadata(path)` | `path_not_found` | 是 |
 | 是目录 | `metadata.is_dir()` | `not_directory` | 是 |
 | 可读 | `std::fs::read_dir(path)` 试探 | `permission_denied` | 是 |
 
 **路径规范化**：
-- 使用 `std::fs::canonicalize` 或等效方法消除 `.` 和 `..`
+- 先用 `symlink_metadata` 检查根路径是否为符号链接；若是，按 `permission_denied` 拒绝（防止穿越到未授权目录）
+- 对非 symlink 的路径，使用 `std::path::Path::canonicalize` 消除 `.` 和 `..`
+- **不调用 `canonicalize` 处理符号链接本身**，避免 `canonicalize` 隐式跟随 symlink 导致路径穿越
 - 去除尾部路径分隔符
-- **不跟随符号链接**：若路径本身是 symlink，按 `permission_denied` 处理（防止穿越到未授权目录）
 
 **目标目录写入检查**：
 - Rust 代码只使用 `read_dir`、`metadata`、`read_file` 操作
@@ -275,19 +277,22 @@ stages[] 中的条目按以下顺序排列：
 
 ## 11. warnings / error_codes 生成规则
 
-| 代码 | 来源 | 进入 warnings[] | 进入 error_codes[] | 阻塞 | UI 表现 |
-|------|------|----------------|-------------------|------|---------|
-| `path_not_found` | 路径校验 | 否 | 是 | 是 | 弹窗"路径不存在" |
-| `not_directory` | 路径校验 | 否 | 是 | 是 | 弹窗"请选择一个目录" |
-| `permission_denied` | 路径校验 | 否 | 是 | 是 | 弹窗"无读权限" |
-| `no_stage_found` | 阶段识别 | 是（同时） | 是 | 否 | "未识别到阶段"提示 + 强制继续按钮 |
-| `stage_empty` | select_stage | 是 | 是 | 否 | 阶段灰色展示，提示"该阶段为空" |
-| `stage_unreadable` | select_stage | 是 | 是 | 是 | 禁用该阶段 |
-| `file_unreadable` | 扫描过程 | 是 | 否 | 否 | warning 列表中展示 |
-| `file_too_large` | 扫描过程 | 是 | 否 | 否 | warning 列表中展示 |
-| `scan_timeout` | 扫描过程 | 是 | 否 | 否 | warning 列表中展示 |
+| 代码 | 来源 | `CommandResult.success` | 进入 warnings[] | 进入 error_codes[] | 阻塞 | UI 表现 |
+|------|------|------------------------|----------------|-------------------|------|---------|
+| `path_not_found` | 路径校验 | `false` | 否 | 是 | 是 | 弹窗"路径不存在" |
+| `not_directory` | 路径校验 | `false` | 否 | 是 | 是 | 弹窗"请选择一个目录" |
+| `permission_denied` | 路径校验 | `false` | 否 | 是 | 是 | 弹窗"无读权限" |
+| `stage_unreadable` | select_stage | `false` | 否 | 是 | 是 | 禁用该阶段 |
+| `no_stage_found` | 阶段识别 | `true` | 是（同时） | 是 | 否 | "未识别到阶段"提示 + 强制继续按钮 |
+| `stage_empty` | select_stage | `true` | 是 | 是 | 否 | 阶段灰色展示，提示"该阶段为空" |
+| `file_unreadable` | 扫描过程 | `true` | 是 | 否 | 否 | warning 列表中展示 |
+| `file_too_large` | 扫描过程 | `true` | 是 | 否 | 否 | warning 列表中展示 |
+| `scan_timeout` | 扫描过程 | `true` | 是 | 否 | 否 | warning 列表中展示 |
 
 **说明**：
+- 路径校验类错误（`path_not_found`/`not_directory`/`permission_denied`）和 `stage_unreadable` 返回 `success=false`，前端走 error 分支。
+- 业务结果类（`no_stage_found`/`stage_empty`）返回 `success=true` 携带 data，前端正常展示但需处理空状态。
+- 扫描过程中的非致命问题（`file_unreadable`/`file_too_large`/`scan_timeout`）返回 `success=true`，仅出现在 `warnings[]`。
 - `no_stage_found` 同时进入 `warnings[]` 和 `error_codes[]`，因为既是扫描结果也是系统级异常码。
 - `file_unreadable`、`file_too_large`、`scan_timeout` 只进入 `warnings[]`，不进入 `error_codes[]`（非系统级错误，仅影响单个文件）。
 

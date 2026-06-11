@@ -141,7 +141,7 @@ Phase 1 **不解决**：evidence 提取（Phase 2）、大模型调用（Phase 3
 - **不写入 `fpga_project_*`**：所有产物写入 app-owned 目录或仅保留在内存中
 - **不运行 Vivado / synthesis / implementation / bitstream**
 - **不执行目标项目脚本**：不默认运行 `.py`、`.sh`、`.tcl` 等脚本
-- **不跟随 symlink**：扫描时遇到符号链接直接跳过
+- **不跟随 symlink**：根路径若为符号链接则拒绝（按 `permission_denied` 处理）；扫描时遇到符号链接直接跳过
 - **扫描边界**：递归深度 ≤ 3、单目录文件数 ≤ 1000、总文件数 ≤ 5000、超时 30 秒
 - **权限检查**：扫描前验证路径可读性，遇 `permission_denied` 立即返回错误
 
