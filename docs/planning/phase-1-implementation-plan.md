@@ -39,12 +39,12 @@ Phase 1 **不解决**：
 | [`docs/requirements/mvp-functional-contract.md`](../requirements/mvp-functional-contract.md) | `active` | 枚举值、错误码、字段语义、validity 规则的唯一权威来源 |
 | [`docs/requirements/stories/story-open-workspace.md`](../requirements/stories/story-open-workspace.md) | `draft` | WS-001~007 用户故事与验收标准 |
 | [`docs/requirements/stories/story-select-stage.md`](../requirements/stories/story-select-stage.md) | `draft` | ST-001~008 用户故事与验收标准 |
-| [`docs/design/workspace-scanning-and-stage-detection.md`](../design/workspace-scanning-and-stage-detection.md) | `draft` | Phase 1 技术入口：扫描范围、安全约束、边界说明 |
-| [`docs/design/phase-1-architecture.md`](../design/phase-1-architecture.md) | `draft` | 模块划分、数据流、前后端职责边界 |
-| [`docs/design/phase-1-data-and-api-contract.md`](../design/phase-1-data-and-api-contract.md) | `draft` | `CommandResult` 语义、`WorkspaceProfile`/`StageContext` 字段、Tauri command 签名、UI 状态映射 |
-| [`docs/design/phase-1-scanner-detail-design.md`](../design/phase-1-scanner-detail-design.md) | `draft` | DFS 扫描算法、阶段识别、文件分类、validity 判定、边界条件、error_code 作用域 |
-| [`docs/ui-ux/phase-1-workspace-and-stage-flow.md`](../ui-ux/phase-1-workspace-and-stage-flow.md) | `draft` | 组件定义、状态展示规则、空状态处理、不展示 JSON 规则 |
-| [`docs/testing/phase-1-workspace-scanning-validation.md`](../testing/phase-1-workspace-scanning-validation.md) | `draft` | 验证矩阵、验收 checklist、测试夹具设计、自动化测试规划 |
+| [`docs/design/workspace-scanning-and-stage-detection.md`](../design/workspace-scanning-and-stage-detection.md) | `active` | Phase 1 技术入口：扫描范围、安全约束、边界说明 |
+| [`docs/design/phase-1-architecture.md`](../design/phase-1-architecture.md) | `active` | 模块划分、数据流、前后端职责边界 |
+| [`docs/design/phase-1-data-and-api-contract.md`](../design/phase-1-data-and-api-contract.md) | `active` | `CommandResult` 语义、`WorkspaceProfile`/`StageContext` 字段、Tauri command 签名、UI 状态映射 |
+| [`docs/design/phase-1-scanner-detail-design.md`](../design/phase-1-scanner-detail-design.md) | `active` | DFS 扫描算法、阶段识别、文件分类、validity 判定、边界条件、error_code 作用域 |
+| [`docs/ui-ux/phase-1-workspace-and-stage-flow.md`](../ui-ux/phase-1-workspace-and-stage-flow.md) | `active` | 组件定义、状态展示规则、空状态处理、不展示 JSON 规则 |
+| [`docs/testing/phase-1-workspace-scanning-validation.md`](../testing/phase-1-workspace-scanning-validation.md) | `active` | 验证矩阵、验收 checklist、测试夹具设计、自动化测试规划 |
 
 **文档权威优先级**（冲突时按序号从高到低裁决）：
 
@@ -58,7 +58,7 @@ Phase 1 **不解决**：
 
 **冲突处理规则**：
 - 当高优先级文档与低优先级文档冲突时，以高优先级为准，并同步修正低优先级文档。
-- 当同级文档之间冲突时（如两个 `draft` 设计文档互相矛盾），**必须暂停编码**，先修正文档并经审核，再继续实施。
+- 当同级文档之间冲突时（如两个同级设计文档互相矛盾），**必须暂停编码**，先修正文档并经审核，再继续实施。
 - 编码阶段发现契约漏洞时，应暂停编码、更新契约（从高优先级开始）、经审核后再继续。
 
 ## 3. 允许修改范围
@@ -240,7 +240,7 @@ Phase 1 编码阶段明确**不**做：
 ### P1-T13 执行 Phase 1 验收与文档同步
 
 - **目标**：执行 [`phase-1-workspace-scanning-validation.md`](../testing/phase-1-workspace-scanning-validation.md) §9 验收 checklist；修复发现的 bug；同步更新所有设计文档状态；编写 Phase 1 退出报告
-- **预计修改**：所有 `docs/` 中 Phase 1 相关文档的 `status` 字段（从 `draft` 到 `active`）；可能的 bug fix
+- **预计修改**：执行验收、修复 bug、同步实现过程中发现的文档偏差；如 active 文档需要变更，按文档变更规则更新 `updated` 字段并经审核
 - **依赖前置**：P1-T12
 - **验证方式**：手工 QA 通过（§7 清单）、安全回归通过（§6）、文档一致性通过（§9.4）
 - **不做什么**：不进入 Phase 2 编码
