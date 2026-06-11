@@ -153,13 +153,19 @@ updated: 2026-06-11
 
 MVP 持久化至少包含以下产物：
 
+| 产物 | 说明 | 必须？ |
+|------|------|--------|
+| `workspace_profile.json` | 项目结构识别结果 | 是 |
+| `evidence_index.json` | 证据索引 | 是 |
+| `implementation_understanding.json` | 结构化理解产物 | 是 |
+| `trace_index.json` | 追溯索引 | 否（可由 understanding 派生） |
+| `qa_history.json` | 问答历史 | 是（如有问答记录） |
+
+以下产物为**可选**，是否持久化由后续设计决定：
+
 | 产物 | 说明 |
 |------|------|
-| `workspace_profile.json` | 项目结构识别结果 |
-| `evidence_index.json` | 证据索引 |
-| `implementation_understanding.json` | 结构化理解产物 |
-| `visualization_spec.json` | 可视化规范数据 |
-| `trace_index.json` | 追溯索引 |
+| `visualization_spec.json` | 可视化渲染规格。可由前端根据 `implementation_understanding.json` 动态生成，MVP 不强制持久化。 |
 
 这些文件是系统内产物，不要求直接暴露给用户作为最终成果，但必须可再次加载。
 

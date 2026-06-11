@@ -80,7 +80,9 @@ MVP 的成功标准是"用户能否更快读懂项目"。所有 story 应共同�
 
 - Story 文档定义**单个用户目标**和**具体功能点**。
 - **跨 story 的统一对象、字段、枚举值、依赖关系和端到端验收场景**以 [`../mvp-functional-contract.md`](../mvp-functional-contract.md) 为准。
-- 当 story 文档中的输入/输出对象名称、字段或枚举与契约文档冲突时，以契约文档为准。
+- **冲突处理**（按职责分层）：
+  - 对象字段、枚举、跨 story 数据流冲突 → 以契约文档为准。
+  - 单 story 内交互细节和功能点 → 以对应 story 为准，但不得违反 `mvp-requirements.md` 定义的 MVP 范围，不得违反 `product-scope.md` 定义的产品边界。
 - 技术设计应从契约文档派生，不得重新定义需求对象。
 
 ## Story 核心约束

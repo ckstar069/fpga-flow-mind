@@ -24,10 +24,12 @@ updated: 2026-06-11
 | [`stories/*.md`](stories/) | 管单个用户目标、功能点、异常处理 | 实施者 |
 | **本文档** | 管跨 story 的统一对象、字段、枚举、依赖和端到端验收 | 设计师、实施者、审核者 |
 
-**规则**：
+**冲突处理规则**（按职责分层）：
+- **产品边界冲突**（做什么/不做什么）→ 以 `product-scope.md` 为准。
+- **MVP 范围冲突**（必须/暂不做能力）→ 以 `mvp-requirements.md` 为准。
+- **对象字段、枚举、跨 story 数据流冲突** → 以本文档为准。
+- **单 story 内交互细节和功能点** → 以对应 story 为准，但不得违反上层范围和契约。
 - 后续技术设计不得重新定义需求对象，应从本文档派生。
-- story 文档中的输入/输出对象名称必须与本文档保持一致。
-- 当 story 文档与本文档冲突时，以本文档为准。
 
 ---
 
@@ -38,13 +40,19 @@ updated: 2026-06-11
 2. story-select-stage.md        → stage_context.json
 3. story-collect-evidence.md    → evidence_index.json
 4. story-generate-understanding.md → implementation_understanding.json
-5. story-view-structure.md      → visualization_spec.json (structure)
-6. story-view-dataflow.md       → visualization_spec.json (dataflow)
-7. story-view-timing.md         → visualization_spec.json (timing)
-8. story-trace-evidence.md      → trace_index.json
+5. story-view-structure.md      → UI 状态（结构图渲染）
+6. story-view-dataflow.md       → UI 状态（数据流图渲染）
+7. story-view-timing.md         → UI 状态（时序图渲染）
+8. story-trace-evidence.md      → UI 状态（evidence 面板）
 9. story-ask-node-question.md   → qa_history.json
-10. story-persist-and-reopen.md → 全部产物持久化
+10. story-persist-and-reopen.md → 全部系统内产物持久化
 ```
+
+> **关于 visualization_spec.json**：
+> - `implementation_understanding.json` 是三类视图的**语义来源**。
+> - `visualization_spec.json` 是可选的**派生渲染规格**，可由 story-view-structure/dataflow/timing 生成，也可由 UI 层根据 `implementation_understanding.json` 动态生成。
+> - MVP 必须能展示三类视图，但**不强制必须持久化** `visualization_spec.json`，除非后续设计明确需要预计算布局。
+> - `trace_index.json` 可由 `implementation_understanding.json` 中的 evidence_refs 直接派生，是否独立持久化由设计决定。
 
 ## Story 依赖表
 
@@ -71,7 +79,7 @@ updated: 2026-06-11
 |------|------|------|------|
 | `workspace_name` | 目录名 | 是 | 非空字符串 |
 | `root_path` | 绝对路径 | 是 | 绝对路径，目录存在 |
-| `stages[]` | 候选阶段列表 | 是 | 至少一个元素（可为空阶段标记） |
+| `stages[]` | 候选阶段列表 | 是 | **允许为空**（`no_stage_found` 场景），空数组时 `validity` 应为 `unlikely` |
 | `stages[].stage_id` | 阶段标识 | 是 | 目录名或规范化标识 |
 | `stages[].source_path` | 阶段目录绝对路径 | 是 | 绝对路径 |
 | `stages[].file_count` | 文件数量统计 | 是 | 非负整数 |
@@ -80,8 +88,14 @@ updated: 2026-06-11
 | `external_refs[]` | 外部模块引用 | 否 | 字符串数组 |
 | `validity` | 合法性判断 | 是 | 枚举：见 `workspace_validity` |
 | `validity_reasons[]` | 判断理由 | 否 | 字符串数组 |
+| `warnings[]` | 扫描过程中的非致命警告 | 否 | 对象数组，每个含 `error_code` 和 `message` |
+| `error_codes[]` | 扫描过程中的错误码 | 否 | 字符串数组，枚举：见 `error_code` |
 | `scan_timestamp` | 扫描时间戳 | 是 | ISO 8601 格式 |
 | `version` | 产物格式版本 | 是 | 字符串，MVP 为 `"1.0.0"` |
+
+**异常场景说明**：
+- `validity = uncertain` 或 `unlikely` 时，仍可允许用户强制继续，除非路径不可读（`permission_denied`）。
+- `stages[]` 为空时，应记录 `no_stage_found` 错误码，并提示用户重新选择或强制继续。
 
 **生产者**：story-open-workspace  
 **消费者**：story-select-stage, story-persist-and-reopen
@@ -92,13 +106,18 @@ updated: 2026-06-11
 |------|------|------|------|
 | `stage_id` | 选中的阶段标识 | 是 | 与 workspace_profile.stages[].stage_id 一致 |
 | `source_path` | 阶段目录绝对路径 | 是 | 绝对路径 |
-| `files[]` | 文件列表 | 是 | 非空数组 |
+| `files[]` | 阶段目录下文件列表 | 是 | **允许为空数组**（概览上下文），但进入 evidence 收集前必须非空 |
 | `files[].source_path` | 文件绝对路径 | 是 | 绝对路径 |
 | `files[].language` | 文件语言 | 是 | 枚举：见 `language` |
 | `files[].source_kind` | 来源类型 | 是 | 枚举：见 `source_kind` |
 | `files[].size_bytes` | 文件大小 | 否 | 非负整数 |
 | `external_deps[]` | 外部依赖标识 | 否 | 字符串数组 |
 | `upstream_refs[]` | 上游阶段引用 | 否 | 对象数组，含 stage_id 和 interface_file_path |
+| `error_code` | 阶段状态错误码 | 否 | 枚举：见 `error_code`（如 `stage_empty`、`stage_unreadable`） |
+
+**阶段上下文区分**：
+- **阶段概览上下文**：用于展示阶段概览面板，允许 `files[]` 为空（空阶段）。此时应展示空状态提示，不触发"开始分析"按钮。
+- **可分析上下文**：用于进入 evidence 收集，要求 `files[]` 非空。空阶段不应进入 evidence 收集，除非用户明确强制继续且后续结果为 `evidence_missing` / `unknown`。
 
 **生产者**：story-select-stage  
 **消费者**：story-collect-evidence
@@ -155,7 +174,7 @@ updated: 2026-06-11
 **生产者**：story-generate-understanding  
 **消费者**：story-view-structure, story-view-dataflow, story-view-timing, story-trace-evidence, story-ask-node-question
 
-### visualization_spec.json
+### visualization_spec.json（可选）
 
 | 属性 | 说明 | 必填 | 约束 |
 |------|------|------|------|
@@ -170,7 +189,12 @@ updated: 2026-06-11
 | `styles` | 样式定义 | 否 | 对象，按节点/边类型定义颜色、形状、线型 |
 | `version` | 产物格式版本 | 是 | 字符串 |
 
-**生产者**：story-view-*（可在前端动态生成）  
+**说明**：
+- `implementation_understanding.json` 是三类视图的**语义来源**。
+- `visualization_spec.json` 是可选的**派生渲染规格**，可由 story-view-structure/dataflow/timing 生成，也可由 UI 层根据 `implementation_understanding.json` 动态生成。
+- MVP 必须能展示三类视图，但**不强制必须持久化** `visualization_spec.json`，除非后续设计明确需要预计算布局。
+
+**生产者**：story-view-*（可由前端动态生成，可选）  
 **消费者**：UI 渲染层
 
 ### trace_index.json
@@ -329,9 +353,11 @@ story-generate-understanding ──→ implementation_understanding.json
 
 **说明**：
 - 实线箭头表示系统内产物（JSON 文件）的传递
-- 三个视图 story 消费同一 implementation_understanding.json，但渲染不同的 view 数据
+- 三个视图 story 消费同一 implementation_understanding.json，渲染为 UI 状态（视图渲染）
+- `visualization_spec.json` 为可选产物，是否持久化由设计决定
+- `trace_index.json` 可由 implementation_understanding.json 中的 evidence_refs 派生，是否独立持久化由设计决定
 - trace-evidence 和 ask-node-question 依赖 evidence_index.json + implementation_understanding.json
-- persist-and-reopen 将所有系统内产物保存到磁盘，并在重新打开时加载
+- persist-and-reopen 将**必须产物**（workspace_profile、evidence_index、implementation_understanding、qa_history）保存到磁盘，可选产物（visualization_spec、trace_index）视设计而定
 
 ---
 

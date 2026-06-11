@@ -93,13 +93,19 @@ updated: YYYY-MM-DD
 | [`mvp-requirements.md`](mvp-requirements.md) | `draft` | MVP 主流程、必须能力、暂不做能力、视图边界、evidence 追溯、置信度要求、验收标准 | 进入 Phase 1+ 实施前必读，确认 MVP 范围 |
 | [`mvp-functional-contract.md`](mvp-functional-contract.md) | `draft` | 跨 story 统一对象、字段约束、枚举值、依赖关系、端到端验收场景 | **进入设计和实施前必读**，对象契约与验收标准来源 |
 
-> **需求文档层级关系**：
-> - `product-scope.md` — 方向层：产品边界与成功标准。
-> - `mvp-requirements.md` — 范围层：MVP 必须/暂不做能力清单。
-> - `mvp-functional-contract.md` — 契约层：跨 story 统一对象、字段、枚举、依赖、端到端验收。**后续技术设计不得重新定义需求对象，应从本文档派生。**
-> - `stories/*.md` — 实现层：单个用户目标、具体功能点、异常处理。
+> **需求文档职责分层**：
 >
-> **冲突时以层级高的为准**：product-scope > mvp-requirements > mvp-functional-contract > stories。
+> | 文档 | 职责 | 冲突裁决 |
+> |------|------|----------|
+> | `product-scope.md` | 决定产品边界、非目标、成功标准 | 产品边界冲突以此为准 |
+> | `mvp-requirements.md` | 决定 MVP 范围、必须/暂不做能力 | MVP 范围冲突以此为准 |
+> | `mvp-functional-contract.md` | 决定跨 story 对象、字段、枚举、错误码、依赖、端到端验收 | 对象字段、枚举、跨 story 数据流冲突以此为准 |
+> | `stories/*.md` | 决定单个用户目标、局部功能点、局部异常处理 | 单 story 内交互细节以此为准，但不得违反上层范围和契约 |
+>
+> **规则**：
+> - 后续技术设计不得重新定义需求对象，应从 `mvp-functional-contract.md` 派生。
+> - story 文档中的功能点不得扩大 `mvp-requirements.md` 定义的 MVP 范围。
+> - story 文档中的对象字段和枚举必须与 `mvp-functional-contract.md` 保持一致。
 >
 > ---
 >
