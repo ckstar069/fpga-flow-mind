@@ -29,8 +29,8 @@ export async function openWorkspace(path: string): Promise<WorkspaceProfile> {
 
 export async function selectStage(rootPath: string, stageId: string): Promise<StageContext> {
   const result = await invoke<CommandResult<StageContext>>('select_stage', {
-    root_path: rootPath,
-    stage_id: stageId,
+    rootPath: rootPath,
+    stageId: stageId,
   });
   return handleResult(result);
 }

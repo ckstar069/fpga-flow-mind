@@ -78,15 +78,15 @@ updated: YYYY-MM-DD
 | [`phase-0-exit-criteria.md`](phase-0-exit-criteria.md) | `active` | Phase 0 退出标准：必须完成的文档、检查表、不扩张边界、进入 Phase 1 的入口 | Phase 0 结束审核前必读 |
 | [`phase-1-implementation-plan.md`](phase-1-implementation-plan.md) | `active` | Phase 1 实施计划：任务拆解、编码顺序、验证顺序、退出标准、风险与回滚 | Phase 1 编码实施依据 |
 | [`phase-1-documents-closure.md`](phase-1-documents-closure.md) | `active` | Phase 1 文档收口说明：收口范围、active 文档清单、进入编码条件 | Phase 1 编码前必读 |
-| [`phase-1-completion-review.md`](phase-1-completion-review.md) | `draft` | Phase 1 收尾验收与完成审查：P1-T01~P1-T13 完成状态、代码路径预检查结果、自动验证结果、暂不允许进入 Phase 2 | Phase 1 编码完成后必读 |
+| [`phase-1-completion-review.md`](phase-1-completion-review.md) | `active` | Phase 1 收尾验收与完成审查：P1-T01~P1-T13 完成状态、真实 Tauri 桌面验收结果、允许进入 Phase 2 | Phase 1 编码完成后必读 |
 
-> 当前处于 **Phase 1 编码完成，收尾验收待真实 Tauri 桌面验证；暂不进入 Phase 2**。
+> 当前处于 **Phase 1 已完成，允许进入 Phase 2**。
 >
-> Phase 1 编码状态：
+> Phase 1 完成状态：
 > - ✅ P1-T01~P1-T12 编码完成（`npm run build` ✅，`cargo test` 65 passed ✅，`cargo check` ✅）
-> - ✅ 代码路径预检查通过（基于源码逻辑推断）
-> - ⏳ P1-T13 部分完成：文档同步已完成，真实 Tauri 桌面验收未完成
-> - ❌ 暂不允许进入 Phase 2，需完成真实 Tauri 桌面验收后更新 `phase-1-completion-review.md` 结论
+> - ✅ P1-T13 验收完成：文档同步完成、真实 Tauri 桌面验收通过
+> - ✅ 验收中发现 1 个 bug（`select_stage` 参数命名），已修复并验证
+> - ✅ 允许进入 Phase 2
 >
 > Phase 0 已完成：
 > - ✅ `docs/` 文档体系与索引规则
@@ -96,7 +96,4 @@ updated: YYYY-MM-DD
 > - ✅ `docs/requirements/stories/` — 10 个 story 文档
 > - ✅ `docs/planning/phase-0-exit-criteria.md` — Phase 0 退出标准
 >
-> 进入 Phase 2 的前置条件：
-> 1. 在真实 Tauri 桌面窗口中启动应用并逐项验收
-> 2. 更新 `phase-1-completion-review.md` 状态为 `active`，P1-T13 为 `done`
-> 3. 确认无阻断性问题后更新"允许进入 Phase 2"结论
+> Phase 2 将基于 Phase 1 的 `StageContext`（含文件列表、外部依赖、上游引用）进行 evidence 收集。
