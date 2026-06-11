@@ -1,7 +1,7 @@
 # Phase 2 证据索引与 Evidence Model 需求
 
 ---
-status: draft
+status: active
 updated: 2026-06-11
 ---
 

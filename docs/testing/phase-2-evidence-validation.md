@@ -1,7 +1,7 @@
 # Phase 2 Evidence Collection 验证计划
 
 ---
-status: draft
+status: active
 updated: 2026-06-11
 ---
 

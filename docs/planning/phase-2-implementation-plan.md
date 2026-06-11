@@ -1,7 +1,7 @@
 # Phase 2 实施计划：证据索引与 Evidence Model
 
 ---
-status: draft
+status: active
 updated: 2026-06-11
 ---
 
@@ -99,7 +99,7 @@ updated: 2026-06-11
 - `RawExtraction` struct（提取器中间产物）：symbol, line_range, raw_excerpt, strength
 - 所有 struct 使用 `#[derive(Debug, Clone, Serialize, Deserialize)]`
 - serde 输出 snake_case JSON（与 Phase 1 一致）
-- 在 `src-tauri/src/models/` 中扩展 `ErrorCode` 枚举：新增 `EvidenceCollectionFailed`, `SourceExcerptTruncated`, `BinaryFileSkipped`, `NonUtf8FileSkipped`
+- 在 `src-tauri/src/models/enums.rs` 中扩展 `ErrorCode` 枚举：新增 `EvidenceCollectionFailed`, `SourceExcerptTruncated`, `BinaryFileSkipped`, `NonUtf8FileSkipped`
 
 **验收**：`cargo check` 通过，`cargo test` 编译通过。
 
@@ -433,3 +433,60 @@ P2-T01 (数据模型)
 | 日期 | 变更 | 作者 |
 |------|------|------|
 | 2026-06-11 | 初始创建 | Claude |
+| 2026-06-11 | 文档收口：status draft → active；修复 ErrorCode 路径描述为精确文件路径 `src-tauri/src/models/enums.rs`；添加收口记录 | Claude |
+
+## 12. 文档收口记录
+
+**收口日期**：2026-06-11
+
+### 收口范围
+
+以下 6 份 Phase 2 文档从 `draft` 收口为 `active`，作为 Phase 2 编码的权威依据：
+
+| 文档 | 路径 | 收口状态 |
+|------|------|----------|
+| Phase 2 需求 | `docs/requirements/phase-2-evidence-requirements.md` | ✅ active |
+| Phase 2 数据模型设计 | `docs/design/phase-2-evidence-model.md` | ✅ active |
+| Phase 2 后端收集器设计 | `docs/design/phase-2-evidence-collector-design.md` | ✅ active |
+| Phase 2 前端面板设计 | `docs/ui-ux/phase-2-evidence-view.md` | ✅ active |
+| Phase 2 验证计划 | `docs/testing/phase-2-evidence-validation.md` | ✅ active |
+| Phase 2 实施计划 | `docs/planning/phase-2-implementation-plan.md` | ✅ active |
+
+### 跨文档一致性确认
+
+| 检查项 | 结果 |
+|--------|------|
+| `EvidenceItem` 字段一致（evidence_id, source_path, language, source_kind, line_range, symbol, summary, strength） | ✅ |
+| `EvidenceStrength` 枚举一致（direct/indirect/weak/conflicting/missing，不含 unknown） | ✅ |
+| `EvidenceCollection` 字段一致（stage_id, evidence_items, index_by_path, index_by_kind, index_by_symbol, warnings, stats, version） | ✅ |
+| `EvidenceStats` 字段一致（files_processed, files_skipped, total_items, items_by_kind, items_by_strength） | ✅ |
+| claim confidence 明确限定为 Phase 3+ 概念，Phase 2 不涉及 | ✅ |
+| `collect_evidence` 签名一致（`root_path, stage_id`，无 `State<AppState>`） | ✅ |
+| ErrorCode 新增路径为 `src-tauri/src/models/enums.rs` | ✅ |
+| 解析失败通过 `warnings[]` + `files_skipped` 表达，不作为 strength 值 | ✅ |
+| 前端使用 `strength` / `STRENGTH_STYLE` / `items_by_strength`，无 confidence 残留 | ✅ |
+| 安全边界（只读、无 Vivado、无外部进程）一致 | ✅ |
+
+### 收口前修复记录
+
+| 修复项 | 文档 | 变更 |
+|--------|------|------|
+| confidence → strength | 全部 6 份 Phase 2 文档 | 字段名统一为 `strength` |
+| 移除 `unknown`/`Unknown` | 全部 6 份 Phase 2 文档 | `EvidenceStrength` 枚举不含 unknown |
+| State\<AppState\> 移除 | `phase-2-evidence-collector-design.md` | command 签名移除 `State<AppState>` |
+| ErrorCode 路径修正 | `phase-2-implementation-plan.md` | `models/mod.rs` → `models/enums.rs`（两处） |
+| evidence-model line 249 | `phase-2-evidence-model.md` | `indirect confidence` → `indirect strength` |
+
+### README 索引同步
+
+| README 文件 | 更新内容 |
+|-------------|----------|
+| `docs/design/README.md` | Phase 2 文档 draft → active，备注收口状态 |
+| `docs/requirements/README.md` | phase-2-evidence-requirements.md draft → active |
+| `docs/ui-ux/README.md` | phase-2-evidence-view.md draft → active |
+| `docs/testing/README.md` | phase-2-evidence-validation.md draft → active |
+| `docs/planning/README.md` | phase-2-implementation-plan.md draft → active，状态文本更新 |
+
+### 收口结论
+
+Phase 2 编码依据文档已全部收口为 `active`，跨文档一致性已确认。可以进入 Phase 2 编码实施。编码必须遵守本文档第 5 节的任务拆解、第 6 节的编码顺序和第 7 节的验证要求。

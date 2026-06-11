@@ -79,11 +79,12 @@ updated: YYYY-MM-DD
 | [`phase-1-implementation-plan.md`](phase-1-implementation-plan.md) | `active` | Phase 1 实施计划：任务拆解、编码顺序、验证顺序、退出标准、风险与回滚 | Phase 1 编码实施依据 |
 | [`phase-1-documents-closure.md`](phase-1-documents-closure.md) | `active` | Phase 1 文档收口说明：收口范围、active 文档清单、进入编码条件 | Phase 1 编码前必读 |
 | [`phase-1-completion-review.md`](phase-1-completion-review.md) | `active` | Phase 1 收尾验收与完成审查：P1-T01~P1-T13 完成状态、真实 Tauri 桌面验收结果、允许进入 Phase 2 | Phase 1 编码完成后必读 |
-| [`phase-2-implementation-plan.md`](phase-2-implementation-plan.md) | `draft` | Phase 2 实施计划：入口条件、P2-T01~P2-T10 任务拆解、编码顺序、验证顺序、退出标准、风险与回滚 | Phase 2 编码实施依据 |
+| [`phase-2-implementation-plan.md`](phase-2-implementation-plan.md) | `active` | Phase 2 实施计划：入口条件、P2-T01~P2-T10 任务拆解、编码顺序、验证顺序、退出标准、风险与回滚 | Phase 2 编码实施依据 |
 
-> 当前处于 **Phase 2 规划中，尚未进入编码**。
+> **Phase 2 文档收口完成，可进入 Phase 2 编码实施。**
+> 编码必须遵守 `phase-2-implementation-plan.md` 的任务顺序和验证要求。
 >
-> Phase 2 文档框架已创建（status=draft）：
+> Phase 2 文档已收口（status=active）：
 > - ✅ `docs/requirements/phase-2-evidence-requirements.md` — Phase 2 需求
 > - ✅ `docs/design/phase-2-evidence-model.md` — 数据结构设计
 > - ✅ `docs/design/phase-2-evidence-collector-design.md` — 后端收集器设计
@@ -98,4 +99,3 @@ updated: YYYY-MM-DD
 > - ✅ 允许进入 Phase 2
 >
 > Phase 2 将基于 Phase 1 的 `StageContext`（含文件列表、外部依赖、上游引用）进行 evidence 收集。
-> Phase 2 编码前需将所有 Phase 2 文档 status 从 draft 更新为 active。

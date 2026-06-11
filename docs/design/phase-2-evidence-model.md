@@ -1,7 +1,7 @@
 # Phase 2 Evidence Model 数据结构设计
 
 ---
-status: draft
+status: active
 updated: 2026-06-11
 ---
 
@@ -246,7 +246,7 @@ interface EvidenceStats {
 - **函数/类定义**（Python）：从 `def`/`class` 行开始，到下一个同级 `def`/`class` 或文件结束
 - **module 定义**（Verilog）：从 `module` 行开始，到 `endmodule` 行
 - **文档章节**（Markdown）：从 `#` 标题行开始，到下一个同级/上级标题前一行
-- **最小启发式**：不精确的行范围标记为 `indirect` confidence
+- **最小启发式**：不精确的行范围标记为 `indirect` strength
 
 ## 6. source excerpt 规则
 

@@ -1,7 +1,7 @@
 # Phase 2 Evidence View 前端设计
 
 ---
-status: draft
+status: active
 updated: 2026-06-11
 ---
 
