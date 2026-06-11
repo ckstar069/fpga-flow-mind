@@ -78,26 +78,25 @@ updated: YYYY-MM-DD
 | [`phase-0-exit-criteria.md`](phase-0-exit-criteria.md) | `active` | Phase 0 退出标准：必须完成的文档、检查表、不扩张边界、进入 Phase 1 的入口 | Phase 0 结束审核前必读 |
 | [`phase-1-implementation-plan.md`](phase-1-implementation-plan.md) | `active` | Phase 1 实施计划：任务拆解、编码顺序、验证顺序、退出标准、风险与回滚 | Phase 1 编码实施依据 |
 | [`phase-1-documents-closure.md`](phase-1-documents-closure.md) | `active` | Phase 1 文档收口说明：收口范围、active 文档清单、进入编码条件 | Phase 1 编码前必读 |
-| [`phase-1-completion-review.md`](phase-1-completion-review.md) | `active` | Phase 1 收尾验收与完成审查：P1-T01~P1-T13 完成状态、手工验收结果、自动验证结果、进入 Phase 2 结论 | Phase 1 编码完成后必读 |
+| [`phase-1-completion-review.md`](phase-1-completion-review.md) | `draft` | Phase 1 收尾验收与完成审查：P1-T01~P1-T13 完成状态、代码路径预检查结果、自动验证结果、暂不允许进入 Phase 2 | Phase 1 编码完成后必读 |
 
-> 当前处于 **Phase 1 文档收口已完成，可进入 Phase 1 编码实施**。
-> Phase 0 文档体系与需求契约已完成。
-> Phase 1 编码依据文档已收口为 `active`：概要设计、数据/API 契约、详细设计、UI/UX 设计、验证设计、实施计划。
-> 进入编码实施必须遵守 `phase-1-implementation-plan.md` 的任务顺序和 `phase-1-workspace-scanning-validation.md` 的验证标准，不得跳过测试或安全验证。
-> 10 个 story 文档保持 `draft`，原因：后续实施中可局部细化交互细节，但主链路和跨 story 契约已稳定，不阻塞 Phase 1。
+> 当前处于 **Phase 1 编码完成，收尾验收待真实 Tauri 桌面验证；暂不进入 Phase 2**。
+>
+> Phase 1 编码状态：
+> - ✅ P1-T01~P1-T12 编码完成（`npm run build` ✅，`cargo test` 65 passed ✅，`cargo check` ✅）
+> - ✅ 代码路径预检查通过（基于源码逻辑推断）
+> - ⏳ P1-T13 部分完成：文档同步已完成，真实 Tauri 桌面验收未完成
+> - ❌ 暂不允许进入 Phase 2，需完成真实 Tauri 桌面验收后更新 `phase-1-completion-review.md` 结论
 >
 > Phase 0 已完成：
 > - ✅ `docs/` 文档体系与索引规则
-> - ✅ `docs/requirements/product-scope.md` — 产品范围草案
-> - ✅ `docs/requirements/mvp-requirements.md` — MVP 需求草案
-> - ✅ `docs/requirements/mvp-functional-contract.md` — MVP 功能契约草案
+> - ✅ `docs/requirements/product-scope.md` — 产品范围
+> - ✅ `docs/requirements/mvp-requirements.md` — MVP 需求
+> - ✅ `docs/requirements/mvp-functional-contract.md` — MVP 功能契约
 > - ✅ `docs/requirements/stories/` — 10 个 story 文档
 > - ✅ `docs/planning/phase-0-exit-criteria.md` — Phase 0 退出标准
 >
-> Phase 0 已完成（全部）：
-> - ✅ `docs/requirements/product-scope.md` — 从 `draft` → `active`
-> - ✅ `docs/requirements/mvp-requirements.md` — 从 `draft` → `active`
-> - ✅ `docs/requirements/mvp-functional-contract.md` — 从 `draft` → `active`
-> - ✅ `docs/planning/phase-0-exit-criteria.md` — 从 `draft` → `active`
->
-> 10 个 story 保持 `draft`，原因：后续实施中可局部细化交互细节，但主链路和跨 story 契约已稳定，不阻塞 Phase 1。
+> 进入 Phase 2 的前置条件：
+> 1. 在真实 Tauri 桌面窗口中启动应用并逐项验收
+> 2. 更新 `phase-1-completion-review.md` 状态为 `active`，P1-T13 为 `done`
+> 3. 确认无阻断性问题后更新"允许进入 Phase 2"结论

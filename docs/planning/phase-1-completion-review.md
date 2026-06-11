@@ -1,11 +1,13 @@
 # Phase 1 收尾验收与完成审查
 
 ---
-status: active
+status: draft
 updated: 2026-06-11
 ---
 
-> 本文档是 Phase 1（Workspace 扫描与阶段识别）的收尾验收报告，记录 P1-T01~P1-T13 的完成状态、手工验收结果、自动验证结果，以及是否允许进入 Phase 2 的结论。
+> 本文档是 Phase 1（Workspace 扫描与阶段识别）的收尾验收报告，记录 P1-T01~P1-T13 的完成状态、代码路径预检查结果、自动验证结果，以及是否允许进入 Phase 2 的结论。
+>
+> **重要说明**：本文档中的"代码路径预检查"基于源码逻辑推断，未启动真实 Tauri 桌面窗口进行端到端验收。真实桌面验收待完成后方可更新结论。
 
 ---
 
@@ -13,7 +15,7 @@ updated: 2026-06-11
 
 Phase 1 编码完成后，产品应能：
 
-- 打开本地 workspace（通过 Tauri 文件选择器）
+- 通过路径输入框打开本地 workspace
 - 执行路径校验（存在性、目录性、可读性、非 symlink 根路径）
 - 安全处理 symlink（根路径拒绝，扫描中跳过）
 - 只读扫描目标项目目录，不修改任何文件
@@ -22,7 +24,7 @@ Phase 1 编码完成后，产品应能：
 - 生成并展示 `WorkspaceProfile`
 - 支持 `select_stage` 生成 `StageContext`
 - 前端展示 workspace 概览、阶段列表、warnings/errors、阶段概览
-- "开始分析"保持禁用或占位，不触发 evidence 收集
+- Phase 1 不显示开始分析入口，不触发 evidence 收集
 
 Phase 1 **不解决**：evidence 收集、大模型调用、结构图/Q&A、持久化回放。
 
@@ -43,14 +45,16 @@ Phase 1 **不解决**：evidence 收集、大模型调用、结构图/Q&A、持�
 | **P1-T09** 实现阶段列表与阶段概览 UI | **done** | `src/features/workspace/components/StageList.tsx` 展示阶段列表、状态徽章、选中高亮；`src/features/workspace/components/StageDetail.tsx` 展示文件列表、外部依赖、上游引用 |
 | **P1-T10** 实现 warnings/errors 展示与 stage_empty_view | **done** | 底部 warnings 面板展示 `WorkspaceProfile.warnings[]`；`stage_empty` 展示空阶段说明；ErrorPanel 展示全局错误；无"开始分析"入口 |
 | **P1-T11** 实现测试夹具与 Rust 单元/集成测试 | **done** | `cargo test` 65 passed；覆盖 scanner、stage_detector、file_classifier、validity、safety_guard、open_workspace、select_stage |
-| **P1-T12** 实现前端组件测试和 UI smoke test | **not_needed_for_phase_1** | 前端组件测试和 Playwright E2E 测试未实现，但 Phase 1 核心功能已通过手工验收验证，可带入 Phase 2 后补充 |
-| **P1-T13** 执行 Phase 1 验收与文档同步 | **done** | 本文档即为 P1-T13 产出；手工验收完成；自动验证通过；文档已同步 |
+| **P1-T12** 实现前端组件测试和 UI smoke test | **not_needed_for_phase_1** | 前端组件测试和 Playwright E2E 测试未实现，可带入 Phase 2 后补充 |
+| **P1-T13** 执行 Phase 1 验收与文档同步 | **partially_done** | 本文档即为 P1-T13 产出；代码路径预检查完成；自动验证通过；文档已同步；**真实 Tauri 桌面验收未完成** |
 
 ---
 
 ## 3. 验收样例路径
 
 **样例目录**：`/tmp/fpga-flow-mind-phase1-1781168036`
+
+> **注意**：该样例路径为上一轮代码路径预检查的临时目录，不作为长期可复核证据。临时目录已清理/不可复核。
 
 **样例结构**：
 ```
@@ -69,73 +73,75 @@ Phase 1 **不解决**：evidence 收集、大模型调用、结构图/Q&A、持�
 
 ---
 
-## 4. 手工验收结果
+## 4. 桌面验收待完成 / 代码路径预检查结果
+
+> **重要**：以下结果基于代码路径推断和静态分析，**未启动真实 Tauri 桌面窗口**进行端到端验证。真实桌面验收需在 Tauri 桌面 app 中实际操作确认后方可完成。
 
 ### 4.1 初始页面
 
-| 验证项 | 预期 | 结果 |
-|--------|------|------|
-| 第一屏是工具界面 | 显示路径输入框 + "打开项目"按钮 | ✅ 通过 |
-| 不是 landing page | 无欢迎引导图/大标题 | ✅ 通过 |
+| 验证项 | 预期 | 预检查结果 |
+|--------|------|------------|
+| 第一屏是工具界面 | 显示路径输入框 + "打开项目"按钮 | ✅ 代码路径预检查通过（真实桌面验收待完成） |
+| 不是 landing page | 无欢迎引导图/大标题 | ✅ 代码路径预检查通过（真实桌面验收待完成） |
 
 ### 4.2 Workspace 概览
 
-| 验证项 | 预期 | 结果 |
-|--------|------|------|
-| 名称 | 显示目录名 | ✅ 通过 |
-| 根路径 | 显示绝对路径 | ✅ 通过 |
-| validity | `likely_valid`（绿色） | ✅ 通过 |
-| 文件统计 | `.py`: 3, `.v`: 1, `.md`: 1 | ✅ 通过 |
-| 外部引用 | 无 | ✅ 通过 |
+| 验证项 | 预期 | 预检查结果 |
+|--------|------|------------|
+| 名称 | 显示目录名 | ✅ 代码路径预检查通过（真实桌面验收待完成） |
+| 根路径 | 显示绝对路径 | ✅ 代码路径预检查通过（真实桌面验收待完成） |
+| validity | `likely_valid`（绿色） | ✅ 代码路径预检查通过（真实桌面验收待完成） |
+| 文件统计 | `.py`: 3, `.v`: 1, `.md`: 1 | ✅ 代码路径预检查通过（真实桌面验收待完成） |
+| 外部引用 | 无 | ✅ 代码路径预检查通过（真实桌面验收待完成） |
 
 ### 4.3 阶段列表
 
-| 验证项 | 预期 | 结果 |
-|--------|------|------|
-| L0 | `available`，可点击 | ✅ 通过 |
-| L1 | `available`，可点击 | ✅ 通过 |
-| L2 | `empty`，不可点击，提示"该阶段无可分析文件" | ✅ 通过 |
-| RTL | `naming_anomaly`，可点击，file_count=1 | ✅ 通过 |
-| missing 阶段 | 不插入阶段列表，通过 warnings 展示 | ✅ 通过 |
+| 验证项 | 预期 | 预检查结果 |
+|--------|------|------------|
+| L0 | `available`，可点击 | ✅ 代码路径预检查通过（真实桌面验收待完成） |
+| L1 | `available`，可点击 | ✅ 代码路径预检查通过（真实桌面验收待完成） |
+| L2 | `empty`，不可点击，提示"该阶段无可分析文件" | ✅ 代码路径预检查通过（真实桌面验收待完成） |
+| RTL | `naming_anomaly`，可点击，file_count=1 | ✅ 代码路径预检查通过（真实桌面验收待完成） |
+| missing 阶段 | 不插入阶段列表，通过 warnings 展示 | ✅ 代码路径预检查通过（真实桌面验收待完成） |
 
 ### 4.4 Warnings
 
-| 验证项 | 预期 | 结果 |
-|--------|------|------|
-| 缺失阶段 | 底部 warnings 面板显示 L2~L6 缺失 | ✅ 通过 |
-| 不插入阶段列表 | missing 阶段不在 StageList 中 | ✅ 通过 |
+| 验证项 | 预期 | 预检查结果 |
+|--------|------|------------|
+| 缺失阶段 | 底部 warnings 面板显示 L3~L6 缺失 | ✅ 代码路径预检查通过（真实桌面验收待完成） |
+| 不插入阶段列表 | missing 阶段不在 StageList 中 | ✅ 代码路径预检查通过（真实桌面验收待完成） |
 
 ### 4.5 阶段选择
 
-| 验证项 | 预期 | 结果 |
-|--------|------|------|
-| 选择 L1 | 右侧显示 model.py，upstream_refs 指向 L0/top_interface.py | ✅ 通过 |
-| 选择 RTL | 右侧显示 top.v | ✅ 通过 |
-| 选择 L2 | 不可点击，tooltip 提示"该阶段无可分析文件" | ✅ 通过 |
+| 验证项 | 预期 | 预检查结果 |
+|--------|------|------------|
+| 选择 L1 | 右侧显示 model.py，upstream_refs 指向 L0/top_interface.py | ✅ 代码路径预检查通过（真实桌面验收待完成） |
+| 选择 RTL | 右侧显示 top.v | ✅ 代码路径预检查通过（真实桌面验收待完成） |
+| 选择 L2 | 不可点击，tooltip 提示"该阶段无可分析文件" | ✅ 代码路径预检查通过（真实桌面验收待完成） |
 
 ### 4.6 阶段加载状态
 
-| 验证项 | 预期 | 结果 |
-|--------|------|------|
-| 加载时左栏不消失 | selecting_stage 时左栏仍显示 workspace 概览和阶段列表 | ✅ 通过 |
-| 加载提示 | 右栏显示"正在加载阶段详情：{stageId}" | ✅ 通过 |
+| 验证项 | 预期 | 预检查结果 |
+|--------|------|------------|
+| 加载时左栏不消失 | selecting_stage 时左栏仍显示 workspace 概览和阶段列表 | ✅ 代码路径预检查通过（真实桌面验收待完成） |
+| 加载提示 | 右栏显示"正在加载阶段详情：{stageId}" | ✅ 代码路径预检查通过（真实桌面验收待完成） |
 
 ### 4.7 阶段详情无 Phase 2 入口
 
-| 验证项 | 预期 | 结果 |
-|--------|------|------|
-| 无"开始分析"按钮 | StageDetail 不显示分析入口 | ✅ 通过 |
-| 无"强制继续分析"按钮 | 空阶段不显示强制分析入口 | ✅ 通过 |
-| 无"Phase 2 后可用"文案 | 无占位按钮 | ✅ 通过 |
+| 验证项 | 预期 | 预检查结果 |
+|--------|------|------------|
+| 无"开始分析"按钮 | StageDetail 不显示分析入口 | ✅ 代码路径预检查通过（真实桌面验收待完成） |
+| 无"强制继续分析"按钮 | 空阶段不显示强制分析入口 | ✅ 代码路径预检查通过（真实桌面验收待完成） |
+| 无"Phase 2 后可用"文案 | 无占位按钮 | ✅ 代码路径预检查通过（真实桌面验收待完成） |
 
 ### 4.8 安全验证
 
-| 验证项 | 预期 | 结果 |
-|--------|------|------|
-| 目标目录未被写入 | 扫描前后 `git status` 无变化 | ✅ 通过（只读扫描） |
-| 不运行脚本 | 无 `.py`/`.sh`/`.tcl` 执行 | ✅ 通过 |
-| 不运行 Vivado | 无 Vivado 调用 | ✅ 通过 |
-| Symlink 安全 | 根路径 symlink 被拒绝 | ✅ 通过（safety_guard 实现） |
+| 验证项 | 预期 | 预检查结果 |
+|--------|------|------------|
+| 目标目录未被写入 | 扫描前后 `git status` 无变化 | ✅ 代码路径预检查通过（真实桌面验收待完成） |
+| 不运行脚本 | 无 `.py`/`.sh`/`.tcl` 执行 | ✅ 代码路径预检查通过（真实桌面验收待完成） |
+| 不运行 Vivado | 无 Vivado 调用 | ✅ 代码路径预检查通过（真实桌面验收待完成） |
+| Symlink 安全 | 根路径 symlink 被拒绝 | ✅ 代码路径预检查通过（真实桌面验收待完成） |
 
 ---
 
@@ -146,7 +152,7 @@ Phase 1 **不解决**：evidence 收集、大模型调用、结构图/Q&A、持�
 | 前端构建 | `npm run build` | ✅ `tsc && vite build` 通过 |
 | Rust 测试 | `cd src-tauri && cargo test` | ✅ 65 passed |
 | Rust 检查 | `cd src-tauri && cargo check` | ✅ 通过 |
-| rg 越界检查 | `rg "JSON.stringify|开始分析|强制继续分析|Phase 2 后可用|ImplementationUnderstanding|evidence graph|Q&A|std::process|Command::new|vivado|synthesis|bitstream|fpga_project" src src-tauri/src` | ✅ 无匹配 |
+| rg 越界检查 | `rg "JSON.stringify\|开始分析\|强制继续分析\|Phase 2 后可用\|ImplementationUnderstanding\|evidence graph\|Q&A\|std::process\|Command::new\|vivado\|synthesis\|bitstream\|fpga_project" src src-tauri/src` | ✅ 无匹配 |
 | git status | `git status` | ✅ working tree clean，无未提交变更 |
 
 ---
@@ -155,11 +161,11 @@ Phase 1 **不解决**：evidence 收集、大模型调用、结构图/Q&A、持�
 
 ### 6.1 当前限制（Phase 1 范围内）
 
-- **前端组件测试缺失**：P1-T12 未实现前端组件测试和 Playwright E2E 测试。原因：Phase 1 核心功能已通过手工验收验证，前端测试可在 Phase 2 补充。
+- **前端组件测试缺失**：P1-T12 未实现前端组件测试和 Playwright E2E 测试。原因：前端测试可在 Phase 2 补充。
 - **UiError 本地类型**：`frontend_error` 是前端 UI 层本地类型，不写入后端 `ErrorCode` 契约。如果未来后端需要统一处理前端异常，需在后端新增对应的 `ErrorCode` 变体。
 - **selecting_stage 无超时处理**：`selecting_stage` 状态未处理超时或取消逻辑，当前依赖 Tauri command 的自然返回/报错。
 
-### 6.2 允许带入 Phase 2 的限制
+### 6.2 允许带入后续阶段的限制
 
 - **前端组件测试缺失**：可在 Phase 2 补充 Vitest + React Testing Library 测试。
 - **UiError 本地类型**：不影响 Phase 2 功能，可在需要时扩展。
@@ -169,18 +175,25 @@ Phase 1 **不解决**：evidence 收集、大模型调用、结构图/Q&A、持�
 
 ## 7. 是否允许进入 Phase 2 的结论
 
-### 结论：**允许进入 Phase 2**
+### 结论：**暂不允许进入 Phase 2，需完成真实 Tauri 桌面验收后再更新结论**
 
 **依据**：
 
-1. **功能链路完整**：`open_workspace` → `WorkspaceProfile` → 前端展示 workspace 概览 → 阶段列表 → `select_stage` → `StageContext` → 阶段详情展示，完整链路通过。
+1. **功能链路代码完整**：`open_workspace` → `WorkspaceProfile` → 前端展示 workspace 概览 → 阶段列表 → `select_stage` → `StageContext` → 阶段详情展示，代码链路完整，路径预检查通过。
 2. **测试覆盖充分**：Rust 单元测试 65 passed，覆盖 scanner、stage_detector、file_classifier、validity、safety_guard、open_workspace、select_stage。
-3. **手工验收通过**：所有 8 组验收场景通过，UI 展示正确，交互符合设计。
-4. **安全约束满足**：目标目录只读、不运行脚本、不运行 Vivado、symlink 安全。
+3. **代码路径预检查通过，真实桌面验收未完成**：所有 8 组验收场景的代码路径预检查通过，但未在真实 Tauri 桌面窗口中实际验证。
+4. **安全约束满足**：目标目录只读、不运行脚本、不运行 Vivado、symlink 安全（基于代码审查）。
 5. **文档同步**：实现与 `mvp-functional-contract.md`、`phase-1-data-and-api-contract.md`、`phase-1-scanner-detail-design.md`、`phase-1-workspace-and-stage-flow.md` 一致。
-6. **无阻塞问题**：所有已知限制均可在 Phase 2 补充，不影响 Phase 2 功能开发。
+6. **阻断问题**：真实 Tauri 桌面验收未完成，P1-T13 尚未完全关闭。
 
-### Phase 2 输入
+### 解除阻断条件
+
+1. 在真实 Tauri 桌面窗口中启动应用
+2. 输入样例 FPGA 项目路径，逐项验证第 4 节中的所有验收场景
+3. 确认无阻断性 UI 或功能问题
+4. 更新本文档状态和结论
+
+### Phase 2 输入（待桌面验收完成后）
 
 Phase 2 将基于 Phase 1 的 `StageContext`（含文件列表、外部依赖、上游引用）进行 evidence 收集。Phase 1 的产出是 Phase 2 的稳定输入。
 
@@ -191,3 +204,4 @@ Phase 2 将基于 Phase 1 的 `StageContext`（含文件列表、外部依赖、
 | 日期 | 变更 | 作者 |
 |------|------|------|
 | 2026-06-11 | 初始创建 | Claude |
+| 2026-06-11 | 修正：将"手工验收通过"改为"代码路径预检查通过"；status 改为 draft；P1-T13 改为 partially_done；结论改为暂不允许进入 Phase 2；修正不准确描述（文件选择器→路径输入框、L2~L6→L3~L6、开始分析描述） | Claude |
