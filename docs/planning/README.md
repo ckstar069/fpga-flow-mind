@@ -84,7 +84,8 @@ updated: YYYY-MM-DD
 > Phase 1 UI/UX 轻量设计已创建（`docs/ui-ux/phase-1-workspace-and-stage-flow.md`），处于 `draft` 状态。
 > Phase 1 testing/validation 设计已创建（`docs/testing/phase-1-workspace-scanning-validation.md`），处于 `draft` 状态，需审核后收口。
 > Phase 1 implementation plan 已创建（`docs/planning/phase-1-implementation-plan.md`），处于 `draft` 状态。
-> 下一步应是审核 implementation plan，审核通过后进入 Phase 1 编码实施。
+> 下一步应先审核 implementation plan；审核通过后执行 Phase 1 文档收口，将可作为编码依据的 Phase 1 文档（`phase-1-data-and-api-contract.md`、`phase-1-scanner-detail-design.md`、`phase-1-architecture.md`、`phase-1-workspace-and-stage-flow.md`）状态更新为 `active` 或明确标记为 `approved-for-implementation`；完成后才进入 Phase 1 编码实施。
+> 在文档收口完成前，**不进入编码实施**。
 >
 > Phase 0 已完成：
 > - ✅ `docs/` 文档体系与索引规则

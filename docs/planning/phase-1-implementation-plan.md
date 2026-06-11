@@ -7,7 +7,7 @@ updated: 2026-06-11
 
 > 本文档是 Phase 1 的实施计划，将已完成的需求、设计、UI/UX、验证文档转化为后续编码阶段可执行的任务顺序、允许修改范围、验证顺序和退出门槛。
 > Phase 1 指 `fpga-flow-mind` **本项目**的开发推进阶段，不是业务项目的 `L0` / `L1` / `RTL` 实现阶段。
-> 不写产品代码、不写测试代码、不创建文件。
+> 本计划不创建产品源码或测试代码。
 
 ## 1. 阶段目标
 
@@ -46,10 +46,20 @@ Phase 1 **不解决**：
 | [`docs/ui-ux/phase-1-workspace-and-stage-flow.md`](../ui-ux/phase-1-workspace-and-stage-flow.md) | `draft` | 组件定义、状态展示规则、空状态处理、不展示 JSON 规则 |
 | [`docs/testing/phase-1-workspace-scanning-validation.md`](../testing/phase-1-workspace-scanning-validation.md) | `draft` | 验证矩阵、验收 checklist、测试夹具设计、自动化测试规划 |
 
-**一致性规则**：
-- 当设计文档与功能契约冲突时，以 `mvp-functional-contract.md`（`active`）为准。
-- 当设计文档之间冲突时，以最新修改的文档为准，并同步修正其他文档。
-- 编码阶段发现契约漏洞时，应暂停编码、更新契约、再继续。
+**文档权威优先级**（冲突时按序号从高到低裁决）：
+
+1. [`docs/requirements/mvp-functional-contract.md`](../requirements/mvp-functional-contract.md) — `active` 功能契约，最高优先级。定义枚举值、错误码、字段语义、validity 规则。
+2. [`docs/design/phase-1-data-and-api-contract.md`](../design/phase-1-data-and-api-contract.md) — Phase 1 数据/API 契约。定义 `CommandResult` 语义、`WorkspaceProfile`/`StageContext` 字段、Tauri command 签名、UI 状态映射、error/warning 作用域。
+3. [`docs/design/phase-1-scanner-detail-design.md`](../design/phase-1-scanner-detail-design.md) — Phase 1 扫描详细设计。定义 DFS 算法、阶段识别、文件分类、validity 判定算法、边界条件。
+4. [`docs/design/phase-1-architecture.md`](../design/phase-1-architecture.md) — Phase 1 概要设计。定义模块职责、数据流、前后端边界。
+5. [`docs/ui-ux/phase-1-workspace-and-stage-flow.md`](../ui-ux/phase-1-workspace-and-stage-flow.md) — Phase 1 UI/UX 设计。定义 UI 展示和交互规则，**不反向修改数据契约**。
+6. [`docs/testing/phase-1-workspace-scanning-validation.md`](../testing/phase-1-workspace-scanning-validation.md) — Phase 1 验证设计。定义验收标准，**不定义新功能或新契约**。
+7. [`docs/planning/phase-1-implementation-plan.md`](phase-1-implementation-plan.md) — Phase 1 实施计划。定义任务顺序和退出标准，**不定义新需求或新契约**。
+
+**冲突处理规则**：
+- 当高优先级文档与低优先级文档冲突时，以高优先级为准，并同步修正低优先级文档。
+- 当同级文档之间冲突时（如两个 `draft` 设计文档互相矛盾），**必须暂停编码**，先修正文档并经审核，再继续实施。
+- 编码阶段发现契约漏洞时，应暂停编码、更新契约（从高优先级开始）、经审核后再继续。
 
 ## 3. 允许修改范围
 
