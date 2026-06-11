@@ -79,7 +79,7 @@ updated: 2026-06-11
 |------|------|------|------|
 | `workspace_name` | 目录名 | 是 | 非空字符串 |
 | `root_path` | 绝对路径 | 是 | 绝对路径，目录存在 |
-| `stages[]` | 候选阶段列表 | 是 | **允许为空**（`no_stage_found` 场景），空数组时 `validity` 应为 `unlikely` |
+| `stages[]` | 候选阶段列表 | 是 | **允许为空**（`no_stage_found` 场景）。`stages[]` 为空时 `validity` 不固定为 `unlikely`：若仍存在可分析代码则为 `uncertain`，若无阶段特征且无可分析代码则为 `unlikely`。具体判定以 Phase 1 设计的 validity 规则为准 |
 | `stages[].stage_id` | 阶段标识 | 是 | 目录名或规范化标识 |
 | `stages[].source_path` | 阶段目录绝对路径 | 是 | 绝对路径 |
 | `stages[].file_count` | 文件数量统计 | 是 | 非负整数 |
@@ -96,6 +96,7 @@ updated: 2026-06-11
 **异常场景说明**：
 - `validity = uncertain` 或 `unlikely` 时，仍可允许用户强制继续，除非路径不可读（`permission_denied`）。
 - `stages[]` 为空时，应记录 `no_stage_found` 错误码，并提示用户重新选择或强制继续。
+- `no_stage_found` 仅表示未识别到阶段目录，**不等价于** `validity = unlikely`。若目录中仍存在可分析代码文件，`validity` 可为 `uncertain`。
 
 **生产者**：story-open-workspace  
 **消费者**：story-select-stage, story-persist-and-reopen
@@ -444,7 +445,7 @@ story-generate-understanding ──→ implementation_understanding.json
 
 **执行步骤**：
 1. 用户打开项目 → 系统识别为 `uncertain`（因阶段不完整）
-2. workspace 概览展示可用阶段，标注缺失阶段和命名异常阶段
+2. workspace 概览展示可用阶段；命名异常阶段在阶段列表中标注；缺失阶段在 warnings / validity_reasons 区域展示
 3. 用户选择命名异常的 `rtl_final` 阶段 → 系统允许选择
 4. 后续流程同场景 1
 
@@ -456,8 +457,8 @@ story-generate-understanding ──→ implementation_understanding.json
 
 **期望 UI 表现**：
 - 概览面板显示"阶段不完整"警告（非错误）
-- 命名异常阶段以降级样式展示但可点击
-- 缺失阶段显示"未找到"但不阻塞其他阶段
+- 命名异常阶段在阶段列表中以降级样式展示但可点击
+- 缺失阶段在 warnings 区域显示"未找到"，但不阻塞其他阶段
 
 **期望安全结果**：同场景 1
 
