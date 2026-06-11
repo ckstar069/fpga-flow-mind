@@ -56,10 +56,10 @@ pub fn calculate_validity(stages: &[StageInfo], scanned: &[ScannedFile]) -> (Wor
 }
 
 /// 收集 error_codes（workspace 级）。
-pub fn collect_error_codes(stages: &[StageInfo], scanned: &[ScannedFile]) -> Vec<ErrorCode> {
+pub fn collect_error_codes(stages: &[StageInfo]) -> Vec<ErrorCode> {
     let mut codes = Vec::new();
 
-    if stages.is_empty() && !scanned.is_empty() {
+    if stages.is_empty() {
         codes.push(ErrorCode::NoStageFound);
     }
 

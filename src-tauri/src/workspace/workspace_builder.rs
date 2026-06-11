@@ -2,7 +2,6 @@ use std::path::Path;
 
 use chrono::Utc;
 
-use crate::models::enums::ErrorCode;
 use crate::models::error::CommandResult;
 use crate::models::workspace_profile::{StageSummary, WorkspaceProfile};
 use crate::workspace::external_refs::detect_urban_wireless;
@@ -73,10 +72,7 @@ pub fn build_workspace_profile(path_str: &str) -> CommandResult<WorkspaceProfile
         .collect();
 
     // error_codes（workspace 级）
-    let mut error_codes = collect_error_codes(&detection.stages, &scan.files);
-    if detection.stages.is_empty() {
-        error_codes.push(ErrorCode::NoStageFound);
-    }
+    let error_codes = collect_error_codes(&detection.stages);
 
     // 合并 warnings
     let mut warnings = scan.warnings;
@@ -114,6 +110,7 @@ pub fn build_workspace_profile(path_str: &str) -> CommandResult<WorkspaceProfile
 mod tests {
     use std::fs;
 
+    use crate::models::enums::ErrorCode;
     use super::*;
 
     fn touch(root: &Path, rel: &str) {
@@ -153,7 +150,11 @@ mod tests {
         let profile = result.data.unwrap();
         assert!(profile.stages.is_empty());
         assert_eq!(profile.validity, crate::models::enums::WorkspaceValidity::Uncertain);
-        assert!(profile.error_codes.contains(&ErrorCode::NoStageFound));
+        assert_eq!(
+            profile.error_codes.iter().filter(|c| **c == ErrorCode::NoStageFound).count(),
+            1,
+            "no_stage_found 应只出现一次"
+        );
     }
 
     #[test]
@@ -166,7 +167,11 @@ mod tests {
         let profile = result.data.unwrap();
         assert!(profile.stages.is_empty());
         assert_eq!(profile.validity, crate::models::enums::WorkspaceValidity::Unlikely);
-        assert!(profile.error_codes.contains(&ErrorCode::NoStageFound));
+        assert_eq!(
+            profile.error_codes.iter().filter(|c| **c == ErrorCode::NoStageFound).count(),
+            1,
+            "no_stage_found 应只出现一次"
+        );
     }
 
     #[test]
