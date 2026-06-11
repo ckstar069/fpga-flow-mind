@@ -239,7 +239,7 @@ Phase 1 编码阶段明确**不**做：
 
 ### P1-T13 执行 Phase 1 验收与文档同步
 
-- **目标**：执行 [`phase-1-workspace-scanning-validation.md`](../testing/phase-1-workspace-scanning-validation.md) §9 验收 checklist；修复发现的 bug；同步更新所有设计文档状态；编写 Phase 1 退出报告
+- **目标**：执行 [`phase-1-workspace-scanning-validation.md`](../testing/phase-1-workspace-scanning-validation.md) §9 验收 checklist；修复发现的 bug；同步实现过程中发现的文档偏差；编写 Phase 1 退出报告
 - **预计修改**：执行验收、修复 bug、同步实现过程中发现的文档偏差；如 active 文档需要变更，按文档变更规则更新 `updated` 字段并经审核
 - **依赖前置**：P1-T12
 - **验证方式**：手工 QA 通过（§7 清单）、安全回归通过（§6）、文档一致性通过（§9.4）
