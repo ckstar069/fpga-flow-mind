@@ -282,9 +282,9 @@ stages[] 中的条目按以下顺序排列：
 
 | 代码 | 来源 | 作用域 / 归属对象 | `CommandResult.success` | 进入 `WorkspaceProfile.warnings[]` | 进入 `WorkspaceProfile.error_codes[]` | 阻塞 | UI 表现 |
 |------|------|------------------|------------------------|-----------------------------------|--------------------------------------|------|---------|
-| `path_not_found` | 路径校验 | `open_workspace` → `CommandError` | `false` | 否 | 是 | 是 | 弹窗"路径不存在" |
-| `not_directory` | 路径校验 | `open_workspace` → `CommandError` | `false` | 否 | 是 | 是 | 弹窗"请选择一个目录" |
-| `permission_denied` | 路径校验 | `open_workspace` → `CommandError` | `false` | 否 | 是 | 是 | 弹窗"无读权限" |
+| `path_not_found` | 路径校验 | `open_workspace` → `CommandError` | `false` | 否 | 否 | 是 | 弹窗"路径不存在" |
+| `not_directory` | 路径校验 | `open_workspace` → `CommandError` | `false` | 否 | 否 | 是 | 弹窗"请选择一个目录" |
+| `permission_denied` | 路径校验 | `open_workspace` → `CommandError` | `false` | 否 | 否 | 是 | 弹窗"无读权限" |
 | `stage_unreadable` | select_stage | `select_stage` → `CommandError` | `false` | 否 | 否 | 是（仅阶段） | 禁用该阶段 |
 | `no_stage_found` | 阶段识别 | `open_workspace` → `WorkspaceProfile` | `true` | 是 | 是 | 否 | "未识别到阶段"提示 + 继续浏览按钮 |
 | `stage_empty` | select_stage | `select_stage` → `StageContext.error_code` | `true` | 否 | 否 | 否（仅阶段） | 阶段灰色展示，提示"该阶段为空" |
@@ -293,7 +293,7 @@ stages[] 中的条目按以下顺序排列：
 | `scan_timeout` | 扫描过程 | `open_workspace` → `WorkspaceProfile` | `true` | 是 | 否 | 否 | warning 列表中展示 |
 
 **说明**：
-- **路径校验类错误**（`path_not_found`/`not_directory`/`permission_denied`）：`open_workspace` 返回 `success=false`，`CommandError.error_code` 包含错误码，同时进入 `WorkspaceProfile.error_codes[]`，前端走 error 分支。
+- **路径校验类错误**（`path_not_found`/`not_directory`/`permission_denied`）：`open_workspace` 返回 `success=false`，错误码位于 `CommandError.error_code`；此时无 `WorkspaceProfile`，因此**不进入** `WorkspaceProfile.error_codes[]`。前端走 error 分支。
 - **阶段级错误**：`stage_unreadable` 为 `select_stage` 返回 `success=false`，`CommandError.error_code` 包含错误码；**不进入** `WorkspaceProfile.warnings[]` 或 `WorkspaceProfile.error_codes[]`。仅阻断该阶段，不阻断 workspace。
 - **阶段级空状态**：`stage_empty` 为 `select_stage` 返回 `success=true`，`StageContext.error_code` 字段为 `stage_empty`；**不进入** `WorkspaceProfile.warnings[]` 或 `WorkspaceProfile.error_codes[]`。前端展示空阶段说明，不进入分析。
 - **workspace 级降级**：`no_stage_found` 进入 `WorkspaceProfile.warnings[]` 和 `WorkspaceProfile.error_codes[]`，因为既是扫描结果也是 workspace 级异常码。返回 `success=true` 携带 data。

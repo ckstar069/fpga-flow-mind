@@ -264,7 +264,7 @@ updated: 2026-06-11
 | `file_type_stats` | 按扩展名统计，测试文件正确归类 |
 | `external_refs[]` | 识别 `urban_wireless` 引用 |
 | `warnings[]` | workspace 扫描过程中的非致命问题，每个含 `error_code`、`message`、`source_path`；不含 `select_stage` 产生的阶段级问题 |
-| `error_codes[]` | workspace 级异常码，与 `warnings[]` 对应（`no_stage_found` 同时出现），不含 `select_stage` 产生的 `stage_empty`/`stage_unreadable` |
+| `error_codes[]` | 仅在 `open_workspace` 返回 `WorkspaceProfile`（`success=true`）时记录 workspace 级异常码（如 `no_stage_found`）；路径校验失败通过 `CommandError.error_code` 返回，无 `WorkspaceProfile`，因此不进入 `WorkspaceProfile.error_codes[]`；不含 `select_stage` 产生的 `stage_empty`/`stage_unreadable` |
 
 ### 4.4 StageSummary / StageContext 字段完整性
 
@@ -285,9 +285,9 @@ updated: 2026-06-11
 
 | error_code | 作用域 | 进入 `WorkspaceProfile.warnings[]` | 进入 `WorkspaceProfile.error_codes[]` | `CommandResult.success` | 验证点 |
 |-----------|--------|-----------------------------------|--------------------------------------|------------------------|--------|
-| `path_not_found` | `open_workspace` | 否 | 是 | `false` | 阻塞 workspace 打开 |
-| `not_directory` | `open_workspace` | 否 | 是 | `false` | 阻塞 workspace 打开 |
-| `permission_denied` | `open_workspace` | 否 | 是 | `false` | 阻塞 workspace 打开 |
+| `path_not_found` | `open_workspace` | 否 | 否 | `false` | 阻塞 workspace 打开；错误码在 `CommandError.error_code`，无 `WorkspaceProfile` |
+| `not_directory` | `open_workspace` | 否 | 否 | `false` | 阻塞 workspace 打开；错误码在 `CommandError.error_code`，无 `WorkspaceProfile` |
+| `permission_denied` | `open_workspace` | 否 | 否 | `false` | 阻塞 workspace 打开；错误码在 `CommandError.error_code`，无 `WorkspaceProfile` |
 | `stage_unreadable` | `select_stage` | 否 | 否 | `false` | 仅阻断该阶段；`CommandError.error_code` |
 | `no_stage_found` | `open_workspace` | 是 | 是 | `true` | workspace 级降级浏览 |
 | `stage_empty` | `select_stage` | 否 | 否 | `true` | 展示空阶段说明；`StageContext.error_code` |
@@ -296,6 +296,7 @@ updated: 2026-06-11
 | `scan_timeout` | `open_workspace` | 是 | 否 | `true` | 仅展示 |
 
 **说明**：
+- 路径校验类错误（`path_not_found`/`not_directory`/`permission_denied`）：`open_workspace` 返回 `success=false`，错误码在 `CommandError.error_code`；无 `WorkspaceProfile`，因此**不进入** `WorkspaceProfile.warnings[]` 或 `WorkspaceProfile.error_codes[]`。
 - `stage_empty` 仅通过 `StageContext.error_code` 表达，不进入 `WorkspaceProfile.warnings[]`，也不进入 `WorkspaceProfile.error_codes[]`。
 - `stage_unreadable` 仅通过 `CommandError.error_code` 表达，不进入 `WorkspaceProfile.warnings[]`，也不进入 `WorkspaceProfile.error_codes[]`。
 - `no_stage_found` 同时进入 `WorkspaceProfile.warnings[]` 和 `WorkspaceProfile.error_codes[]`，因为既是扫描结果也是 workspace 级异常码。
