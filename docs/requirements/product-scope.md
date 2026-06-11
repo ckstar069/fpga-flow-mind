@@ -1,7 +1,7 @@
 # 产品范围
 
 ---
-status: draft
+status: active
 updated: 2026-06-11
 ---
 

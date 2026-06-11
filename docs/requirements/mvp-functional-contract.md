@@ -1,7 +1,7 @@
 # MVP 功能契约
 
 ---
-status: draft
+status: active
 updated: 2026-06-11
 ---
 

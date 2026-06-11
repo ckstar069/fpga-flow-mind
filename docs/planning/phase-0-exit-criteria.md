@@ -1,7 +1,7 @@
 # Phase 0 退出标准
 
 ---
-status: draft
+status: active
 updated: 2026-06-11
 ---
 
@@ -43,17 +43,27 @@ Phase 0 退出前，以下文档必须存在且通过审核：
 
 ## Phase 0 退出检查表
 
-- [ ] 产品边界清楚（做什么、不做什么）
-- [ ] MVP 范围清楚（必须能力、暂不做能力）
-- [ ] 非目标清楚（审计器、PASS/HOLD、JSON viewer 等明确排除）
-- [ ] 安全边界清楚（目标项目只读、不运行 Vivado 等）
-- [ ] 10 个 story 覆盖 MVP 主链路完整闭环
-- [ ] 每个 story 有功能点清单、输入、输出、异常/空状态、验收标准
-- [ ] MVP 功能契约统一了对象字段、枚举值、错误码和跨 story 数据流
-- [ ] 从 `docs/README.md` 可以索引到需求、story、契约和计划文档
-- [ ] 没有孤立关键文档
-- [ ] 没有进入技术实现或依赖引入
-- [ ] `product-scope.md`、`mvp-requirements.md`、`mvp-functional-contract.md` 已转为 `active` 或有明确不阻塞理由
+- [x] 产品边界清楚（做什么、不做什么）
+- [x] MVP 范围清楚（必须能力、暂不做能力）
+- [x] 非目标清楚（审计器、PASS/HOLD、JSON viewer 等明确排除）
+- [x] 安全边界清楚（目标项目只读、不运行 Vivado 等）
+- [x] 10 个 story 覆盖 MVP 主链路完整闭环
+- [x] 每个 story 有功能点清单、输入、输出、异常/空状态、验收标准
+- [x] MVP 功能契约统一了对象字段、枚举值、错误码和跨 story 数据流
+- [x] 从 `docs/README.md` 可以索引到需求、story、契约和计划文档
+- [x] 没有孤立关键文档
+- [x] 没有进入技术实现或依赖引入
+- [x] `product-scope.md`、`mvp-requirements.md`、`mvp-functional-contract.md` 已转为 `active`
+
+## 10 个 story 保持 draft 的原因
+
+10 个 story 文档（`story-open-workspace.md` 至 `story-persist-and-reopen.md`）在 Phase 0 退出时保持 `draft` 状态，不阻塞 Phase 1：
+
+- 每个 story 的功能点、输入输出、异常处理和验收标准已完整编写并通过审核
+- 主链路（打开→选择→收集→理解→视图→追溯→追问→持久化）已覆盖完整闭环
+- 跨 story 对象字段和枚举已由 `mvp-functional-contract.md` 统一，story 内部不与契约冲突
+- 后续 Phase 1~6 实施中，story 内的交互细节可在实施反馈中局部细化，但主链路和契约已稳定
+- 进入 Phase 1 前，实施者应阅读对应 story 和契约文档，但 story 的 `draft` 状态不影响技术设计启动
 
 ## Phase 0 不继续扩张的边界
 

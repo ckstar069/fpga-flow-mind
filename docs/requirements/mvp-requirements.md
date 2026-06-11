@@ -1,7 +1,7 @@
 # MVP 需求
 
 ---
-status: draft
+status: active
 updated: 2026-06-11
 ---
 

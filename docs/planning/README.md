@@ -73,7 +73,7 @@ updated: YYYY-MM-DD
 
 | 文档 | 状态 | 说明 | 推荐阅读时机 |
 |------|------|------|-------------|
-| [`phase-0-exit-criteria.md`](phase-0-exit-criteria.md) | `draft` | Phase 0 退出标准：必须完成的文档、检查表、不扩张边界、进入 Phase 1 的入口 | Phase 0 结束审核前必读 |
+| [`phase-0-exit-criteria.md`](phase-0-exit-criteria.md) | `active` | Phase 0 退出标准：必须完成的文档、检查表、不扩张边界、进入 Phase 1 的入口 | Phase 0 结束审核前必读 |
 
 > 当前处于 **Phase 0：文档体系与需求契约**。
 >
@@ -85,5 +85,10 @@ updated: YYYY-MM-DD
 > - ✅ `docs/requirements/stories/` — 10 个 story 文档
 > - ✅ `docs/planning/phase-0-exit-criteria.md` — Phase 0 退出标准
 >
-> Phase 0 待完成：
-> - ⏳ 需求文档从 `draft` 过渡到 `active`（以 `phase-0-exit-criteria.md` 检查表为准）
+> Phase 0 已完成（全部）：
+> - ✅ `docs/requirements/product-scope.md` — 从 `draft` → `active`
+> - ✅ `docs/requirements/mvp-requirements.md` — 从 `draft` → `active`
+> - ✅ `docs/requirements/mvp-functional-contract.md` — 从 `draft` → `active`
+> - ✅ `docs/planning/phase-0-exit-criteria.md` — 从 `draft` → `active`
+>
+> 10 个 story 保持 `draft`，原因：后续实施中可局部细化交互细节，但主链路和跨 story 契约已稳定，不阻塞 Phase 1。

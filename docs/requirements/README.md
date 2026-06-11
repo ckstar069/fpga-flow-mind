@@ -89,9 +89,9 @@ updated: YYYY-MM-DD
 
 | 文档 | 状态 | 说明 | 推荐阅读时机 |
 |------|------|------|-------------|
-| [`product-scope.md`](product-scope.md) | `draft` | 产品范围、目标用户、核心痛点、非目标、成功标准、安全边界 | 任何需求讨论、规划或审核前必读，确认产品边界 |
-| [`mvp-requirements.md`](mvp-requirements.md) | `draft` | MVP 主流程、必须能力、暂不做能力、视图边界、evidence 追溯、置信度要求、验收标准 | 进入 Phase 1+ 实施前必读，确认 MVP 范围 |
-| [`mvp-functional-contract.md`](mvp-functional-contract.md) | `draft` | 跨 story 统一对象、字段约束、枚举值、依赖关系、端到端验收场景 | **进入设计和实施前必读**，对象契约与验收标准来源 |
+| [`product-scope.md`](product-scope.md) | `active` | 产品范围、目标用户、核心痛点、非目标、成功标准、安全边界 | 任何需求讨论、规划或审核前必读，确认产品边界 |
+| [`mvp-requirements.md`](mvp-requirements.md) | `active` | MVP 主流程、必须能力、暂不做能力、视图边界、evidence 追溯、置信度要求、验收标准 | 进入 Phase 1+ 实施前必读，确认 MVP 范围 |
+| [`mvp-functional-contract.md`](mvp-functional-contract.md) | `active` | 跨 story 统一对象、字段约束、枚举值、依赖关系、端到端验收场景 | **进入设计和实施前必读**，对象契约与验收标准来源 |
 
 > **需求文档职责分层**：
 >
