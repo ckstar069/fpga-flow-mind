@@ -77,10 +77,11 @@ updated: YYYY-MM-DD
 |------|------|------|-------------|
 | [`phase-0-exit-criteria.md`](phase-0-exit-criteria.md) | `active` | Phase 0 退出标准：必须完成的文档、检查表、不扩张边界、进入 Phase 1 的入口 | Phase 0 结束审核前必读 |
 
-> 当前处于 **Phase 1 技术设计补强完成：Workspace 扫描与阶段识别**。
+> 当前处于 **Phase 1 UI/UX 轻量设计中：Workspace 扫描与阶段识别**。
 > Phase 0 文档体系与需求契约已完成。
 > Phase 1 技术设计已拆分为：概要设计（`phase-1-architecture.md`）、数据/API 契约（`phase-1-data-and-api-contract.md`）、详细设计（`phase-1-scanner-detail-design.md`），均处于 `draft` 状态，需审核后收口。
-> 下一步应补 Phase 1 UI/UX 轻量设计、Phase 1 testing/validation 设计、Phase 1 implementation plan。在这些完成前，不进入编码实施。
+> Phase 1 UI/UX 轻量设计已创建（`docs/ui-ux/phase-1-workspace-and-stage-flow.md`），处于 `draft` 状态。
+> 下一步应补 Phase 1 testing/validation 设计、Phase 1 implementation plan。在这些完成前，不进入编码实施。
 >
 > Phase 0 已完成：
 > - ✅ `docs/` 文档体系与索引规则

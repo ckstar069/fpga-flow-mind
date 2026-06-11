@@ -56,8 +56,18 @@ updated: 2026-06-11
 - **不要把产品做成 Markdown report viewer** — 用户看到的应是交互式视图，不是静态报告
 - **不要追求复杂可视化效果** — 清晰理解优先于视觉炫技
 
+## UI/UX 文档层级关系
+
+Phase 1 UI/UX 设计由以下文档组成：
+
+| 文档 | 定位 |
+|------|------|
+| [`phase-1-workspace-and-stage-flow.md`](phase-1-workspace-and-stage-flow.md) | Phase 1 workspace 与阶段选择流程 UI/UX 轻量设计 |
+
+> 后续 Phase 的 UI/UX 文档（evidence 面板、三类视图、Q&A 等）将在对应 Phase 实施前补充。
+
 ## 当前文档列表
 
 | 文档 | 状态 | 说明 | 推荐阅读时机 |
 |------|------|------|-------------|
-| （待补充） | — | — | — |
+| [`phase-1-workspace-and-stage-flow.md`](phase-1-workspace-and-stage-flow.md) | `draft` | Phase 1 workspace 与阶段选择流程 UI/UX 轻量设计：页面结构、组件定义、状态展示规则、空状态处理 | Phase 1 前端实施前必读 |
