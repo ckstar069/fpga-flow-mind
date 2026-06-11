@@ -74,8 +74,8 @@ Phase 1 UI/UX **不覆盖**：
 │  阶段列表            │                                  │
 │  · L0  (available)   │  ──────────────────              │
 │  · L1  (available)   │  [开始分析]（禁用/占位）          │
-│  · L2  (empty)  ⚠    │                                  │
-│  · RTL (naming_ano)  │                                  │
+│  · L2  (empty, 警告) │                                  │
+│  · RTL (命名异常)    │                                  │
 │                      │                                  │
 ├──────────────────────┴──────────────────────────────────┤
 │  warnings / errors 面板（可折叠）                        │
@@ -157,12 +157,14 @@ Phase 1 UI/UX **不覆盖**：
 | status | 文案 | 可点击 | 可选中 | 视觉标识 |
 |--------|------|--------|--------|---------|
 | `available` | 阶段名 + 文件数 | 是 | 是 | 正常样式 |
-| `empty` | 阶段名 + "为空" | 是（提示原因） | 否 | 灰色降级 + ⚠ 图标 |
+| `empty` | 阶段名 + "为空" | 是（提示原因） | 否 | 灰色降级 + 警告图标 |
 | `naming_anomaly` | 阶段名 + "命名异常" | 是 | 是 | 黄色/橙色标签提示 |
-| `unreadable` | 阶段名 + "不可读" | 是（提示原因） | 否 | 灰色禁用 + 🔒 图标 |
+| `unreadable` | 阶段名 + "不可读" | 是（提示原因） | 否 | 灰色禁用 + 锁定图标 |
 | `missing` | 不在阶段列表中展示 | — | — | 仅在 warnings 区域展示"未找到" |
 
 > `missing` 不作为阶段列表条目。缺失阶段信息通过 `warnings[]` 和 `validity_reasons[]` 在 WarningList 中展示。
+
+**图标规范**：实现时优先使用项目选定图标库中的语义图标（如 `warning`、`lock`），不以 emoji 作为正式 UI 图标规范。
 
 ## 7. validity / warnings / error_codes 展示规则
 
@@ -176,17 +178,19 @@ Phase 1 UI/UX **不覆盖**：
 
 ### 错误码 → 展示组件映射
 
-| error_code | 展示组件 | 阻塞 | 允许强制继续 | 用户操作 |
-|-----------|---------|------|-------------|---------|
-| `path_not_found` | ErrorBanner | 是 | 否 | 重新选择目录 |
-| `not_directory` | ErrorBanner | 是 | 否 | 重新选择目录 |
-| `permission_denied` | ErrorBanner | 是 | 否 | 重新选择目录 |
-| `stage_unreadable` | ErrorBanner（阶段级） | 是 | 否 | 选择其他阶段 |
-| `no_stage_found` | WarningList + 提示横幅 | 否 | 是 | 可强制继续 |
-| `stage_empty` | WarningList | 否 | 是 | 可选择其他阶段 |
-| `file_unreadable` | WarningList | 否 | — | 仅展示 |
-| `file_too_large` | WarningList | 否 | — | 仅展示 |
-| `scan_timeout` | WarningList | 否 | — | 仅展示 |
+| error_code | 展示组件 | 阻塞范围 | 可继续操作 | 用户操作 |
+|-----------|---------|---------|-----------|---------|
+| `path_not_found` | ErrorBanner | 全局（workspace 级） | 否 | 重新选择目录 |
+| `not_directory` | ErrorBanner | 全局（workspace 级） | 否 | 重新选择目录 |
+| `permission_denied` | ErrorBanner | 全局（workspace 级） | 否 | 重新选择目录 |
+| `stage_unreadable` | 阶段级错误提示 | 仅该阶段 | 是（可选择其他阶段） | 选择其他阶段；workspace 概览和其他阶段不受影响 |
+| `no_stage_found` | WarningList + 提示横幅 | 不阻塞 | 是（可强制继续） | 可强制继续浏览 |
+| `stage_empty` | WarningList | 仅该阶段 | 是 | 不可进入分析；可选择其他阶段或查看空状态说明 |
+| `file_unreadable` | WarningList | 不阻塞 | — | 仅展示 |
+| `file_too_large` | WarningList | 不阻塞 | — | 仅展示 |
+| `scan_timeout` | WarningList | 不阻塞 | — | 仅展示 |
+
+> `stage_unreadable` 是阶段级错误，只阻断该阶段的读取，不阻断 workspace 概览展示和其他阶段选择。展示位置为阶段详情区域或阶段列表中的状态提示，不作为全局 ErrorBanner。
 
 ## 8. 空状态与边界状态
 
@@ -200,10 +204,11 @@ Phase 1 UI/UX **不覆盖**：
 | 命名异常阶段 | `rtl_final` 等非标准名 | 阶段列表中标注"命名异常"标签，可正常点击选择 |
 | 空阶段 | 阶段目录无文件 | 灰色降级 + "为空"标签，点击提示原因 |
 | 不可读阶段 | 权限不足 | 灰色禁用 + "不可读"标签，点击提示原因 |
-| 大目录截断 | 单目录 >1000 文件 | WarningList 展示 `file_too_large` + "部分文件已跳过" |
+| 大目录截断 | 单目录 >1000 文件 | WarningList 展示扫描范围 warning + "单目录文件数量超过上限，部分文件未展示或已跳过" |
 | 扫描超时 | >30 秒 | WarningList 展示 `scan_timeout` + "扫描超时，已返回部分结果" |
 | 仅 Python 无 RTL | 早期阶段项目 | validity=`likely_valid` + 正常展示 |
 | 仅 RTL 无 Python | 硬件阶段项目 | validity=`likely_valid` + 正常展示 |
+| 仅文档无代码 | 仅有 .md/.txt 等文档文件，无可分析源码 | 按技术设计规则降级展示（有阶段目录则 `uncertain`，无阶段目录则 `unlikely`）；UI 提示"未发现可分析源码"，不展示 JSON dump |
 
 ## 9. 不展示原始 JSON 的规则
 
