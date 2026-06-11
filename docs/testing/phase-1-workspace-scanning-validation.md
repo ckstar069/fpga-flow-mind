@@ -263,8 +263,8 @@ updated: 2026-06-11
 | `stages[].source_path` | 阶段目录绝对路径 |
 | `file_type_stats` | 按扩展名统计，测试文件正确归类 |
 | `external_refs[]` | 识别 `urban_wireless` 引用 |
-| `warnings[]` | 每个 warning 含 `error_code`、`message`、`source_path` |
-| `error_codes[]` | 与 warnings 对应，无重复 |
+| `warnings[]` | workspace 扫描过程中的非致命问题，每个含 `error_code`、`message`、`source_path`；不含 `select_stage` 产生的阶段级问题 |
+| `error_codes[]` | workspace 级异常码，与 `warnings[]` 对应（`no_stage_found` 同时出现），不含 `select_stage` 产生的 `stage_empty`/`stage_unreadable` |
 
 ### 4.4 StageSummary / StageContext 字段完整性
 
@@ -280,17 +280,25 @@ updated: 2026-06-11
 
 ### 4.5 Error Code / Warning 映射
 
-| error_code | 进入 `warnings[]` | 进入 `error_codes[]` | `CommandResult.success` | 验证点 |
-|-----------|-------------------|----------------------|------------------------|--------|
-| `path_not_found` | 否 | 是 | `false` | 阻塞 workspace 打开 |
-| `not_directory` | 否 | 是 | `false` | 阻塞 workspace 打开 |
-| `permission_denied` | 否 | 是 | `false` | 阻塞 workspace 打开 |
-| `stage_unreadable` | 否 | 是 | `false` | 仅阻断该阶段 |
-| `no_stage_found` | 是 | 是 | `true` | workspace 级降级浏览 |
-| `stage_empty` | 是 | 是 | `true` | 展示空阶段说明，不进入分析 |
-| `file_unreadable` | 是 | 否 | `true` | 仅展示 |
-| `file_too_large` | 是 | 否 | `true` | 仅展示 |
-| `scan_timeout` | 是 | 否 | `true` | 仅展示 |
+> 下表区分 **workspace 级**（归属 `WorkspaceProfile`）与 **stage/select_stage 级**（归属 `StageContext` 或 `CommandError`）。
+> `WorkspaceProfile.error_codes[]` 与 `WorkspaceProfile.warnings[]` 仅收录 workspace 扫描过程中的问题；`select_stage` 产生的阶段级结果不在其中重复。
+
+| error_code | 作用域 | 进入 `WorkspaceProfile.warnings[]` | 进入 `WorkspaceProfile.error_codes[]` | `CommandResult.success` | 验证点 |
+|-----------|--------|-----------------------------------|--------------------------------------|------------------------|--------|
+| `path_not_found` | `open_workspace` | 否 | 是 | `false` | 阻塞 workspace 打开 |
+| `not_directory` | `open_workspace` | 否 | 是 | `false` | 阻塞 workspace 打开 |
+| `permission_denied` | `open_workspace` | 否 | 是 | `false` | 阻塞 workspace 打开 |
+| `stage_unreadable` | `select_stage` | 否 | 否 | `false` | 仅阻断该阶段；`CommandError.error_code` |
+| `no_stage_found` | `open_workspace` | 是 | 是 | `true` | workspace 级降级浏览 |
+| `stage_empty` | `select_stage` | 否 | 否 | `true` | 展示空阶段说明；`StageContext.error_code` |
+| `file_unreadable` | `open_workspace` | 是 | 否 | `true` | 仅展示 |
+| `file_too_large` | `open_workspace` | 是 | 否 | `true` | 仅展示 |
+| `scan_timeout` | `open_workspace` | 是 | 否 | `true` | 仅展示 |
+
+**说明**：
+- `stage_empty` 仅通过 `StageContext.error_code` 表达，不进入 `WorkspaceProfile.warnings[]`，也不进入 `WorkspaceProfile.error_codes[]`。
+- `stage_unreadable` 仅通过 `CommandError.error_code` 表达，不进入 `WorkspaceProfile.warnings[]`，也不进入 `WorkspaceProfile.error_codes[]`。
+- `no_stage_found` 同时进入 `WorkspaceProfile.warnings[]` 和 `WorkspaceProfile.error_codes[]`，因为既是扫描结果也是 workspace 级异常码。
 
 ### 4.6 Validity 判定
 
@@ -305,10 +313,12 @@ updated: 2026-06-11
 
 ### 4.7 Stage 列表完整性
 
-- `stages[]` **只包含**真实存在且可读/可识别的阶段目录
+- `stages[]` **包含**真实存在且**可识别为阶段**的目录，不要求可读
+- 可读阶段：`status` 可为 `available`、`empty`、`naming_anomaly`
+- 不可读阶段：`status` 可为 `unreadable`（保留在列表中，用户可知该阶段存在但不可访问）
 - `missing` 阶段**不插入** `stages[]`
-- `missing` 信息通过 `warnings[]` 和 `validity_reasons[]` 传递
-- 排序：标准阶段（`L0`→`L6`→`RTL`）→ 命名异常阶段（字典序）
+- `missing` 信息通过 `WorkspaceProfile.warnings[]` 和 `validity_reasons[]` 传递
+- 排序：标准阶段（`L0`→`L6`→`RTL`）→ 命名异常阶段（字典序）→ `unreadable` / `empty` 阶段保留在对应位置，不单独分组
 
 ### 4.8 Stage Empty 不触发 Evidence 收集
 

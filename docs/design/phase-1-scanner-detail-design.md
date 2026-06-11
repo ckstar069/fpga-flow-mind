@@ -280,24 +280,24 @@ stages[] 中的条目按以下顺序排列：
 
 ## 11. warnings / error_codes 生成规则
 
-| 代码 | 来源 | `CommandResult.success` | 进入 warnings[] | 进入 error_codes[] | 阻塞 | UI 表现 |
-|------|------|------------------------|----------------|-------------------|------|---------|
-| `path_not_found` | 路径校验 | `false` | 否 | 是 | 是 | 弹窗"路径不存在" |
-| `not_directory` | 路径校验 | `false` | 否 | 是 | 是 | 弹窗"请选择一个目录" |
-| `permission_denied` | 路径校验 | `false` | 否 | 是 | 是 | 弹窗"无读权限" |
-| `stage_unreadable` | select_stage | `false` | 否 | 是 | 是 | 禁用该阶段 |
-| `no_stage_found` | 阶段识别 | `true` | 是（同时） | 是 | 否 | "未识别到阶段"提示 + 强制继续按钮 |
-| `stage_empty` | select_stage | `true` | 是 | 是 | 否 | 阶段灰色展示，提示"该阶段为空" |
-| `file_unreadable` | 扫描过程 | `true` | 是 | 否 | 否 | warning 列表中展示 |
-| `file_too_large` | 扫描过程 | `true` | 是 | 否 | 否 | warning 列表中展示 |
-| `scan_timeout` | 扫描过程 | `true` | 是 | 否 | 否 | warning 列表中展示 |
+| 代码 | 来源 | 作用域 / 归属对象 | `CommandResult.success` | 进入 `WorkspaceProfile.warnings[]` | 进入 `WorkspaceProfile.error_codes[]` | 阻塞 | UI 表现 |
+|------|------|------------------|------------------------|-----------------------------------|--------------------------------------|------|---------|
+| `path_not_found` | 路径校验 | `open_workspace` → `CommandError` | `false` | 否 | 是 | 是 | 弹窗"路径不存在" |
+| `not_directory` | 路径校验 | `open_workspace` → `CommandError` | `false` | 否 | 是 | 是 | 弹窗"请选择一个目录" |
+| `permission_denied` | 路径校验 | `open_workspace` → `CommandError` | `false` | 否 | 是 | 是 | 弹窗"无读权限" |
+| `stage_unreadable` | select_stage | `select_stage` → `CommandError` | `false` | 否 | 否 | 是（仅阶段） | 禁用该阶段 |
+| `no_stage_found` | 阶段识别 | `open_workspace` → `WorkspaceProfile` | `true` | 是 | 是 | 否 | "未识别到阶段"提示 + 继续浏览按钮 |
+| `stage_empty` | select_stage | `select_stage` → `StageContext.error_code` | `true` | 否 | 否 | 否（仅阶段） | 阶段灰色展示，提示"该阶段为空" |
+| `file_unreadable` | 扫描过程 | `open_workspace` → `WorkspaceProfile` | `true` | 是 | 否 | 否 | warning 列表中展示 |
+| `file_too_large` | 扫描过程 | `open_workspace` → `WorkspaceProfile` | `true` | 是 | 否 | 否 | warning 列表中展示 |
+| `scan_timeout` | 扫描过程 | `open_workspace` → `WorkspaceProfile` | `true` | 是 | 否 | 否 | warning 列表中展示 |
 
 **说明**：
-- 路径校验类错误（`path_not_found`/`not_directory`/`permission_denied`）和 `stage_unreadable` 返回 `success=false`，前端走 error 分支。
-- 业务结果类（`no_stage_found`/`stage_empty`）返回 `success=true` 携带 data，前端正常展示但需处理空状态。
-- 扫描过程中的非致命问题（`file_unreadable`/`file_too_large`/`scan_timeout`）返回 `success=true`，仅出现在 `warnings[]`。
-- `no_stage_found` 同时进入 `warnings[]` 和 `error_codes[]`，因为既是扫描结果也是系统级异常码。
-- `file_unreadable`、`file_too_large`、`scan_timeout` 只进入 `warnings[]`，不进入 `error_codes[]`（非系统级错误，仅影响单个文件）。
+- **路径校验类错误**（`path_not_found`/`not_directory`/`permission_denied`）：`open_workspace` 返回 `success=false`，`CommandError.error_code` 包含错误码，同时进入 `WorkspaceProfile.error_codes[]`，前端走 error 分支。
+- **阶段级错误**：`stage_unreadable` 为 `select_stage` 返回 `success=false`，`CommandError.error_code` 包含错误码；**不进入** `WorkspaceProfile.warnings[]` 或 `WorkspaceProfile.error_codes[]`。仅阻断该阶段，不阻断 workspace。
+- **阶段级空状态**：`stage_empty` 为 `select_stage` 返回 `success=true`，`StageContext.error_code` 字段为 `stage_empty`；**不进入** `WorkspaceProfile.warnings[]` 或 `WorkspaceProfile.error_codes[]`。前端展示空阶段说明，不进入分析。
+- **workspace 级降级**：`no_stage_found` 进入 `WorkspaceProfile.warnings[]` 和 `WorkspaceProfile.error_codes[]`，因为既是扫描结果也是 workspace 级异常码。返回 `success=true` 携带 data。
+- **扫描非致命问题**（`file_unreadable`/`file_too_large`/`scan_timeout`）：仅进入 `WorkspaceProfile.warnings[]`，不进入 `WorkspaceProfile.error_codes[]`（非系统级错误，仅影响单个文件）。
 
 ## 12. 边界条件
 

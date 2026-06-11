@@ -262,7 +262,12 @@ fn select_stage(root_path: String, stage_id: String) -> CommandResult<StageConte
 | `file_too_large` | `true` | `Some(...)` | `None` | 文件过大，仅进入 `warnings[]` |
 | `scan_timeout` | `true` | `Some(WorkspaceProfile)` | `None` | 扫描超时返回已收集结果，仅进入 `warnings[]` |
 
-> 规则总结：路径校验类错误（`path_not_found`/`not_directory`/`permission_denied`/`stage_unreadable`）→ `success=false`；业务结果类（`no_stage_found`/`stage_empty`）→ `success=true` 携带 data；扫描过程中的非致命问题（`file_unreadable`/`file_too_large`/`scan_timeout`）→ `success=true`，仅出现在 `warnings[]`。
+> 规则总结（按作用域）：
+> - `open_workspace` 路径校验错误（`path_not_found`/`not_directory`/`permission_denied`）→ `success=false`，`CommandError`
+> - `select_stage` 阶段级阻塞错误（`stage_unreadable`）→ `success=false`，`CommandError`；**不进入** `WorkspaceProfile.error_codes[]`
+> - `open_workspace` 业务结果（`no_stage_found`）→ `success=true` 携带 `WorkspaceProfile`，进入 `WorkspaceProfile.error_codes[]`
+> - `select_stage` 业务结果（`stage_empty`）→ `success=true` 携带 `StageContext`（`error_code` 字段为 `stage_empty`）；**不进入** `WorkspaceProfile.error_codes[]` 或 `WorkspaceProfile.warnings[]`
+> - 扫描非致命问题（`file_unreadable`/`file_too_large`/`scan_timeout`）→ `success=true`，仅进入 `WorkspaceProfile.warnings[]`
 
 ## 8. warnings[] 格式
 
