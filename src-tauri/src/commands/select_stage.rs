@@ -88,11 +88,13 @@ pub fn select_stage(root_path: String, stage_id: String) -> CommandResult<StageC
     }
 
     // 6. 收集阶段文件（基于已扫描的全 workspace 文件过滤）
-    let prefix = format!("{}/", stage_id);
+    // 使用 stage.source_path（真实阶段目录路径）过滤，而非 stage_id
+    // 这样命名异常阶段（如 rtl_final/ -> stage_id = "RTL"）也能正确过滤
+    let stage_path = Path::new(&stage.source_path);
     let stage_scanned_files: Vec<_> = scan
         .files
         .iter()
-        .filter(|f| f.rel_path.starts_with(&prefix))
+        .filter(|f| f.path.starts_with(stage_path))
         .collect();
 
     let files: Vec<StageFile> = stage_scanned_files
@@ -145,7 +147,7 @@ pub fn select_stage(root_path: String, stage_id: String) -> CommandResult<StageC
 
 /// Phase 1 最小上游引用推断。
 ///
-/// 检查前一阶段目录中是否存在 `interface_*.py`、`*_interface.v`、`*_interface.sv` 等文件名模式。
+/// 检查前一阶段目录中是否存在 `interface_*.py`、`*_interface.py`、`*_interface.v`、`*_interface.sv` 等文件名模式。
 /// 所有推断结果标记 `inferred = true`。
 fn infer_upstream_refs(
     stages: &[crate::workspace::stage_detector::StageInfo],
@@ -191,6 +193,7 @@ fn infer_upstream_refs(
             .to_lowercase();
 
         if name.starts_with("interface_")
+            || name.ends_with("_interface.py")
             || name.ends_with("_interface.v")
             || name.ends_with("_interface.sv")
         {
@@ -321,5 +324,37 @@ mod tests {
             result.error.as_ref().unwrap().error_code,
             ErrorCode::PathNotFound
         );
+    }
+
+    #[test]
+    fn naming_anomaly_stage_returns_files() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        touch(root, "rtl_final/top.v", "module top; endmodule\n");
+
+        let result = select_stage(root.to_str().unwrap().to_string(), "RTL".to_string());
+        assert!(result.success, "命名异常阶段应成功，不应误判为空阶段");
+        let ctx = result.data.unwrap();
+        assert_eq!(ctx.stage_id, "RTL");
+        assert!(ctx.source_path.contains("rtl_final"), "source_path 应指向真实目录 rtl_final");
+        assert_eq!(ctx.files.len(), 1, "应返回 rtl_final/top.v");
+        assert_eq!(ctx.files[0].language, crate::models::enums::Language::Verilog);
+        assert!(ctx.error_code.is_none(), "有文件时不应返回 stage_empty");
+    }
+
+    #[test]
+    fn upstream_refs_interface_py_pattern() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        touch(root, "L0/top_interface.py", "# interface definition\n");
+        touch(root, "L1/top.py", "def top(): pass\n");
+
+        let result = select_stage(root.to_str().unwrap().to_string(), "L1".to_string());
+        assert!(result.success);
+        let ctx = result.data.unwrap();
+        assert_eq!(ctx.upstream_refs.len(), 1, "应通过 *_interface.py 模式推断出上游引用");
+        assert_eq!(ctx.upstream_refs[0].stage_id, "L0");
+        assert!(ctx.upstream_refs[0].inferred);
+        assert!(ctx.upstream_refs[0].interface_file_path.as_ref().unwrap().contains("top_interface.py"));
     }
 }
