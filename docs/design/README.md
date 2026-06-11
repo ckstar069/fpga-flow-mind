@@ -61,4 +61,4 @@ updated: 2026-06-11
 |------|------|------|-------------|
 | [`workspace-scanning-and-stage-detection.md`](workspace-scanning-and-stage-detection.md) | `draft` | Phase 1 技术设计：Workspace 扫描、阶段识别、workspace_profile.json 和 stage_context.json 生成 | Phase 1 实施前必读 |
 
-> 注：当前设计参考主要来源于 `../initial-requirements-draft/MVP_ARCHITECTURE.md`，后续应从中提炼为正式设计文档。
+> 注：当前设计应优先依据 active 的 `../requirements/` 需求文档和 `../requirements/mvp-functional-contract.md`；`../initial-requirements-draft/` 仅作为历史草案参考，当与正式文档冲突时以 active 文档为准。

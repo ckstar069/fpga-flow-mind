@@ -84,11 +84,11 @@ Phase 1 输出对象在本轮技术设计中**只作为内存/系统对象**，�
 
 **命名异常**：目录名含 `rtl` 但不等于 `RTL`（如 `rtl_final`），或含 `level` 加数字（如 `level3`）→ `status = naming_anomaly`。仍作为候选展示，允许选择。
 
-**阶段缺失**：预期标准阶段未找到 → 在 `stages[]` 中插入条目，`status = missing`。不阻塞其他可用阶段。
+**阶段缺失**：预期标准阶段未找到 → **不插入 `stages[]`**，仅在 `warnings[]` / `error_codes[]` / `validity_reasons[]` 中记录。原因：`stages[].source_path` 约束为阶段目录绝对路径，若插入缺失阶段则 `source_path` 指向不存在的目录，容易误导后续实现（如误将预期路径当作可读目录处理）。`stages[]` 中只保留真实存在且可读的目录条目。缺失信息通过 warnings 和 validity_reasons 向用户展示。不阻塞其他可用阶段。
 
 **空阶段与不可读**：目录存在但无文件 → `status = empty`；不可读 → `status = unreadable`。
 
-**阶段排序**：`L0`→`L1`→...→`L6`→`RTL` → 其他命名异常阶段按字典序排最后 → 缺失阶段按预期位置插入。
+**阶段排序**：`stages[]` 中只包含真实存在的目录。按 `L0`→`L1`→...→`L6`→`RTL` → 其他命名异常阶段按字典序排最后。缺失阶段不进入 `stages[]`，其信息通过 `warnings[]` 和 `validity_reasons[]` 展示。
 
 **阶段选择后生成 stage_context**：验证阶段目录仍存在且可读；收集阶段目录下文件列表（递归深度 2 层）；识别每个文件的 `language` 和 `source_kind`；识别 `external_deps[]` 和 `upstream_refs[]`；生成 `stage_context.json`。
 
@@ -102,11 +102,13 @@ Phase 1 输出对象在本轮技术设计中**只作为内存/系统对象**，�
 
 **validity 判定规则**：
 
-| 条件 | validity |
-|------|----------|
-| 至少 3 个标准阶段 + 同时存在 Python 和 Verilog 文件 | `likely_valid` |
-| 至少 1 个标准阶段 + 存在代码文件 | `uncertain` |
-| 无标准阶段 或 无代码文件 | `unlikely` |
+`likely_valid` 不要求同时存在 Python 和 Verilog。早期 L0/L1/L2 项目可能只有 Python，不应被误判为 `unlikely`。
+
+| 条件 | validity | 说明 |
+|------|----------|------|
+| 符合 `ai_project_template` 阶段目录特征（至少 1 个标准/变体阶段）且存在可分析代码（Python 或 Verilog/SystemVerilog） | `likely_valid` | 同时存在 Python 和 Verilog 可作为增强信号，不是必要条件 |
+| 只有少量特征匹配（如仅 1 个标准阶段但无可分析代码，或无可识别阶段但存在代码文件） | `uncertain` | 可能是不完整项目或非标准结构 |
+| 无阶段特征且无可分析代码 | `unlikely` | 可能不是 `ai_project_template` 项目，但仍允许用户强制继续 |
 
 `uncertain` / `unlikely` 允许用户强制继续。
 
@@ -133,7 +135,7 @@ Phase 1 最小 UI：
 |--------|-------------|
 | 选择项目目录入口 | 打开 Tauri 文件选择器 |
 | workspace 概览 | 显示名称、根路径、阶段列表、文件类型统计 |
-| 阶段列表 | 按排序规则展示，标注状态（available/empty/missing/naming_anomaly/unreadable） |
+| 阶段列表 | 按排序规则展示 `stages[]` 中的阶段，标注状态（available/empty/naming_anomaly/unreadable）。缺失阶段不在列表中，仅在 warnings 区域展示 |
 | warning/error 展示 | 在概览面板以列表或图标展示 |
 | 单阶段选择 | 高亮选中，触发 stage_context 生成 |
 | 阶段概览 | 显示阶段名称、路径、文件列表分组、外部依赖 |
@@ -150,7 +152,7 @@ Phase 1 最小 UI：
 | 标准业务项目（L0~RTL，含 .py/.v） | workspace_profile 正确、validity=likely_valid、排序正确 |
 | 无阶段目录（仅 .py/.v） | validity=unlikely、no_stage_found、允许强制继续 |
 | 命名异常阶段（rtl_final/、hardware/） | naming_anomaly 标注、仍可作为候选 |
-| 阶段缺失（仅 L0/L3/RTL） | missing 插入、validity=uncertain |
+| 阶段缺失（仅 L0/L3/RTL） | 缺失阶段不进入 `stages[]`，通过 warnings 和 validity_reasons 展示，validity=uncertain |
 | 空阶段（L0/ 为空、L1/ 有文件） | L0 status=empty、L1 status=available |
 | 不可读路径 | permission_denied、友好提示 |
 | 大目录（单目录 2000+ 文件） | 不卡死、触发文件数上限 warning |
