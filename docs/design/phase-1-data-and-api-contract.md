@@ -297,15 +297,17 @@ fn select_stage(root_path: String, stage_id: String) -> CommandResult<StageConte
 | `success` | `CommandResult.success = true` |
 | `error` | `CommandResult.success = false` |
 | `empty` | `success = true` 但 `stages[]` 为空 |
-| `forced_continue_available` | `success = true` 且 `error_codes` 包含 `no_stage_found`，或 `validity` 为 `uncertain`/`unlikely` |
+| `forced_continue_available` | `success = true` 且 `error_codes` 包含 `no_stage_found`，或 `validity` 为 `uncertain`/`unlikely`。**仅用于 workspace 级** `no_stage_found` 或 validity 降级场景，不用于 `stage_empty` |
+| `stage_empty_view` | `select_stage` 返回 `stage_empty`，展示空阶段说明，不进入分析 |
 | `selected_stage` | 用户点击阶段后，等待 `select_stage` 响应 |
 
 状态机：
 
 ```text
 idle -> loading -> success / error / empty
-success -> selected_stage -> stage_loaded / stage_error
-empty -> forced_continue_available（用户可强制继续）
+success -> selected_stage -> stage_loaded / stage_error / stage_empty_view
+empty -> forced_continue_available（用户可强制继续浏览 workspace）
+stage_empty_view: 展示空阶段说明，不激活"开始分析"，不触发 evidence 收集
 ```
 
 ## 10. 与 active 功能契约的一致性

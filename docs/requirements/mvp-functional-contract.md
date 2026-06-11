@@ -107,7 +107,7 @@ updated: 2026-06-11
 |------|------|------|------|
 | `stage_id` | 选中的阶段标识 | 是 | 与 workspace_profile.stages[].stage_id 一致 |
 | `source_path` | 阶段目录绝对路径 | 是 | 绝对路径 |
-| `files[]` | 阶段目录下文件列表 | 是 | **允许为空数组**（概览上下文），但进入 evidence 收集前必须非空 |
+| `files[]` | 阶段目录下文件列表 | 是 | **允许为空数组**（概览上下文），空阶段不进入 evidence 收集 |
 | `files[].source_path` | 文件绝对路径 | 是 | 绝对路径 |
 | `files[].language` | 文件语言 | 是 | 枚举：见 `language` |
 | `files[].source_kind` | 来源类型 | 是 | 枚举：见 `source_kind` |
@@ -118,7 +118,7 @@ updated: 2026-06-11
 
 **阶段上下文区分**：
 - **阶段概览上下文**：用于展示阶段概览面板，允许 `files[]` 为空（空阶段）。此时应展示空状态提示，不触发"开始分析"按钮。
-- **可分析上下文**：用于进入 evidence 收集，要求 `files[]` 非空。空阶段不应进入 evidence 收集，除非用户明确强制继续且后续结果为 `evidence_missing` / `unknown`。
+- **可分析上下文**：用于进入 evidence 收集，要求 `files[]` 非空。Phase 1 / MVP 当前约束下，空阶段不进入 evidence 收集。后续如需支持空阶段分析，必须另立需求和设计，不在当前契约中默认允许。
 
 **生产者**：story-select-stage  
 **消费者**：story-collect-evidence
