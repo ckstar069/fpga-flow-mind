@@ -150,12 +150,13 @@ Phase 1 最小 UI：
 | 样例 | 验证点 |
 |------|--------|
 | 标准业务项目（L0~RTL，含 .py/.v） | workspace_profile 正确、validity=likely_valid、排序正确 |
-| 无阶段目录（仅 .py/.v） | validity=unlikely、no_stage_found、允许强制继续 |
+| 无阶段目录但存在代码（仅 .py/.v） | validity=uncertain、`no_stage_found`、warnings 提示未识别到阶段、允许强制继续 |
 | 命名异常阶段（rtl_final/、hardware/） | naming_anomaly 标注、仍可作为候选 |
 | 阶段缺失（仅 L0/L3/RTL） | 缺失阶段不进入 `stages[]`，通过 warnings 和 validity_reasons 展示，validity=uncertain |
 | 空阶段（L0/ 为空、L1/ 有文件） | L0 status=empty、L1 status=available |
 | 不可读路径 | permission_denied、友好提示 |
 | 大目录（单目录 2000+ 文件） | 不卡死、触发文件数上限 warning |
+| 空目录（无阶段且无代码） | validity=unlikely、no_stage_found、允许强制继续 |
 | 安全验证 | 目标目录无新增/修改/删除、不运行脚本 |
 
 ## 11. Phase 1 验收标准

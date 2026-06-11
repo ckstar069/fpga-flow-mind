@@ -449,8 +449,9 @@ story-generate-understanding ──→ implementation_understanding.json
 4. 后续流程同场景 1
 
 **期望输出对象**：
-- workspace_profile.json：`validity = uncertain`，`validity_reasons` 包含阶段缺失说明
-- stages 列表中：缺失阶段 `status = missing`，异常命名阶段 `status = naming_anomaly`
+- workspace_profile.json：`validity = uncertain`，`validity_reasons` 包含阶段缺失说明，`warnings[]` 包含缺失阶段信息
+- `stages[]` 只包含真实存在的阶段目录；命名异常阶段（如 `rtl_final`）可在 `stages[]` 中以 `status = naming_anomaly` 展示
+- 缺失阶段**不插入 `stages[]`**，其信息通过 `warnings[]` 和 `validity_reasons[]` 向用户展示
 - 其余产物正常生成
 
 **期望 UI 表现**：
