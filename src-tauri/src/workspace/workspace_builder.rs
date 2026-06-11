@@ -229,6 +229,7 @@ mod tests {
         assert_eq!(profile.stages.len(), 1);
         assert_eq!(profile.stages[0].stage_id, "RTL");
         assert_eq!(profile.stages[0].status, crate::models::enums::StageStatus::NamingAnomaly);
+        assert_eq!(profile.stages[0].file_count, 1, "命名异常阶段的 file_count 应基于真实目录 rtl_final 统计");
     }
 
     #[test]

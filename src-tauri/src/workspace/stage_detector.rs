@@ -175,14 +175,6 @@ pub fn detect_stages(root: &Path, scanned: &[ScannedFile]) -> StageDetectionResu
     result
 }
 
-/// 为给定阶段计算文件数（基于扫描结果）。
-pub fn count_stage_files(stage_id: &str, scanned: &[ScannedFile]) -> u64 {
-    scanned
-        .iter()
-        .filter(|f| f.rel_path.starts_with(&format!("{}/", stage_id)))
-        .count() as u64
-}
-
 #[cfg(test)]
 mod tests {
     use std::fs;
@@ -238,6 +230,7 @@ mod tests {
         assert_eq!(result.stages.len(), 1);
         assert_eq!(result.stages[0].stage_id, "RTL");
         assert_eq!(result.stages[0].status, StageStatus::NamingAnomaly);
+        assert_eq!(result.stages[0].file_count, 1, "命名异常阶段的 file_count 应基于真实目录 rtl_final 统计");
     }
 
     #[test]
