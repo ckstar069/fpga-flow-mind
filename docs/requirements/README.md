@@ -92,6 +92,7 @@ updated: YYYY-MM-DD
 | [`product-scope.md`](product-scope.md) | `active` | 产品范围、目标用户、核心痛点、非目标、成功标准、安全边界 | 任何需求讨论、规划或审核前必读，确认产品边界 |
 | [`mvp-requirements.md`](mvp-requirements.md) | `active` | MVP 主流程、必须能力、暂不做能力、视图边界、evidence 追溯、置信度要求、验收标准 | 进入 Phase 1+ 实施前必读，确认 MVP 范围 |
 | [`mvp-functional-contract.md`](mvp-functional-contract.md) | `active` | 跨 story 统一对象、字段约束、枚举值、依赖关系、端到端验收场景 | **进入设计和实施前必读**，对象契约与验收标准来源 |
+| [`phase-2-evidence-requirements.md`](phase-2-evidence-requirements.md) | `draft` | Phase 2 证据索引与 evidence model 需求：功能点 EV-001~EV-008、前后端边界、Phase 1/3 接口 | Phase 2 设计和实施前必读 |
 
 > **需求文档职责分层**：
 >

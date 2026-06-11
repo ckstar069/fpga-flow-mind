@@ -71,3 +71,4 @@ Phase 1 UI/UX 设计由以下文档组成：
 | 文档 | 状态 | 说明 | 推荐阅读时机 |
 |------|------|------|-------------|
 | [`phase-1-workspace-and-stage-flow.md`](phase-1-workspace-and-stage-flow.md) | `active` | Phase 1 workspace 与阶段选择流程 UI/UX 轻量设计：页面结构、组件定义、状态展示规则、空状态处理 | Phase 1 前端实施依据 |
+| [`phase-2-evidence-view.md`](phase-2-evidence-view.md) | `draft` | Phase 2 evidence view 前端设计：EvidencePanel 组件、CollectEvidenceButton、统计概要、筛选栏、证据项卡片、警告列表、状态管理、前后端边界 | Phase 2 前端编码前必读 |

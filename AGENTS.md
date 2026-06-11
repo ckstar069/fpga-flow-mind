@@ -111,6 +111,17 @@
 
 图应来自结构化理解对象，不应只是自由文本拼接。
 
+### Phase 2 Evidence 规则
+
+- `evidence_id` 格式：`EV-<stage_id>-<6位序号>`，单次收集内唯一
+- `confidence` Phase 2 只生成 `direct` / `indirect` / `unknown`（`weak` / `conflicting` / `missing` 留给 Phase 3+）
+- Phase 2 不做正确/错误判断，只提取事实性结构证据
+- Phase 2 只做正则/行级关键字匹配，不做 AST 复杂语义分析
+- Phase 2 不调用大模型 API
+- 所有 evidence item 的 `source_path` 为绝对路径，`line_range` 为 1-based 闭区间
+- `summary` 最大 500 字符，超出截断并追加 `"...(已截断，共 N 行)"`
+- Phase 2 不修改目标项目文件，只使用 `std::fs::read_to_string`
+
 ## 9. 审核关注点
 
 每次回报都应自查：

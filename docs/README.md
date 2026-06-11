@@ -73,19 +73,21 @@ docs/
 1. `docs/planning/README.md`
 2. `docs/planning/phase-1-documents-closure.md`（Phase 1 文档收口说明）
 3. `docs/planning/phase-1-implementation-plan.md`（Phase 1 编码实施计划）
-4. `docs/planning/phase-0-exit-criteria.md`（确认当前阶段退出标准）
-5. `docs/design/README.md`（Phase 1 设计文档索引）
-6. `docs/requirements/README.md`
-7. 当前阶段应完成的 story 列表
+4. `docs/planning/phase-2-implementation-plan.md`（Phase 2 编码实施计划）
+5. `docs/planning/phase-0-exit-criteria.md`（确认当前阶段退出标准）
+6. `docs/design/README.md`（设计文档索引）
+7. `docs/requirements/README.md`
+8. 当前阶段应完成的 story 列表
 
 ### 测试 / 验收任务
 
 1. `docs/testing/README.md`
 2. `docs/testing/phase-1-workspace-scanning-validation.md`（Phase 1 验证设计与验收标准）
-3. `docs/planning/phase-1-completion-review.md`（Phase 1 收尾验收与完成审查）
-4. `docs/requirements/README.md`（验收标准来源）
-5. `docs/planning/README.md`（当前阶段验收要求）
-6. 相关 story 文件中的验收标准
+3. `docs/testing/phase-2-evidence-validation.md`（Phase 2 验证设计与验收标准）
+4. `docs/planning/phase-1-completion-review.md`（Phase 1 收尾验收与完成审查）
+5. `docs/requirements/README.md`（验收标准来源）
+6. `docs/planning/README.md`（当前阶段验收要求）
+7. 相关 story 文件中的验收标准
 
 ### 审核任务
 
