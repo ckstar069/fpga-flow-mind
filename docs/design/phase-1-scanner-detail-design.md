@@ -39,7 +39,7 @@ updated: 2026-06-11
 
 ```text
 1. 接收 path: String（来自 Tauri command）
-2. Normalize path（消除相对路径、符号链接、尾部斜杠）
+2. Normalize path（确认根路径不是 symlink 后，消除相对路径和尾部斜杠）
 3. 路径校验（§4）：
    3.1 存在性检查 → path_not_found（阻塞）
    3.2 目录性检查 → not_directory（阻塞）
@@ -86,8 +86,11 @@ updated: 2026-06-11
 | 可读 | `std::fs::read_dir(path)` 试探 | `permission_denied` | 是 |
 
 **路径规范化**：
-- 先用 `symlink_metadata` 检查根路径是否为符号链接；若是，按 `permission_denied` 拒绝（防止穿越到未授权目录）
-- 对非 symlink 的路径，使用 `std::path::Path::canonicalize` 消除 `.` 和 `..`
+- 先用 `std::fs::symlink_metadata(path)` 检查根路径：
+  - 若返回 `Err(NotFound)`（路径不存在），映射为 `path_not_found`
+  - 若返回 `Ok` 且 `file_type.is_symlink()` 为 true，映射为 `permission_denied`（防止穿越到未授权目录）
+  - 若返回 `Ok` 且非 symlink，继续后续规范化
+- 对非 symlink 的普通路径，使用 `std::path::Path::canonicalize` 消除 `.` 和 `..`
 - **不调用 `canonicalize` 处理符号链接本身**，避免 `canonicalize` 隐式跟随 symlink 导致路径穿越
 - 去除尾部路径分隔符
 
