@@ -89,6 +89,7 @@ updated: YYYY-MM-DD
 
 | 文档 | 状态 | 说明 | 推荐阅读时机 |
 |------|------|------|-------------|
-| （待补充） | — | — | — |
+| [`product-scope.md`](product-scope.md) | `draft` | 产品范围、目标用户、核心痛点、非目标、成功标准、安全边界 | 任何需求讨论、规划或审核前必读，确认产品边界 |
+| [`mvp-requirements.md`](mvp-requirements.md) | `draft` | MVP 主流程、必须能力、暂不做能力、视图边界、evidence 追溯、置信度要求、验收标准 | 进入 Phase 1+ 实施前必读，确认 MVP 范围 |
 
-> 注：当前需求内容主要来源于 `../initial-requirements-draft/PROJECT_BRIEF.md`，后续应从中提炼为正式需求文档。
+> 注：`initial-requirements-draft/` 中的内容已提炼为上述正式需求文档。当正式文档与草案冲突时，以正式文档为准。
