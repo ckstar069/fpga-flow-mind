@@ -148,7 +148,35 @@
 - 先把单阶段 MVP 闭环做实
 - 不脱离文档边界扩张需求
 
-## 11. GitHub 远程与提交要求
+## 11. 项目推进阶段定义
+
+`fpga-flow-mind` 使用 **Phase 0 ~ Phase 6** 作为自身的开发推进阶段。每个 Phase 有明确的目标和验收标准，与 FPGA 业务项目的阶段命名无关。
+
+| 阶段 | 名称 | 核心目标 |
+|------|------|----------|
+| Phase 0 | 文档体系与需求契约 | 建立稳定文档体系，明确需求边界和验收标准 |
+| Phase 1 | Workspace 扫描与阶段识别 | 能够打开业务项目，识别阶段目录结构 |
+| Phase 2 | 证据索引与 evidence model | 建立证据抽取、索引和存储能力 |
+| Phase 3 | 单阶段结构化理解产物 | 生成结构化的 `ImplementationUnderstanding` |
+| Phase 4 | 三类视图展示 | 在前端展示结构图、数据流图、时序/流水图 |
+| Phase 5 | 证据回链与 grounded Q&A | 支持节点点击追溯证据、用户追问 |
+| Phase 6 | 持久化、回放与 MVP 验收 | 产物可持久化加载，完成 MVP 闭环验收 |
+
+**必须区分两套概念**：
+
+- **Phase 0 / Phase 1 / ... / Phase 6** — `fpga-flow-mind` **本项目**的开发推进阶段。
+- **L0 / L1 / L2 / ... / RTL** — 被分析的 **FPGA 业务项目**的实现阶段（由 `ai_project_template` 创建）。
+
+两者不是同一套概念，不能混用。当文档或任务中出现 `Phase`，应默认理解为 `fpga-flow-mind` 的开发阶段；当出现 `L0` / `L1` / `RTL`，应默认理解为目标业务项目的实现阶段。
+
+详细阶段计划和验收标准以以下文档为准：
+
+- `docs/planning/README.md`
+- `docs/planning/phase-0-exit-criteria.md`
+
+AGENTS.md 只保存稳定记忆，不承载详细计划。
+
+## 12. GitHub 远程与提交要求
 
 - GitHub 远程名固定为 `github`
 - 远程地址为 `git@github.com:ckstar069/fpga-flow-mind.git`
