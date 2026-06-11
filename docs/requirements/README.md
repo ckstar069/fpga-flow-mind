@@ -1,0 +1,94 @@
+# 需求文档索引
+
+---
+status: active
+updated: 2026-06-11
+---
+
+## 需求目录用途
+
+本目录存放 `fpga-flow-mind` 的所有产品需求文档。需求文档描述"产品要解决什么问题、为谁解决、解决到什么程度"，不描述具体技术实现。
+
+需求文档服务于以下核心能力：
+
+- workspace understanding — 理解业务项目整体结构
+- source evidence — 源码证据的收集与展示
+- stage understanding — 阶段实现的理解与可视化
+- dataflow understanding — 数据流向与变换的理解
+- timing understanding — 时序/流水关系的理解
+- semantic claims — 语义结论的生成与表达
+- evidence traceability — 证据可追溯性
+- uncertainty expression — 不确定性的显式表达
+- grounded Q&A — 基于证据的问答
+- local desktop usability — 本地桌面端可用性
+
+**明确不要写成**：审计工具需求、PASS-HOLD 判定需求、通用静态分析器需求。
+
+## 建议文档类型
+
+| 文档类型 | 说明 | 示例 |
+|----------|------|------|
+| `product scope` | 产品范围与边界 | 本项目做什么、不做什么 |
+| `user stories` | 用户故事 | 具体使用场景与用户目标 |
+| `MVP requirements` | MVP 功能需求 | 首个闭环必须支持的能力 |
+| `non-goals` | 非目标与排除项 | 当前明确不做的方向 |
+| `acceptance criteria` | 验收标准 | 每个需求如何判定已完成 |
+
+## `stories/` 子目录
+
+`stories/` 用于存放按用户目标拆分的 story 文档。每个 story 聚焦一个具体的、可验证的用户价值。
+
+详见 [`stories/README.md`](stories/README.md)。
+
+## 需求文档最小模板
+
+每个需求文档建议包含以下章节：
+
+```markdown
+# 文档标题
+
+---
+status: draft | active | superseded | archived
+updated: YYYY-MM-DD
+---
+
+## 1. 用户目标
+
+这个需求为谁解决什么问题？
+
+## 2. 业务背景
+
+为什么现在需要这个功能？与现有流程的关系？
+
+## 3. 主流程
+
+正常情况下的使用步骤。
+
+## 4. 异常 / 空状态
+
+边界情况、无数据情况、错误情况如何处理。
+
+## 5. 证据与追溯要求
+
+该需求产生的结论如何绑定 evidence id、源码路径、行号范围。
+
+## 6. MVP 验收标准
+
+最小可用版本下，如何判定此需求已满足。
+
+## 7. 非目标
+
+此需求明确不包含的内容。
+
+## 8. 关联设计文档
+
+对应 UI/UX 文档、技术设计文档的链接。
+```
+
+## 当前文档列表
+
+| 文档 | 状态 | 说明 | 推荐阅读时机 |
+|------|------|------|-------------|
+| （待补充） | — | — | — |
+
+> 注：当前需求内容主要来源于 `../initial-requirements-draft/PROJECT_BRIEF.md`，后续应从中提炼为正式需求文档。
