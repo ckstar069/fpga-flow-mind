@@ -91,4 +91,13 @@ MVP 的成功标准是"用户能否更快读懂项目"。所有 story 应共同�
 
 | 文档 | 状态 | 说明 | 推荐阅读时机 |
 |------|------|------|-------------|
-| （待补充） | — | — | — |
+| [`story-open-workspace.md`](story-open-workspace.md) | `draft` | 打开业务项目、扫描目录、识别阶段、生成 workspace profile | Phase 1 实施前必读 |
+| [`story-select-stage.md`](story-select-stage.md) | `draft` | 阶段列表展示、单阶段选择、阶段上下文准备 | Phase 1 实施前必读 |
+| [`story-collect-evidence.md`](story-collect-evidence.md) | `draft` | 从 Python/Verilog/docs/tests/config 提取 evidence item、建立索引 | Phase 2 实施前必读 |
+| [`story-generate-understanding.md`](story-generate-understanding.md) | `draft` | 基于 evidence 生成结构化 ImplementationUnderstanding、grounding 检查 | Phase 3 实施前必读 |
+| [`story-view-structure.md`](story-view-structure.md) | `draft` | 结构图：模块、接口、层级、节点/边 evidence 绑定 | Phase 4 实施前必读 |
+| [`story-view-dataflow.md`](story-view-dataflow.md) | `draft` | 数据流图：数据来源、变换、流向、节点/边 evidence 绑定 | Phase 4 实施前必读 |
+| [`story-view-timing.md`](story-view-timing.md) | `draft` | 时序/流水图：latency、握手信号、流水线、状态机 | Phase 4 实施前必读 |
+| [`story-trace-evidence.md`](story-trace-evidence.md) | `draft` | 点击节点追溯 evidence、源码路径、行号范围、代码片段 | Phase 5 实施前必读 |
+| [`story-ask-node-question.md`](story-ask-node-question.md) | `draft` | 围绕节点追问、基于 evidence 回答、问答历史 | Phase 5 实施前必读 |
+| [`story-persist-and-reopen.md`](story-persist-and-reopen.md) | `draft` | 产物持久化、再次打开加载、源码变更检测 | Phase 6 实施前必读 |

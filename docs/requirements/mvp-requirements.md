@@ -177,3 +177,22 @@ MVP 持久化至少包含以下产物：
 - [ ] 产物可持久化并再次加载
 - [ ] 目标项目始终保持只读
 - [ ] 不运行 Vivado / synthesis / implementation / bitstream
+
+## 功能点拆解索引
+
+MVP 主流程中的每个环节已拆解为独立的 story 文档，包含具体功能点、验收标准和异常处理。
+
+| MVP 环节 | Story 文档 | 功能点编号前缀 |
+|----------|-----------|---------------|
+| 打开业务项目 | [`stories/story-open-workspace.md`](stories/story-open-workspace.md) | WS-xxx |
+| 选择阶段 | [`stories/story-select-stage.md`](stories/story-select-stage.md) | ST-xxx |
+| 收集证据 | [`stories/story-collect-evidence.md`](stories/story-collect-evidence.md) | EV-xxx |
+| 生成结构化理解 | [`stories/story-generate-understanding.md`](stories/story-generate-understanding.md) | IU-xxx |
+| 展示结构图 | [`stories/story-view-structure.md`](stories/story-view-structure.md) | VS-xxx |
+| 展示数据流图 | [`stories/story-view-dataflow.md`](stories/story-view-dataflow.md) | VD-xxx |
+| 展示时序/流水图 | [`stories/story-view-timing.md`](stories/story-view-timing.md) | VT-xxx |
+| 追溯证据 | [`stories/story-trace-evidence.md`](stories/story-trace-evidence.md) | TR-xxx |
+| 继续追问 | [`stories/story-ask-node-question.md`](stories/story-ask-node-question.md) | QA-xxx |
+| 持久化与再次打开 | [`stories/story-persist-and-reopen.md`](stories/story-persist-and-reopen.md) | PS-xxx |
+
+> 实施时以 story 文档中的功能点清单和 MVP 验收标准为准。

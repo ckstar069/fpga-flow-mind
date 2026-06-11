@@ -92,4 +92,16 @@ updated: YYYY-MM-DD
 | [`product-scope.md`](product-scope.md) | `draft` | 产品范围、目标用户、核心痛点、非目标、成功标准、安全边界 | 任何需求讨论、规划或审核前必读，确认产品边界 |
 | [`mvp-requirements.md`](mvp-requirements.md) | `draft` | MVP 主流程、必须能力、暂不做能力、视图边界、evidence 追溯、置信度要求、验收标准 | 进入 Phase 1+ 实施前必读，确认 MVP 范围 |
 
-> 注：`initial-requirements-draft/` 中的内容已提炼为上述正式需求文档。当正式文档与草案冲突时，以正式文档为准。
+> **范围文档与功能点文档的关系**：
+> - `product-scope.md` 和 `mvp-requirements.md` 描述产品范围和 MVP 能力边界，是方向性文档。
+> - **具体可实施的功能点和可验收标准**以 `stories/` 下的 story 文档为准。
+> - 实施前应阅读对应阶段的 story 文档，范围讨论应以 `product-scope.md` 为准。
+>
+> 各 story 按 MVP 主流程顺序排列：
+> ```text
+> story-open-workspace → story-select-stage → story-collect-evidence
+>   → story-generate-understanding
+>   → story-view-structure / story-view-dataflow / story-view-timing
+>   → story-trace-evidence → story-ask-node-question
+>   → story-persist-and-reopen
+> ```
