@@ -1,0 +1,9 @@
+{
+  "$schema": "https://schema.tauri.app/config/2.0.0/capability.schema.json",
+  "identifier": "default",
+  "description": "Default capabilities for fpga-flow-mind",
+  "windows": ["main"],
+  "permissions": [
+    "core:default"
+  ]
+}
