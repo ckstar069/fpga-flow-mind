@@ -92,7 +92,7 @@ Tab 默认选中"阶段详情"，收集完成后自动切换到"证据" tab。
 │ [阶段详情] [证据(N)]                              │ ← Tab 切换
 ├─────────────────────────────────────────────────┤
 │  📊 总计: 12 条 | Python: 5 | Verilog: 4 | ...   │ ← EvidenceStatsBar
-│  Direct: 8 | Indirect: 3 | Unknown: 1            │
+│  Direct: 8 | Indirect: 3 | 跳过: 2               │
 ├─────────────────────────────────────────────────┤
 │  筛选: [全部▾] [按文件▾] [按类型▾] [按符号▾]      │ ← EvidenceFilterBar
 ├─────────────────────────────────────────────────┤
@@ -124,7 +124,7 @@ Tab 默认选中"阶段详情"，收集完成后自动切换到"证据" tab。
 |------|------|------|
 | 证据总数 | `EvidenceCollection.stats.total_items` | "总计: N 条" |
 | 按类型分组 | `EvidenceCollection.stats.items_by_kind` | "Python: 5, Verilog: 4, ..." |
-| 按 confidence 分组 | `EvidenceCollection.stats.items_by_confidence` | "Direct: 8, Indirect: 3, Unknown: 1" |
+| 按 strength 分组 | `EvidenceCollection.stats.items_by_strength` | "Direct: 8, Indirect: 3" |
 | 跳过文件数 | `EvidenceCollection.stats.files_skipped` | "跳过: N 个文件"（如果 > 0） |
 
 ### 5.2 空状态
@@ -192,7 +192,7 @@ function filterItems(
 | 字段 | 来源 | 展示格式 |
 |------|------|----------|
 | evidence_id | `EvidenceItem.evidence_id` | 等宽字体，如 `EV-L0-000001` |
-| confidence | `EvidenceItem.confidence` | 颜色标签：🟢 direct、🔵 indirect、⚪ unknown |
+| strength | `EvidenceItem.strength` | 颜色标签：🟢 direct、🔵 indirect |
 | 文件路径 | `EvidenceItem.source_path` | 截断展示（只显示文件名，hover 显示完整路径） |
 | 行号范围 | `EvidenceItem.line_range` | `L{start}-{end}` 格式 |
 | symbol | `EvidenceItem.symbol` | 有则显示，无则不显示 |
@@ -200,13 +200,12 @@ function filterItems(
 | language | `EvidenceItem.language` | 小标签 |
 | source_kind | `EvidenceItem.source_kind` | 小标签 |
 
-### 7.2 Confidence 颜色映射
+### 7.2 Strength 颜色映射
 
 ```typescript
-const CONFIDENCE_STYLE: Record<EvidenceStrength, { label: string; color: string }> = {
+const STRENGTH_STYLE: Record<EvidenceStrength, { label: string; color: string }> = {
   direct:     { label: '直接证据', color: '#22c55e' },  // green
   indirect:   { label: '间接证据', color: '#3b82f6' },  // blue
-  unknown:    { label: '不确定',   color: '#9ca3af' },  // gray
   weak:       { label: '弱证据',   color: '#f59e0b' },  // amber (Phase 3+)
   conflicting:{ label: '矛盾',     color: '#ef4444' },  // red (Phase 3+)
   missing:    { label: '缺失',     color: '#6b7280' },  // gray-dark (Phase 3+)
@@ -284,10 +283,10 @@ interface EvidenceItem {
   line_range: { start: number; end: number };
   symbol?: string;
   summary: string;
-  confidence: EvidenceStrength;
+  strength: EvidenceStrength;
 }
 
-type EvidenceStrength = 'direct' | 'indirect' | 'unknown'
+type EvidenceStrength = 'direct' | 'indirect'
   | 'weak' | 'conflicting' | 'missing';
 
 interface EvidenceCollection {
@@ -312,7 +311,7 @@ interface EvidenceStats {
   files_skipped: number;
   total_items: number;
   items_by_kind: Record<string, number>;
-  items_by_confidence: Record<string, number>;
+  items_by_strength: Record<string, number>;
 }
 ```
 

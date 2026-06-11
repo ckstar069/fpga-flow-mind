@@ -62,7 +62,7 @@ updated: 2026-06-11
 |------|----------|
 | `src-tauri/src/commands/mod.rs` | 新增 `collect_evidence` 模块声明 |
 | `src-tauri/src/lib.rs` | 新增 `evidence` 模块声明 + command 注册 |
-| `src-tauri/src/models/mod.rs` | 新增 ErrorCode 变体（Phase 2 错误码） |
+| `src-tauri/src/models/enums.rs` | 新增 ErrorCode 变体（Phase 2 错误码） |
 | `src/types/workspace.ts` | 新增 EvidenceItem / EvidenceCollection 等类型 |
 | `src/lib/tauriCommands.ts` | 新增 `collectEvidence()` 函数 |
 | `src/features/workspace/WorkspacePage.tsx` | 新增 collecting/collected 状态、evidence 面板集成 |
@@ -90,13 +90,13 @@ updated: 2026-06-11
 **目标**：在 `src-tauri/src/evidence/models.rs` 中定义 Phase 2 所有数据结构。
 
 **规格**：
-- `EvidenceItem` struct：evidence_id, source_path, language, source_kind, line_range, symbol, summary, confidence
+- `EvidenceItem` struct：evidence_id, source_path, language, source_kind, line_range, symbol, summary, strength
 - `LineRange` struct：start (u32), end (u32)
-- `EvidenceStrength` 枚举：Direct, Indirect, Unknown, Weak, Conflicting, Missing
+- `EvidenceStrength` 枚举：Direct, Indirect, Weak, Conflicting, Missing
 - `EvidenceCollection` struct：stage_id, evidence_items, index_by_path, index_by_kind, index_by_symbol, warnings, stats, version
 - `EvidenceWarning` struct：error_code, message, source_path
-- `EvidenceStats` struct：files_processed, files_skipped, total_items, items_by_kind, items_by_confidence
-- `RawExtraction` struct（提取器中间产物）：symbol, line_range, raw_excerpt, confidence
+- `EvidenceStats` struct：files_processed, files_skipped, total_items, items_by_kind, items_by_strength
+- `RawExtraction` struct（提取器中间产物）：symbol, line_range, raw_excerpt, strength
 - 所有 struct 使用 `#[derive(Debug, Clone, Serialize, Deserialize)]`
 - serde 输出 snake_case JSON（与 Phase 1 一致）
 - 在 `src-tauri/src/models/` 中扩展 `ErrorCode` 枚举：新增 `EvidenceCollectionFailed`, `SourceExcerptTruncated`, `BinaryFileSkipped`, `NonUtf8FileSkipped`
@@ -139,13 +139,13 @@ updated: 2026-06-11
 `extractors/mod.rs`：
 - `EvidenceExtractor` trait：`fn extract(&self, content, source_path, language, source_kind) -> Vec<RawExtraction>`
 - `dispatch_extractor(language: &Language) -> Box<dyn EvidenceExtractor>`：分派逻辑
-- `FallbackExtractor`：整文件级 evidence，confidence=indirect
+- `FallbackExtractor`：整文件级 evidence，strength=indirect
 
 `extractors/python.rs`：
 - 匹配 `^def\s+(\w+)\s*\(` → symbol=函数名
 - 匹配 `^class\s+(\w+)` → symbol=类名
 - 函数边界推断：基于 `def` 行缩进级别，到下一个同级 `def` 或 EOF
-- confidence：关键字匹配 → direct，边界推断 → indirect
+- strength：关键字匹配 → direct，边界推断 → indirect
 - 单元测试：简单函数、多函数、类定义、嵌套函数、空文件、注释
 
 **验收**：`cargo test` 包含 Python 提取器的 ~5 个测试通过。
@@ -271,7 +271,7 @@ updated: 2026-06-11
 - Tab 切换：阶段详情 / 证据
 
 `EvidenceStatsBar.tsx`：
-- 展示 total_items、items_by_kind、items_by_confidence、files_skipped
+- 展示 total_items、items_by_kind、items_by_strength、files_skipped
 - 空状态："未收集到证据"
 
 `EvidenceFilterBar.tsx`：
@@ -283,8 +283,8 @@ updated: 2026-06-11
 - 根据筛选条件过滤
 
 `EvidenceItemCard.tsx`：
-- 展示 evidence_id、confidence 标签、文件路径（截断 + hover tooltip）、行号范围、symbol、summary
-- Confidence 颜色：green=direct, blue=indirect, gray=unknown
+- 展示 evidence_id、strength 标签、文件路径（截断 + hover tooltip）、行号范围、symbol、summary
+- Strength 颜色：green=direct, blue=indirect
 - 点击展开/收起 summary
 
 `EvidenceWarningList.tsx`：

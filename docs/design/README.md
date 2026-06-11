@@ -74,7 +74,7 @@ Phase 1 技术设计由以下文档组成，按阅读顺序排列：
 | [`phase-1-architecture.md`](phase-1-architecture.md) | `active` | Phase 1 概要设计：模块划分、数据流、前后端职责边界、安全设计、目录结构建议 | 了解整体架构时阅读 |
 | [`phase-1-data-and-api-contract.md`](phase-1-data-and-api-contract.md) | `active` | Phase 1 数据结构与 API 契约：Rust/TypeScript 类型、Tauri command 签名、错误/warning 格式 | 编码前后端接口前必读 |
 | [`phase-1-scanner-detail-design.md`](phase-1-scanner-detail-design.md) | `active` | Phase 1 扫描与阶段识别详细设计：功能点映射、算法流程、边界条件、测试映射 | 编码扫描模块前必读 |
-| [`phase-2-evidence-model.md`](phase-2-evidence-model.md) | `draft` | Phase 2 evidence model 数据结构设计：EvidenceItem / EvidenceCollection / EvidenceStrength、ID 生成规则、line_range 规则、summary 规则、confidence 语义、错误结构 | Phase 2 编码前必读 |
+| [`phase-2-evidence-model.md`](phase-2-evidence-model.md) | `draft` | Phase 2 evidence model 数据结构设计：EvidenceItem / EvidenceCollection / EvidenceStrength、ID 生成规则、line_range 规则、summary 规则、strength 语义、错误结构 | Phase 2 编码前必读 |
 | [`phase-2-evidence-collector-design.md`](phase-2-evidence-collector-design.md) | `draft` | Phase 2 evidence collector 后端设计：模块布局、collect_evidence command、文件读取策略、代码分块策略、提取器 trait、错误处理、单元测试设计 | Phase 2 后端编码前必读 |
 
 > Phase 1 编码依据文档已收口。Phase 1 的 4 份设计文档与 `mvp-functional-contract.md` 共同构成 Phase 1 编码的权威依据。

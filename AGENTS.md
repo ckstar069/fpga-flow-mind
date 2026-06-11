@@ -114,7 +114,7 @@
 ### Phase 2 Evidence 规则
 
 - `evidence_id` 格式：`EV-<stage_id>-<6位序号>`，单次收集内唯一
-- `confidence` Phase 2 只生成 `direct` / `indirect` / `unknown`（`weak` / `conflicting` / `missing` 留给 Phase 3+）
+- `strength` Phase 2 只生成 `direct` / `indirect`（`weak` / `conflicting` / `missing` 留给 Phase 3+）
 - Phase 2 不做正确/错误判断，只提取事实性结构证据
 - Phase 2 只做正则/行级关键字匹配，不做 AST 复杂语义分析
 - Phase 2 不调用大模型 API

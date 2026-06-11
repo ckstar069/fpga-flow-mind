@@ -98,8 +98,8 @@ class SignalProcessor:
 
 **预期 evidence item**（Python 提取器）：
 
-| evidence_id | symbol | line_range | confidence |
-|-------------|--------|------------|------------|
+| evidence_id | symbol | line_range | strength |
+|-------------|--------|------------|----------|
 | EV-L0-000001 | `process_signal` | {4, 8} | direct |
 | EV-L0-000002 | `normalize` | {10, 12} | direct |
 | EV-L0-000003 | `SignalProcessor` | {14, 22} | direct |
@@ -125,8 +125,8 @@ endmodule
 
 **预期 evidence item**（Verilog 提取器）：
 
-| evidence_id | symbol | line_range | confidence |
-|-------------|--------|------------|------------|
+| evidence_id | symbol | line_range | strength |
+|-------------|--------|------------|----------|
 | EV-RTL-000001 | `top` | {1, 14} | direct |
 
 #### `docs/readme.md`
@@ -151,8 +151,8 @@ Hardware description.
 
 **预期 evidence item**（Markdown 提取器）：
 
-| evidence_id | symbol | line_range | confidence |
-|-------------|--------|------------|------------|
+| evidence_id | symbol | line_range | strength |
+|-------------|--------|------------|----------|
 | EV-docs-000001 | `Project Documentation` | {1, 14} | indirect (章节范围推断) |
 
 ## 4. Rust 单元测试矩阵
@@ -262,7 +262,7 @@ Hardware description.
 |----|------|------|------|
 | FP-01 | 正常展示 | 10 条 evidence | 列表显示 10 个卡片 |
 | FP-02 | 空结果 | 0 条 evidence | 显示"未收集到证据" |
-| FP-03 | 统计展示 | EvidenceStats | 正确显示总数、按类型、按 confidence 分组 |
+| FP-03 | 统计展示 | EvidenceStats | 正确显示总数、按类型、按 strength 分组 |
 | FP-04 | Warning 展示 | 2 条 warning | 折叠状态下显示计数，展开后显示详情 |
 
 ## 7. 安全回归测试
@@ -299,7 +299,7 @@ Hardware description.
 | 2 | 输入路径，点击"打开项目" | Workspace 概览正常 |
 | 3 | 选择 L0 阶段 | 阶段详情展示，出现"收集证据"按钮 |
 | 4 | 点击"收集证据" | 按钮变为 loading，收集完成后切换到证据 tab |
-| 5 | 查看证据面板 | 统计概要、evidence item 列表、confidence 标签 |
+| 5 | 查看证据面板 | 统计概要、evidence item 列表、strength 标签 |
 | 6 | 切换筛选维度 | 按文件/类型/符号筛选正常 |
 | 7 | 展开 warnings | 警告列表正确展示 |
 | 8 | 选择 L3 (空阶段) | 不出现"收集证据"按钮 |

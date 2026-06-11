@@ -5,12 +5,22 @@ status: draft
 updated: 2026-06-11
 ---
 
-> 本文档定义 Phase 2 evidence model 的数据结构，包括 `EvidenceItem`、`EvidenceCollection`、`EvidenceId` 生成规则、`line_range` 规则、`source excerpt` 规则、confidence 语义和错误结构。
+> 本文档定义 Phase 2 evidence model 的数据结构，包括 `EvidenceItem`、`EvidenceCollection`、`EvidenceId` 生成规则、`line_range` 规则、`source excerpt` 规则、strength 语义和错误结构。
 > 不写产品代码。数据结构与 [`mvp-functional-contract.md`](../requirements/mvp-functional-contract.md) 的 `evidence_index.json` 对齐。
+> **术语区分**：`EvidenceItem.strength` = evidence 层证据强度（direct/indirect/weak/conflicting/missing），与 Phase 3+ 的 claim confidence（confirmed/inferred/unknown/conflicting）是不同层的概念。Phase 2 不生成 claim，不产生 confirmed/inferred/unknown 结论。
 
 ## 1. 设计目标
 
 将 [`mvp-functional-contract.md`](../requirements/mvp-functional-contract.md) 中定义的 `evidence_index.json` 落到 Rust/TypeScript 的具体数据结构，明确每个字段的含义、约束、来源和默认值。
+
+### 术语约定：evidence strength vs claim confidence
+
+| 概念 | 层级 | 枚举值 | 何时使用 |
+|------|------|--------|----------|
+| **evidence strength** (`EvidenceItem.strength`) | Evidence 层 | `direct` / `indirect` / `weak` / `conflicting` / `missing` | Phase 2 静态提取时标注 |
+| **claim confidence** | 语义结论层（Phase 3+） | `confirmed` / `inferred` / `unknown` / `conflicting` | Phase 3 大模型生成结论时标注 |
+
+**Phase 2 只涉及 evidence strength，不生成 claim confidence。** 用户在 Phase 2 evidence 面板看到的是 `strength` 标签，不是 claim confidence。
 
 ## 2. EvidenceItem 数据结构
 
@@ -43,10 +53,11 @@ struct EvidenceItem {
     /// 最大长度 500 字符，超出截断并追加 "..."
     summary: String,
 
-    /// 证据强度
-    /// Phase 2 只生成 direct / indirect / unknown
+    /// 证据强度（evidence strength）
+    /// 与 mvp-functional-contract.md 的 evidence_strength 对齐
+    /// Phase 2 只生成 direct / indirect
     /// 完整枚举保留 weak / conflicting / missing 供后续阶段使用
-    confidence: EvidenceStrength,
+    strength: EvidenceStrength,
 }
 
 /// 行号范围（1-based，闭区间）
@@ -83,8 +94,8 @@ interface EvidenceItem {
   /** 代码片段或描述，最大 500 字符 */
   summary: string;
 
-  /** 证据强度 */
-  confidence: EvidenceStrength;
+  /** 证据强度（evidence strength），不是 claim confidence */
+  strength: EvidenceStrength;
 }
 
 interface LineRange {
@@ -106,7 +117,7 @@ interface LineRange {
 | `line_range` | 是 | `LineRange` | Phase 2 提取计算 | `start >= 1`，`start <= end` |
 | `symbol` | 否 | `string` | Phase 2 提取 | 无 symbol 时为 `null`/`undefined` |
 | `summary` | 是 | `string` | Phase 2 提取 | 最大 500 字符，超出截断 |
-| `confidence` | 是 | `EvidenceStrength` | Phase 2 判定 | Phase 2 只生成 `direct` / `indirect` / `unknown` |
+| `strength` | 是 | `EvidenceStrength` | Phase 2 判定 | Phase 2 只生成 `direct` / `indirect` |
 
 ## 3. EvidenceCollection 数据结构
 
@@ -163,8 +174,8 @@ struct EvidenceStats {
     total_items: u32,
     /// 按 source_kind 分组的 item 计数
     items_by_kind: HashMap<String, u32>,
-    /// 按 confidence 分组的 item 计数
-    items_by_confidence: HashMap<String, u32>,
+    /// 按 strength 分组的 item 计数
+    items_by_strength: HashMap<String, u32>,
 }
 ```
 
@@ -193,7 +204,7 @@ interface EvidenceStats {
   files_skipped: number;
   total_items: number;
   items_by_kind: Record<string, number>;
-  items_by_confidence: Record<string, number>;
+  items_by_strength: Record<string, number>;
 }
 ```
 
@@ -258,27 +269,38 @@ interface EvidenceStats {
 
 ### 6.4 非 UTF-8 处理
 
-- 非 UTF-8 文件的 `summary` 设为 `"(二进制或非 UTF-8 文件，无法提取摘要)"`
-- `confidence` 设为 `unknown`
+- 非 UTF-8 文件**不生成 EvidenceItem**，而是通过 `EvidenceCollection.warnings[]` 表达（`non_utf8_file_skipped`）
+- 该文件的跳过计入 `EvidenceStats.files_skipped`
+- 不使用 `strength` 来表达解析失败——`strength` 只描述成功提取的证据的强度
 
-## 7. confidence / claim_status 语义
+## 7. evidence strength 语义
 
 ### 7.1 EvidenceStrength 枚举
 
-与 [`mvp-functional-contract.md`](../requirements/mvp-functional-contract.md) 的 `evidence_strength` 枚举对齐：
+与 [`mvp-functional-contract.md`](../requirements/mvp-functional-contract.md) 的 `evidence_strength` 枚举完全对齐：
 
 | 值 | 含义 | Phase 2 生成条件 |
 |----|------|-----------------|
 | `direct` | 直接源码证据 | 正则/行级匹配提取（如 `def` 关键字、`module` 关键字） |
-| `indirect` | 间接证据 | 启发式推断（如基于缩进推断函数边界） |
-| `unknown` | 证据不足/解析失败 | 无法确定提取结果、文件不可读、非 UTF-8 |
+| `indirect` | 间接证据 | 启发式推断（如基于缩进推断函数边界、章节范围推断） |
 | `weak` | 弱证据 | Phase 2 **不生成**，留给 Phase 3+ |
 | `conflicting` | 与其他证据矛盾 | Phase 2 **不生成**，留给 Phase 3+ |
 | `missing` | 证据缺失 | Phase 2 **不生成**，留给 Phase 3+ |
 
-### 7.2 设计理由
+> **注意**：`unknown` **不是** `EvidenceStrength` 的值。解析失败/文件不可读等场景通过 `EvidenceCollection.warnings[]` 和 `EvidenceStats.files_skipped` 表达，不产生 EvidenceItem。
 
-Phase 2 是静态提取阶段，只产生 `direct`（确定匹配）、`indirect`（启发式推断）和 `unknown`（无法确定）三种 confidence。`weak`、`conflicting`、`missing` 需要语义层面的判断（大模型或跨 evidence 对比），属于 Phase 3+ 的职责。
+### 7.2 evidence strength vs claim confidence
+
+| 概念 | 字段名 | 枚举值 | 生成阶段 |
+|------|--------|--------|----------|
+| **evidence strength** | `EvidenceItem.strength` | `direct` / `indirect` / `weak` / `conflicting` / `missing` | Phase 2 静态提取 |
+| **claim confidence** | Phase 3+ 语义结论层的字段（如 `node_confidence`） | `confirmed` / `inferred` / `unknown` / `conflicting` | Phase 3+ 大模型生成 |
+
+**Phase 2 不生成 claim confidence。** Phase 2 evidence 面板展示 `strength` 标签，不展示 claim confidence。
+
+### 7.3 设计理由
+
+Phase 2 是静态提取阶段，只产生 `direct`（确定匹配）和 `indirect`（启发式推断）两种 strength。`weak`、`conflicting`、`missing` 需要语义层面的判断（大模型或跨 evidence 对比），属于 Phase 3+ 的职责。解析失败不作为 strength 值，而是通过 warnings 表达。
 
 ## 8. error / warning 结构
 
@@ -330,10 +352,10 @@ enum ErrorCode {
 }
 
 /// 证据强度枚举（完整定义，Phase 2 只使用部分值）
+/// 注意：不含 Unknown — 解析失败通过 warnings[] 表达，不产生 EvidenceItem
 enum EvidenceStrength {
     Direct,      // 直接源码证据
     Indirect,    // 间接证据（启发式推断）
-    Unknown,     // 证据不足/解析失败
     Weak,        // 弱证据（Phase 3+ 使用）
     Conflicting, // 矛盾证据（Phase 3+ 使用）
     Missing,     // 证据缺失（Phase 3+ 使用）
@@ -356,7 +378,8 @@ type ErrorCode =
   | 'non_utf8_file_skipped';
 
 // 证据强度枚举
-type EvidenceStrength = 'direct' | 'indirect' | 'unknown'
+// 注意：不含 'unknown' — 解析失败通过 warnings[] 表达，不产生 EvidenceItem
+type EvidenceStrength = 'direct' | 'indirect'
   | 'weak' | 'conflicting' | 'missing';
 ```
 
@@ -382,7 +405,7 @@ Phase 2: collect_evidence(root_path, stage_id) → EvidenceCollection
     - evidence_items[].line_range ← Phase 2 提取计算
     - evidence_items[].symbol ← Phase 2 提取
     - evidence_items[].summary ← Phase 2 提取
-    - evidence_items[].confidence ← Phase 2 判定
+    - evidence_items[].strength ← Phase 2 判定
     - index_by_path / index_by_kind / index_by_symbol ← Phase 2 索引构建
     - warnings ← Phase 2 收集过程中的非致命问题
     - stats ← Phase 2 统计
@@ -408,7 +431,7 @@ Phase 3: generate_understanding(evidence_collection) → ImplementationUnderstan
 ## 13. 不做的事情
 
 - **不做 AST 复杂语义**：Phase 2 的 Python 提取只做 `def`/`class` 关键字匹配 + 缩进推断函数边界，不做完整语法树
-- **不做 LLM 判断**：confidence 基于提取方式，不是语义判断
+- **不做 LLM 判断**：strength 基于提取方式，不是语义判断
 - **不做正确/错误结论**：Phase 2 不判断代码逻辑是否正确
 
 ## 14. 文档变更记录

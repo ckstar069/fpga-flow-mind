@@ -36,7 +36,7 @@ updated: 2026-06-11
 - 按语言类型（Python / Verilog / SystemVerilog / Markdown / Config）提取 evidence item
 - 为每个 evidence item 生成唯一 `evidence_id`
 - 记录 `source_path`、`line_range`、`language`、`source_kind`
-- 标注 confidence：`direct` / `indirect` / `unknown`
+- 标注 strength：`direct` / `indirect`
 - 建立按文件路径、按 source_kind、按 symbol 的索引
 - 前端展示 evidence 面板（摘要列表、分组统计、空状态、错误状态）
 - 错误和不确定项的显式表达
@@ -91,19 +91,19 @@ updated: 2026-06-11
 | **验收标准** | 每个 `evidence_id` 全局唯一；`line_range.start >= 1`；`line_range.start <= line_range.end`；`source_path` 为绝对路径 |
 | **非目标** | 不做 evidence_id 的跨会话持久化格式（Phase 6 解决） |
 
-### EV-004 支持 direct / indirect / unknown 的 confidence 标记
+### EV-004 支持 direct / indirect 的 strength 标记
 
 | 维度 | 说明 |
 |------|------|
 | **输入** | 提取方式和可靠性 |
-| **输出** | `EvidenceItem.confidence` 字段 |
-| **用户可见表现** | Evidence 面板中用颜色/标签区分：绿色=direct、蓝色=indirect、灰色=unknown |
-| **后端责任** | 基于提取方式设置 confidence：正则/行级匹配 → `direct`；启发式推断 → `indirect`；解析失败/无法确定 → `unknown` |
-| **前端责任** | 用视觉语义区分 confidence 等级；unknown 项不隐藏 |
-| **验收标准** | 正则提取的 `def`/`module` 定义标记为 `direct`；启发式推断的模块边界标记为 `indirect`；解析失败标记为 `unknown` |
-| **非目标** | 不做 LLM 语义判断 confidence；不做跨 evidence 矛盾检测（Phase 3+） |
+| **输出** | `EvidenceItem.strength` 字段 |
+| **用户可见表现** | Evidence 面板中用颜色/标签区分：绿色=direct、蓝色=indirect |
+| **后端责任** | 基于提取方式设置 strength：正则/行级匹配 → `direct`；启发式推断 → `indirect`；解析失败不生成 EvidenceItem，通过 warnings 表达 |
+| **前端责任** | 用视觉语义区分 strength 等级 |
+| **验收标准** | 正则提取的 `def`/`module` 定义标记为 `direct`；启发式推断的模块边界标记为 `indirect`；解析失败不产生 EvidenceItem，而是记录 warning |
+| **非目标** | 不做 LLM 语义判断 strength；不做跨 evidence 矛盾检测（Phase 3+） |
 
-> **注**：`mvp-functional-contract.md` 定义 `evidence_strength` 枚举为 `direct / indirect / weak / conflicting / missing`。Phase 2 最小实现使用 `direct / indirect / unknown` 三个值。`weak`、`conflicting`、`missing` 留给 Phase 3+ 大模型语义判断后使用。数据结构层面保留完整枚举定义，Phase 2 只生成前三个值。
+> **注**：`mvp-functional-contract.md` 定义 `evidence_strength` 枚举为 `direct / indirect / weak / conflicting / missing`。Phase 2 只生成 `direct` 和 `indirect` 两个值。`weak`、`conflicting`、`missing` 留给 Phase 3+ 大模型语义判断后使用。数据结构层面保留完整枚举定义（不含 `unknown`），Phase 2 只生成前两个值。解析失败通过 `EvidenceCollection.warnings[]` 和 `EvidenceStats.files_skipped` 表达，不作为 strength 值。
 
 ### EV-005 记录 evidence 与阶段、文件、后续 claim 的关系
 
@@ -123,7 +123,7 @@ updated: 2026-06-11
 |------|------|
 | **输入** | `EvidenceCollection`（Phase 2 后端产出） |
 | **输出** | UI 状态更新 |
-| **用户可见表现** | 右栏展示 evidence 面板：统计概要（总数、按类型分组数）、evidence item 列表（ID、文件路径、行号、类型、confidence、excerpt）、筛选/排序、空状态、错误状态 |
+| **用户可见表现** | 右栏展示 evidence 面板：统计概要（总数、按类型分组数）、evidence item 列表（ID、文件路径、行号、类型、strength、excerpt）、筛选/排序、空状态、错误状态 |
 | **后端责任** | 无（纯前端展示） |
 | **前端责任** | 新增 `EvidencePanel` 组件；在 `StageDetail` 中增加"收集证据"按钮；收集完成后替换/追加 evidence 面板；支持按文件/类型/符号筛选 |
 | **验收标准** | 收集完成后 evidence 面板正确展示所有 item；空结果显示"未收集到证据"；错误状态展示错误信息；不展示原始 JSON |
@@ -134,10 +134,10 @@ updated: 2026-06-11
 | 维度 | 说明 |
 |------|------|
 | **输入** | 收集过程中的错误和不确定项 |
-| **输出** | `EvidenceCollection.warnings[]`（非致命问题）；单条 `EvidenceItem.confidence = unknown` |
-| **用户可见表现** | warnings 面板展示截断/跳过/不可读信息；unknown evidence item 用灰色标签展示 |
-| **后端责任** | 文件不可读 → `file_unreadable` warning；文件过大截断 → `file_too_large` warning + `source_excerpt_truncated` warning；二进制跳过 → warning；解析失败 → 该文件产出 confidence=unknown 的 evidence item |
-| **前端责任** | Warning 列表中展示收集阶段的 warning；unknown item 不隐藏 |
+| **输出** | `EvidenceCollection.warnings[]`（非致命问题）；解析失败不生成 EvidenceItem |
+| **用户可见表现** | warnings 面板展示截断/跳过/不可读信息 |
+| **后端责任** | 文件不可读 → `file_unreadable` warning；文件过大截断 → `file_too_large` warning + `source_excerpt_truncated` warning；二进制跳过 → warning；解析失败 → 该文件不产出 EvidenceItem，记录 warning |
+| **前端责任** | Warning 列表中展示收集阶段的 warning |
 | **验收标准** | 所有非致命问题进入 `warnings[]`，不阻断收集；`evidence_items[]` 为空时 `success=true`（除非所有文件不可读） |
 | **非目标** | 不做 warning 的自动修复；不做 warning 的分级（全部为非致命） |
 
@@ -184,7 +184,7 @@ Phase 2 产出 `EvidenceCollection`（对应 `mvp-functional-contract.md` 的 `e
 Phase 2 产出:
   EvidenceCollection {
     stage_id,
-    evidence_items: [{ evidence_id, source_path, line_range, language, source_kind, symbol, summary, confidence }],
+    evidence_items: [{ evidence_id, source_path, line_range, language, source_kind, symbol, summary, strength }],
     index_by_path,
     index_by_kind,
     index_by_symbol,

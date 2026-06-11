@@ -65,7 +65,6 @@ src-tauri/src/
 fn collect_evidence(
     root_path: String,
     stage_id: String,
-    state: State<AppState>,
 ) -> Result<CommandResult<EvidenceCollection>, String>
 ```
 
@@ -122,12 +121,12 @@ collect_evidence(root_path, stage_id)
   │       │     SystemVerilog → systemverilog_extractor.extract(...)
   │       │     Markdown → markdown_extractor.extract(...)
   │       │     Config → config_extractor.extract(...)
-  │       │     其他 → 整文件级 evidence (confidence=indirect)
+  │       │     其他 → 整文件级 evidence (strength=indirect)
   │       │
   │       ├─ 4d. 收集提取结果
   │       │     为每个提取结果分配 evidence_id
   │       │     生成 summary（调用 excerpt 模块截断）
-  │       │     设置 confidence
+  │       │     设置 strength
   │       │     加入 evidence_items[]
   │       │
   │       └─ 4e. processed++
@@ -139,7 +138,7 @@ collect_evidence(root_path, stage_id)
   │       → index_by_symbol
   │
   ├─ 6. 计算统计
-  │     EvidenceStats { files_processed, files_skipped, total_items, items_by_kind, items_by_confidence }
+  │     EvidenceStats { files_processed, files_skipped, total_items, items_by_kind, items_by_strength }
   │
   └─ 7. 返回 EvidenceCollection
         CommandResult { success=true, data=Some(EvidenceCollection), warnings }
@@ -174,7 +173,7 @@ struct RawExtraction {
     /// 原始代码片段（可能超过 500 字符，由 excerpt 模块截断）
     raw_excerpt: String,
     /// 证据强度
-    confidence: EvidenceStrength,
+    strength: EvidenceStrength,
 }
 ```
 
@@ -239,8 +238,8 @@ fn dispatch_extractor(language: &Language) -> Box<dyn EvidenceExtractor> {
 
 ### 5.1 Python 提取规则
 
-| 目标 | 匹配模式 | confidence |
-|------|----------|------------|
+| 目标 | 匹配模式 | strength |
+|------|----------|----------|
 | 函数定义 | `^def\s+(\w+)\s*\(` | `direct` |
 | 类定义 | `^class\s+(\w+)` | `direct` |
 | 函数边界推断 | 基于 `def` 行开始，下一个同级 `def` 或 EOF 结束 | `indirect` |
@@ -253,11 +252,11 @@ fn dispatch_extractor(language: &Language) -> Box<dyn EvidenceExtractor> {
 **示例**：
 
 ```python
-# Line 1:  def foo():        → symbol="foo", line_range={1,5}, confidence=direct
+# Line 1:  def foo():        → symbol="foo", line_range={1,5}, strength=direct
 # Line 2:      x = 1
 # Line 3:      return x
 # Line 4:
-# Line 5:  def bar(a, b):    → symbol="bar", line_range={5,8}, confidence=direct
+# Line 5:  def bar(a, b):    → symbol="bar", line_range={5,8}, strength=direct
 # Line 6:      c = a + b
 # Line 7:      return c
 # Line 8:
@@ -265,8 +264,8 @@ fn dispatch_extractor(language: &Language) -> Box<dyn EvidenceExtractor> {
 
 ### 5.2 Verilog 提取规则
 
-| 目标 | 匹配模式 | confidence |
-|------|----------|------------|
+| 目标 | 匹配模式 | strength |
+|------|----------|----------|
 | module 定义 | `^\s*module\s+(\w+)` | `direct` |
 | module 结束 | `^\s*endmodule` | `direct` |
 | input 声明 | `^\s*input\s+` | `indirect` |
@@ -281,7 +280,7 @@ fn dispatch_extractor(language: &Language) -> Box<dyn EvidenceExtractor> {
 **示例**：
 
 ```verilog
-// Line 1:  module top(           → symbol="top", line_range={1,10}, confidence=direct
+// Line 1:  module top(           → symbol="top", line_range={1,10}, strength=direct
 // Line 2:      input clk,
 // Line 3:      input rst,
 // Line 4:      output [7:0] data_out
@@ -294,8 +293,8 @@ fn dispatch_extractor(language: &Language) -> Box<dyn EvidenceExtractor> {
 
 ### 5.3 SystemVerilog 提取规则
 
-| 目标 | 匹配模式 | confidence |
-|------|----------|------------|
+| 目标 | 匹配模式 | strength |
+|------|----------|----------|
 | module 定义 | `^\s*module\s+(\w+)` | `direct` |
 | interface 定义 | `^\s*interface\s+(\w+)` | `direct` |
 | class 定义 | `^\s*class\s+(\w+)` | `direct` |
@@ -304,8 +303,8 @@ fn dispatch_extractor(language: &Language) -> Box<dyn EvidenceExtractor> {
 
 ### 5.4 Markdown 提取规则
 
-| 目标 | 匹配模式 | confidence |
-|------|----------|------------|
+| 目标 | 匹配模式 | strength |
+|------|----------|----------|
 | 一级标题 | `^#\s+(.+)` | `direct` |
 | 二级标题 | `^##\s+(.+)` | `direct` |
 | 三级标题 | `^###\s+(.+)` | `direct` |
@@ -313,8 +312,8 @@ fn dispatch_extractor(language: &Language) -> Box<dyn EvidenceExtractor> {
 
 ### 5.5 Config/TCL/XDC 提取规则
 
-| 目标 | 匹配模式 | confidence |
-|------|----------|------------|
+| 目标 | 匹配模式 | strength |
+|------|----------|----------|
 | TCL 过程 | `^\s*proc\s+(\w+)` | `direct` |
 | 约束命令 | `^\s*(set_property|create_clock|set_input_delay|set_output_delay)` | `indirect` |
 | 变量赋值 | `^\s*set\s+(\w+)` | `indirect` |
@@ -325,7 +324,7 @@ fn dispatch_extractor(language: &Language) -> Box<dyn EvidenceExtractor> {
 
 | 策略 | 说明 |
 |------|------|
-| 整文件级 evidence | `line_range = {1, total_lines}`，`symbol = None`，`confidence = indirect` |
+| 整文件级 evidence | `line_range = {1, total_lines}`，`symbol = None`，`strength = indirect` |
 | summary | 文件前 200 字符 + `"...(共 N 行)"` |
 
 ## 6. evidence_id 生成器
@@ -506,9 +505,9 @@ impl IndexBuilder {
 
 | 用例 | 输入 | 预期 |
 |------|------|------|
-| 简单函数 | `def foo():\n    pass` | 1 item: symbol="foo", range={1,2}, confidence=direct |
+| 简单函数 | `def foo():\n    pass` | 1 item: symbol="foo", range={1,2}, strength=direct |
 | 多函数 | 3 个 `def` | 3 items，各自 range 不重叠 |
-| 类定义 | `class Bar:` | 1 item: symbol="Bar", confidence=direct |
+| 类定义 | `class Bar:` | 1 item: symbol="Bar", strength=direct |
 | 嵌套函数 | 函数内嵌套 def | 外层 range 包含内层 |
 | 空文件 | `""` | 0 items |
 | 注释 | `# comment` | 0 items |
