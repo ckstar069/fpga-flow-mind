@@ -8,15 +8,26 @@ import type {
 } from '../../types/workspace';
 import { openWorkspace, selectStage, CommandError } from '../../lib/tauriCommands';
 
+// ─── 本地 UI 错误类型（不写入后端契约） ───
+type UiError =
+  | CommandErrorType
+  | {
+      error_code: 'frontend_error';
+      message: string;
+      recoverable: false;
+      details?: string;
+      source_path?: string;
+    };
+
 // ─── 状态机 ───
 type AppState =
   | { phase: 'initial' }
   | { phase: 'opening' }
   | { phase: 'loaded'; profile: WorkspaceProfile }
-  | { phase: 'error'; error: CommandErrorType }
-  | { phase: 'selecting_stage' }
+  | { phase: 'error'; error: UiError }
+  | { phase: 'selecting_stage'; profile: WorkspaceProfile; stageId: string }
   | { phase: 'stage_loaded'; profile: WorkspaceProfile; stageId: string; context: StageContext }
-  | { phase: 'stage_error'; profile: WorkspaceProfile; stageId: string; error: CommandErrorType };
+  | { phase: 'stage_error'; profile: WorkspaceProfile; stageId: string; error: UiError };
 
 const VALIDITY_LABEL: Record<string, string> = {
   likely_valid: '项目结构符合预期',
@@ -51,35 +62,43 @@ export default function WorkspacePage() {
       const profile = await openWorkspace(path);
       setState({ phase: 'loaded', profile });
     } catch (err) {
-      const error: CommandErrorType = err instanceof CommandError
-        ? (err as unknown as CommandErrorType)
-        : { error_code: 'scan_timeout' as ErrorCodeType, message: String(err), recoverable: false };
+      const error: UiError =
+        err instanceof CommandError
+          ? (err as unknown as CommandErrorType)
+          : { error_code: 'frontend_error', message: String(err), recoverable: false };
       setState({ phase: 'error', error });
     }
   }, [pathInput]);
 
   // ─── 选择阶段 ───
-  const handleSelectStage = useCallback(async (stageId: string) => {
-    const profile = state.phase === 'loaded' || state.phase === 'stage_loaded' || state.phase === 'stage_error'
-      ? (state as { profile: WorkspaceProfile }).profile
-      : null;
-    if (!profile) return;
-    setState({ phase: 'selecting_stage' });
-    try {
-      const context = await selectStage(profile.root_path, stageId);
-      setState({ phase: 'stage_loaded', profile, stageId, context });
-    } catch (err) {
-      const error: CommandErrorType = err instanceof CommandError
-        ? (err as unknown as CommandErrorType)
-        : { error_code: 'scan_timeout' as ErrorCodeType, message: String(err), recoverable: false };
-      setState({ phase: 'stage_error', profile, stageId, error });
-    }
-  }, [state]);
+  const handleSelectStage = useCallback(
+    async (stageId: string) => {
+      const profile =
+        state.phase === 'loaded' ||
+        state.phase === 'stage_loaded' ||
+        state.phase === 'stage_error'
+          ? (state as { profile: WorkspaceProfile }).profile
+          : null;
+      if (!profile) return;
+      setState({ phase: 'selecting_stage', profile, stageId });
+      try {
+        const context = await selectStage(profile.root_path, stageId);
+        setState({ phase: 'stage_loaded', profile, stageId, context });
+      } catch (err) {
+        const error: UiError =
+          err instanceof CommandError
+            ? (err as unknown as CommandErrorType)
+            : { error_code: 'frontend_error', message: String(err), recoverable: false };
+        setState({ phase: 'stage_error', profile, stageId, error });
+      }
+    },
+    [state]
+  );
 
   // ─── 当前 profile 提取 ───
   const currentProfile = useMemo<WorkspaceProfile | null>(() => {
     if (state.phase === 'loaded') return state.profile;
-    if (state.phase === 'selecting_stage') return null;
+    if (state.phase === 'selecting_stage') return state.profile;
     if (state.phase === 'stage_loaded') return state.profile;
     if (state.phase === 'stage_error') return state.profile;
     return null;
@@ -91,9 +110,26 @@ export default function WorkspacePage() {
 
   // ─── 渲染 ───
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', fontFamily: 'system-ui, -apple-system, sans-serif', background: '#f5f5f5' }}>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        background: '#f5f5f5',
+      }}
+    >
       {/* 顶部工具栏 */}
-      <header style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 24px', background: '#fff', borderBottom: '1px solid #ddd' }}>
+      <header
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 16,
+          padding: '12px 24px',
+          background: '#fff',
+          borderBottom: '1px solid #ddd',
+        }}
+      >
         <h1 style={{ fontSize: 18, margin: 0 }}>fpga-flow-mind</h1>
         <div style={{ display: 'flex', gap: 8, flex: 1 }}>
           <input
@@ -102,9 +138,24 @@ export default function WorkspacePage() {
             value={pathInput}
             onChange={(e) => setPathInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleOpen()}
-            style={{ flex: 1, padding: '6px 12px', border: '1px solid #ccc', borderRadius: 4, fontSize: 14 }}
+            style={{
+              flex: 1,
+              padding: '6px 12px',
+              border: '1px solid #ccc',
+              borderRadius: 4,
+              fontSize: 14,
+            }}
           />
-          <button onClick={handleOpen} disabled={state.phase === 'opening'} style={{ padding: '6px 16px', borderRadius: 4, border: '1px solid #ccc', cursor: 'pointer' }}>
+          <button
+            onClick={handleOpen}
+            disabled={state.phase === 'opening'}
+            style={{
+              padding: '6px 16px',
+              borderRadius: 4,
+              border: '1px solid #ccc',
+              cursor: 'pointer',
+            }}
+          >
             {state.phase === 'opening' ? '扫描中...' : '打开项目'}
           </button>
         </div>
@@ -113,7 +164,16 @@ export default function WorkspacePage() {
       {/* 主内容 */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {/* 左栏 */}
-        <aside style={{ width: 320, minWidth: 280, background: '#fff', borderRight: '1px solid #ddd', overflowY: 'auto', padding: 16 }}>
+        <aside
+          style={{
+            width: 320,
+            minWidth: 280,
+            background: '#fff',
+            borderRight: '1px solid #ddd',
+            overflowY: 'auto',
+            padding: 16,
+          }}
+        >
           {state.phase === 'initial' && (
             <div style={{ color: '#666', textAlign: 'center', marginTop: 40 }}>
               <p>请输入项目路径并点击"打开项目"</p>
@@ -139,14 +199,33 @@ export default function WorkspacePage() {
         {/* 右栏 */}
         <main style={{ flex: 1, padding: 24, overflowY: 'auto' }}>
           {state.phase === 'initial' && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#999' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '100%',
+                color: '#999',
+              }}
+            >
               <p>请从左侧打开一个项目</p>
             </div>
           )}
 
           {state.phase === 'selecting_stage' && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#666' }}>
-              <p>正在加载阶段详情...</p>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '100%',
+                color: '#666',
+              }}
+            >
+              <p>
+                正在加载阶段详情：
+                {state.stageId}
+              </p>
             </div>
           )}
 
@@ -159,23 +238,44 @@ export default function WorkspacePage() {
             </div>
           )}
 
-          {!['selecting_stage', 'stage_loaded', 'stage_error'].includes(state.phase) && !currentProfile && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#999' }}>
-              <p>请从左侧选择一个阶段查看详情</p>
-            </div>
-          )}
+          {!['selecting_stage', 'stage_loaded', 'stage_error'].includes(state.phase) &&
+            !currentProfile && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '100%',
+                  color: '#999',
+                }}
+              >
+                <p>请从左侧选择一个阶段查看详情</p>
+              </div>
+            )}
         </main>
       </div>
 
       {/* 底部 warnings */}
       {currentWarnings.length > 0 && (
-        <footer style={{ maxHeight: 200, overflowY: 'auto', background: '#fff8e1', borderTop: '1px solid #ddd', padding: '8px 24px' }}>
-          <h4 style={{ margin: '0 0 8px', fontSize: 14 }}>警告 ({currentWarnings.length})</h4>
+        <footer
+          style={{
+            maxHeight: 200,
+            overflowY: 'auto',
+            background: '#fff8e1',
+            borderTop: '1px solid #ddd',
+            padding: '8px 24px',
+          }}
+        >
+          <h4 style={{ margin: '0 0 8px', fontSize: 14 }}>
+            警告 ({currentWarnings.length})
+          </h4>
           <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13 }}>
             {currentWarnings.map((w: WorkspaceWarning, i: number) => (
               <li key={i} style={{ marginBottom: 4 }}>
                 <code>{w.error_code}</code>: {w.message}
-                {w.source_path && <span style={{ color: '#666' }}> ({w.source_path})</span>}
+                {w.source_path && (
+                  <span style={{ color: '#666' }}> ({w.source_path})</span>
+                )}
               </li>
             ))}
           </ul>
@@ -187,9 +287,16 @@ export default function WorkspacePage() {
 
 // ─── 子组件 ───
 
-function ErrorPanel({ error }: { error: CommandErrorType }) {
+function ErrorPanel({ error }: { error: UiError }) {
   return (
-    <div style={{ padding: 16, background: '#ffebee', borderRadius: 8, marginBottom: 16 }}>
+    <div
+      style={{
+        padding: 16,
+        background: '#ffebee',
+        borderRadius: 8,
+        marginBottom: 16,
+      }}
+    >
       <h3 style={{ margin: '0 0 8px', color: '#c62828' }}>错误</h3>
       <p style={{ margin: '0 0 4px' }}>{error.message}</p>
       <code style={{ fontSize: 12, color: '#666' }}>{error.error_code}</code>
@@ -202,9 +309,24 @@ function WorkspaceSummary({ profile }: { profile: WorkspaceProfile }) {
   return (
     <div style={{ marginBottom: 24 }}>
       <h2 style={{ fontSize: 16, margin: '0 0 8px' }}>{profile.workspace_name}</h2>
-      <p style={{ fontSize: 12, color: '#666', margin: '0 0 8px', wordBreak: 'break-all' }}>{profile.root_path}</p>
+      <p
+        style={{
+          fontSize: 12,
+          color: '#666',
+          margin: '0 0 8px',
+          wordBreak: 'break-all',
+        }}
+      >
+        {profile.root_path}
+      </p>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: VALIDITY_COLOR[profile.validity] ?? '#333' }}>
+        <span
+          style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: VALIDITY_COLOR[profile.validity] ?? '#333',
+          }}
+        >
           {VALIDITY_LABEL[profile.validity] ?? profile.validity}
         </span>
       </div>
@@ -221,7 +343,17 @@ function WorkspaceSummary({ profile }: { profile: WorkspaceProfile }) {
       {profile.error_codes.length > 0 && (
         <div style={{ marginTop: 8, fontSize: 12 }}>
           {profile.error_codes.map((code: ErrorCodeType, i: number) => (
-            <span key={i} style={{ display: 'inline-block', padding: '2px 6px', background: '#ffebee', color: '#c62828', borderRadius: 4, marginRight: 4 }}>
+            <span
+              key={i}
+              style={{
+                display: 'inline-block',
+                padding: '2px 6px',
+                background: '#ffebee',
+                color: '#c62828',
+                borderRadius: 4,
+                marginRight: 4,
+              }}
+            >
               {code}
             </span>
           ))}
@@ -231,12 +363,34 @@ function WorkspaceSummary({ profile }: { profile: WorkspaceProfile }) {
   );
 }
 
-type ErrorCodeType = 'path_not_found' | 'not_directory' | 'permission_denied' | 'no_stage_found' | 'stage_empty' | 'stage_unreadable' | 'file_unreadable' | 'file_too_large' | 'scan_timeout';
+type ErrorCodeType =
+  | 'path_not_found'
+  | 'not_directory'
+  | 'permission_denied'
+  | 'no_stage_found'
+  | 'stage_empty'
+  | 'stage_unreadable'
+  | 'file_unreadable'
+  | 'file_too_large'
+  | 'scan_timeout';
 
-function StageList({ stages, onSelect }: { stages: StageSummary[]; onSelect: (id: string) => void }) {
+function StageList({
+  stages,
+  onSelect,
+}: {
+  stages: StageSummary[];
+  onSelect: (id: string) => void;
+}) {
   if (stages.length === 0) {
     return (
-      <div style={{ padding: 16, background: '#fafafa', borderRadius: 8, textAlign: 'center' }}>
+      <div
+        style={{
+          padding: 16,
+          background: '#fafafa',
+          borderRadius: 8,
+          textAlign: 'center',
+        }}
+      >
         <p style={{ margin: 0, color: '#999', fontSize: 14 }}>未识别到阶段目录</p>
       </div>
     );
@@ -247,7 +401,8 @@ function StageList({ stages, onSelect }: { stages: StageSummary[]; onSelect: (id
       <h3 style={{ fontSize: 14, margin: '0 0 12px' }}>阶段列表</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {stages.map((stage: StageSummary) => {
-          const clickable = stage.status === 'available' || stage.status === 'naming_anomaly';
+          const clickable =
+            stage.status === 'available' || stage.status === 'naming_anomaly';
           return (
             <button
               key={stage.stage_id}
@@ -308,26 +463,70 @@ function StageDetail({ context }: { context: StageContext }) {
       <h2 style={{ margin: '0 0 16px', fontSize: 20 }}>
         {context.stage_id}
         {context.error_code && (
-          <span style={{ fontSize: 13, marginLeft: 12, padding: '2px 8px', background: '#ffebee', color: '#c62828', borderRadius: 4 }}>
+          <span
+            style={{
+              fontSize: 13,
+              marginLeft: 12,
+              padding: '2px 8px',
+              background: '#ffebee',
+              color: '#c62828',
+              borderRadius: 4,
+            }}
+          >
             {context.error_code}
           </span>
         )}
       </h2>
-      <p style={{ fontSize: 13, color: '#666', margin: '0 0 16px', wordBreak: 'break-all' }}>{context.source_path}</p>
+      <p
+        style={{
+          fontSize: 13,
+          color: '#666',
+          margin: '0 0 16px',
+          wordBreak: 'break-all',
+        }}
+      >
+        {context.source_path}
+      </p>
 
       {context.error_code === 'stage_empty' && (
-        <div style={{ padding: 24, background: '#fafafa', borderRadius: 8, textAlign: 'center', marginBottom: 16 }}>
+        <div
+          style={{
+            padding: 24,
+            background: '#fafafa',
+            borderRadius: 8,
+            textAlign: 'center',
+            marginBottom: 16,
+          }}
+        >
           <p style={{ margin: 0, color: '#999' }}>该阶段无文件</p>
         </div>
       )}
 
       {context.files.length > 0 && (
         <div style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 15, margin: '0 0 12px' }}>文件列表 ({context.files.length})</h3>
+          <h3 style={{ fontSize: 15, margin: '0 0 12px' }}>
+            文件列表 ({context.files.length})
+          </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {context.files.map((f: StageFile, i: number) => (
-              <div key={i} style={{ padding: '8px 12px', background: '#fff', borderRadius: 6, border: '1px solid #e0e0e0' }}>
-                <div style={{ fontSize: 13, fontWeight: 500, wordBreak: 'break-all' }}>{f.source_path}</div>
+              <div
+                key={i}
+                style={{
+                  padding: '8px 12px',
+                  background: '#fff',
+                  borderRadius: 6,
+                  border: '1px solid #e0e0e0',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 500,
+                    wordBreak: 'break-all',
+                  }}
+                >
+                  {f.source_path}
+                </div>
                 <div style={{ fontSize: 12, color: '#999', marginTop: 4 }}>
                   {f.language} / {f.source_kind}
                   {f.size_bytes !== undefined && ` · ${formatBytes(f.size_bytes)}`}
@@ -343,7 +542,15 @@ function StageDetail({ context }: { context: StageContext }) {
           <h3 style={{ fontSize: 15, margin: '0 0 12px' }}>外部依赖</h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {context.external_deps.map((dep: string, i: number) => (
-              <span key={i} style={{ padding: '4px 10px', background: '#e3f2fd', borderRadius: 4, fontSize: 13 }}>
+              <span
+                key={i}
+                style={{
+                  padding: '4px 10px',
+                  background: '#e3f2fd',
+                  borderRadius: 4,
+                  fontSize: 13,
+                }}
+              >
                 {dep}
               </span>
             ))}
@@ -356,10 +563,20 @@ function StageDetail({ context }: { context: StageContext }) {
           <h3 style={{ fontSize: 15, margin: '0 0 12px' }}>上游引用</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {context.upstream_refs.map((ref: UpstreamRefType, i: number) => (
-              <div key={i} style={{ padding: '8px 12px', background: '#fff', borderRadius: 6, border: '1px solid #e0e0e0' }}>
+              <div
+                key={i}
+                style={{
+                  padding: '8px 12px',
+                  background: '#fff',
+                  borderRadius: 6,
+                  border: '1px solid #e0e0e0',
+                }}
+              >
                 <span style={{ fontWeight: 600 }}>{ref.stage_id}</span>
                 {ref.interface_file_path && (
-                  <span style={{ fontSize: 12, color: '#666', marginLeft: 8 }}>{ref.interface_file_path}</span>
+                  <span style={{ fontSize: 12, color: '#666', marginLeft: 8 }}>
+                    {ref.interface_file_path}
+                  </span>
                 )}
                 <span style={{ fontSize: 11, color: '#999', marginLeft: 8 }}>(推断)</span>
               </div>
@@ -367,10 +584,6 @@ function StageDetail({ context }: { context: StageContext }) {
           </div>
         </div>
       )}
-
-      <button disabled style={{ padding: '8px 24px', borderRadius: 6, border: '1px solid #ccc', background: '#f5f5f5', color: '#999', cursor: 'not-allowed' }}>
-        开始分析（Phase 2 后可用）
-      </button>
     </div>
   );
 }
