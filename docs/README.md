@@ -72,9 +72,10 @@ docs/
 
 1. `docs/planning/README.md`
 2. `docs/planning/phase-0-exit-criteria.md`（确认当前阶段退出标准）
-3. `docs/design/README.md`
-4. `docs/requirements/README.md`
-5. 当前阶段应完成的 story 列表
+3. `docs/planning/phase-1-implementation-plan.md`（当前阶段实施计划）
+4. `docs/design/README.md`
+5. `docs/requirements/README.md`
+6. 当前阶段应完成的 story 列表
 
 ### 测试 / 验收任务
 
