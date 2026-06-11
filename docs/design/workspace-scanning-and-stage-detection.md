@@ -5,8 +5,13 @@ status: draft
 updated: 2026-06-11
 ---
 
-> 本文档是 Phase 1 技术设计。
+> 本文档是 Phase 1 技术设计**入口与边界说明**，不是完整详细设计。
 > Phase 1 指 `fpga-flow-mind` **本项目**的开发推进阶段，不是业务项目的 `L0` / `L1` / `RTL` 实现阶段。
+>
+> 详细设计拆分为：
+> - [`phase-1-architecture.md`](phase-1-architecture.md) — 概要设计（模块划分、数据流、职责边界）
+> - [`phase-1-data-and-api-contract.md`](phase-1-data-and-api-contract.md) — 数据结构与前后端接口契约
+> - [`phase-1-scanner-detail-design.md`](phase-1-scanner-detail-design.md) — 扫描与阶段识别详细算法设计
 
 ## 1. 设计目标
 
