@@ -77,7 +77,8 @@ updated: YYYY-MM-DD
 |------|------|------|-------------|
 | [`phase-0-exit-criteria.md`](phase-0-exit-criteria.md) | `active` | Phase 0 退出标准：必须完成的文档、检查表、不扩张边界、进入 Phase 1 的入口 | Phase 0 结束审核前必读 |
 
-> 当前处于 **Phase 0：文档体系与需求契约**。
+> 当前处于 **Phase 1 技术设计准备：Workspace 扫描与阶段识别**。
+> Phase 0 文档体系与需求契约已完成。
 >
 > Phase 0 已完成：
 > - ✅ `docs/` 文档体系与索引规则
