@@ -73,16 +73,17 @@ updated: YYYY-MM-DD
 
 | 文档 | 状态 | 说明 | 推荐阅读时机 |
 |------|------|------|-------------|
-| （待补充） | — | Phase 0~6 的详细阶段计划待编写 | — |
+| [`phase-0-exit-criteria.md`](phase-0-exit-criteria.md) | `draft` | Phase 0 退出标准：必须完成的文档、检查表、不扩张边界、进入 Phase 1 的入口 | Phase 0 结束审核前必读 |
 
 > 当前处于 **Phase 0：文档体系与需求契约**。
-> 
+>
 > Phase 0 已完成：
 > - ✅ `docs/` 文档体系与索引规则
 > - ✅ `docs/requirements/product-scope.md` — 产品范围草案
 > - ✅ `docs/requirements/mvp-requirements.md` — MVP 需求草案
+> - ✅ `docs/requirements/mvp-functional-contract.md` — MVP 功能契约草案
+> - ✅ `docs/requirements/stories/` — 10 个 story 文档
+> - ✅ `docs/planning/phase-0-exit-criteria.md` — Phase 0 退出标准
 >
 > Phase 0 待完成：
-> - ⏳ Phase 0 阶段计划文档（目标、验收标准、风险检查）
-> - ⏳ story 文档编写（`story-open-workspace.md` 等）
-> - ⏳ 需求文档从 `draft` 过渡到 `active`
+> - ⏳ 需求文档从 `draft` 过渡到 `active`（以 `phase-0-exit-criteria.md` 检查表为准）
