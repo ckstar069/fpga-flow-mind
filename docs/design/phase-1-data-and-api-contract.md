@@ -231,7 +231,7 @@ fn select_stage(root_path: String, stage_id: String) -> CommandResult<StageConte
 |------|------|------|
 | `error_code` | 是 | 机器可读的错误标识 |
 | `message` | 是 | 用户可读的错误描述 |
-| `recoverable` | 是 | `true` = 可强制继续；`false` = 必须重新选择 |
+| `recoverable` | 是 | `true` = 可通过继续浏览、选择其他阶段或查看降级结果恢复流程；`false` = 当前操作阻塞，需要重新选择或修正输入 |
 | `details` | 否 | 技术细节或调试信息 |
 | `source_path` | 否 | 触发错误的文件或目录路径 |
 
@@ -242,8 +242,8 @@ fn select_stage(root_path: String, stage_id: String) -> CommandResult<StageConte
 | `path_not_found` | `false` | 弹窗提示，允许重新选择 |
 | `not_directory` | `false` | 弹窗提示，允许重新选择 |
 | `permission_denied` | `false` | 弹窗提示，允许重新选择 |
-| `no_stage_found` | `true` | 显示"未识别到阶段"并提供"强制继续"按钮 |
-| `stage_empty` | `true` | 阶段列表中灰色展示，点击提示"该阶段为空" |
+| `no_stage_found` | `true` | 显示"未识别到阶段"并提供"继续浏览 workspace"按钮（workspace 级降级浏览） |
+| `stage_empty` | `true` | 展示空阶段说明，不进入分析，不显示"强制继续分析"按钮（可切换其他阶段） |
 | `stage_unreadable` | `false` | 禁用该阶段，提示选择其他阶段 |
 
 **CommandResult success / failure 语义**：
