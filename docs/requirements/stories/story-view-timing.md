@@ -221,6 +221,7 @@ updated: 2026-06-11
 
 ## 关联文档
 
+- [`../mvp-functional-contract.md`](../mvp-functional-contract.md) — 跨 story 对象契约与验收场景
 - [`story-generate-understanding.md`](story-generate-understanding.md) — 前置：生成结构化理解
 - [`story-trace-evidence.md`](story-trace-evidence.md) — 相关：追溯证据
 - [`story-ask-node-question.md`](story-ask-node-question.md) — 相关：围绕节点追问

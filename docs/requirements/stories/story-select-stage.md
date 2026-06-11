@@ -187,6 +187,7 @@ updated: 2026-06-11
 
 ## 关联文档
 
+- [`../mvp-functional-contract.md`](../mvp-functional-contract.md) — 跨 story 对象契约与验收场景
 - [`story-open-workspace.md`](story-open-workspace.md) — 前置：打开项目
 - [`story-collect-evidence.md`](story-collect-evidence.md) — 下一步：收集证据
 - [`../mvp-requirements.md`](../mvp-requirements.md) — MVP 阶段聚焦要求

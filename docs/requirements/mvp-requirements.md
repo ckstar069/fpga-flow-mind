@@ -196,3 +196,6 @@ MVP 主流程中的每个环节已拆解为独立的 story 文档，包含具体
 | 持久化与再次打开 | [`stories/story-persist-and-reopen.md`](stories/story-persist-and-reopen.md) | PS-xxx |
 
 > 实施时以 story 文档中的功能点清单和 MVP 验收标准为准。
+>
+> **跨 story 输入/输出对象和验收契约**以 [`mvp-functional-contract.md`](mvp-functional-contract.md) 为准。
+> MVP 范围以本文档为准，对象字段和枚举定义以契约文档为准。

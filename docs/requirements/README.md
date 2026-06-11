@@ -91,8 +91,19 @@ updated: YYYY-MM-DD
 |------|------|------|-------------|
 | [`product-scope.md`](product-scope.md) | `draft` | 产品范围、目标用户、核心痛点、非目标、成功标准、安全边界 | 任何需求讨论、规划或审核前必读，确认产品边界 |
 | [`mvp-requirements.md`](mvp-requirements.md) | `draft` | MVP 主流程、必须能力、暂不做能力、视图边界、evidence 追溯、置信度要求、验收标准 | 进入 Phase 1+ 实施前必读，确认 MVP 范围 |
+| [`mvp-functional-contract.md`](mvp-functional-contract.md) | `draft` | 跨 story 统一对象、字段约束、枚举值、依赖关系、端到端验收场景 | **进入设计和实施前必读**，对象契约与验收标准来源 |
 
-> **范围文档与功能点文档的关系**：
+> **需求文档层级关系**：
+> - `product-scope.md` — 方向层：产品边界与成功标准。
+> - `mvp-requirements.md` — 范围层：MVP 必须/暂不做能力清单。
+> - `mvp-functional-contract.md` — 契约层：跨 story 统一对象、字段、枚举、依赖、端到端验收。**后续技术设计不得重新定义需求对象，应从本文档派生。**
+> - `stories/*.md` — 实现层：单个用户目标、具体功能点、异常处理。
+>
+> **冲突时以层级高的为准**：product-scope > mvp-requirements > mvp-functional-contract > stories。
+>
+> ---
+>
+> **范围文档与功能点文档的关系**（历史说明，仍有效）：
 > - `product-scope.md` 和 `mvp-requirements.md` 描述产品范围和 MVP 能力边界，是方向性文档。
 > - **具体可实施的功能点和可验收标准**以 `stories/` 下的 story 文档为准。
 > - 实施前应阅读对应阶段的 story 文档，范围讨论应以 `product-scope.md` 为准。

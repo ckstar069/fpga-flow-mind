@@ -254,6 +254,7 @@ updated: 2026-06-11
 
 ## 关联文档
 
+- [`../mvp-functional-contract.md`](../mvp-functional-contract.md) — 跨 story 对象契约与验收场景
 - [`story-select-stage.md`](story-select-stage.md) — 前置：选择阶段
 - [`story-generate-understanding.md`](story-generate-understanding.md) — 下一步：生成结构化理解
 - [`../mvp-requirements.md`](../mvp-requirements.md) — MVP 证据收集要求

@@ -176,6 +176,7 @@ AI Agent 分阶段推进后生成的代码分布在业务项目目录中。用�
 
 ## 关联文档
 
+- [`../mvp-functional-contract.md`](../mvp-functional-contract.md) — 跨 story 对象契约与验收场景
 - [`../mvp-requirements.md`](../mvp-requirements.md) — MVP 范围和工作空间识别要求
 - [`../product-scope.md`](../product-scope.md) — 产品范围和安全边界
 - [`story-select-stage.md`](story-select-stage.md) — 下一步：选择阶段

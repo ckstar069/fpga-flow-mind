@@ -222,6 +222,7 @@ updated: 2026-06-11
 
 ## 关联文档
 
+- [`../mvp-functional-contract.md`](../mvp-functional-contract.md) — 跨 story 对象契约与验收场景
 - [`story-generate-understanding.md`](story-generate-understanding.md) — 前置：生成结构化理解
 - [`story-open-workspace.md`](story-open-workspace.md) — 相关：打开项目时加载产物
 - [`../mvp-requirements.md`](../mvp-requirements.md) — MVP 持久化要求

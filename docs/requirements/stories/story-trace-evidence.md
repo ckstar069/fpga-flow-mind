@@ -198,6 +198,7 @@ updated: 2026-06-11
 
 ## 关联文档
 
+- [`../mvp-functional-contract.md`](../mvp-functional-contract.md) — 跨 story 对象契约与验收场景
 - [`story-view-structure.md`](story-view-structure.md) — 相关：结构图中的节点点击
 - [`story-view-dataflow.md`](story-view-dataflow.md) — 相关：数据流图中的节点点击
 - [`story-view-timing.md`](story-view-timing.md) — 相关：时序图中的节点点击

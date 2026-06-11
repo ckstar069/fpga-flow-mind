@@ -231,6 +231,7 @@ updated: 2026-06-11
 
 ## 关联文档
 
+- [`../mvp-functional-contract.md`](../mvp-functional-contract.md) — 跨 story 对象契约与验收场景
 - [`story-collect-evidence.md`](story-collect-evidence.md) — 前置：收集证据
 - [`story-view-structure.md`](story-view-structure.md) — 下一步：查看结构图
 - [`story-view-dataflow.md`](story-view-dataflow.md) — 下一步：查看数据流图
