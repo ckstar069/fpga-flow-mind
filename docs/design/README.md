@@ -70,9 +70,11 @@ Phase 1 技术设计由以下文档组成，按阅读顺序排列：
 
 | 文档 | 状态 | 说明 | 推荐阅读时机 |
 |------|------|------|-------------|
-| [`workspace-scanning-and-stage-detection.md`](workspace-scanning-and-stage-detection.md) | `draft` | Phase 1 技术设计入口与边界说明：Workspace 扫描范围、阶段识别边界、输出对象概述 | Phase 1 实施前必读 |
-| [`phase-1-architecture.md`](phase-1-architecture.md) | `draft` | Phase 1 概要设计：模块划分、数据流、前后端职责边界、安全设计、目录结构建议 | 了解整体架构时阅读 |
-| [`phase-1-data-and-api-contract.md`](phase-1-data-and-api-contract.md) | `draft` | Phase 1 数据结构与 API 契约：Rust/TypeScript 类型、Tauri command 签名、错误/warning 格式 | 编码前后端接口前必读 |
-| [`phase-1-scanner-detail-design.md`](phase-1-scanner-detail-design.md) | `draft` | Phase 1 扫描与阶段识别详细设计：功能点映射、算法流程、边界条件、测试映射 | 编码扫描模块前必读 |
+| [`workspace-scanning-and-stage-detection.md`](workspace-scanning-and-stage-detection.md) | `active` | Phase 1 技术设计入口与边界说明：Workspace 扫描范围、阶段识别边界、输出对象概述 | Phase 1 实施前必读 |
+| [`phase-1-architecture.md`](phase-1-architecture.md) | `active` | Phase 1 概要设计：模块划分、数据流、前后端职责边界、安全设计、目录结构建议 | 了解整体架构时阅读 |
+| [`phase-1-data-and-api-contract.md`](phase-1-data-and-api-contract.md) | `active` | Phase 1 数据结构与 API 契约：Rust/TypeScript 类型、Tauri command 签名、错误/warning 格式 | 编码前后端接口前必读 |
+| [`phase-1-scanner-detail-design.md`](phase-1-scanner-detail-design.md) | `active` | Phase 1 扫描与阶段识别详细设计：功能点映射、算法流程、边界条件、测试映射 | 编码扫描模块前必读 |
+
+> Phase 1 编码依据文档已收口。上述 4 份设计文档与 `mvp-functional-contract.md` 共同构成 Phase 1 编码的权威依据。
 
 > 注：当前设计应优先依据 active 的 `../requirements/` 需求文档和 `../requirements/mvp-functional-contract.md`；`../initial-requirements-draft/` 仅作为历史草案参考，当与正式文档冲突时以 active 文档为准。

@@ -1,7 +1,7 @@
 # Phase 1 扫描与阶段识别详细设计
 
 ---
-status: draft
+status: active
 updated: 2026-06-11
 ---
 

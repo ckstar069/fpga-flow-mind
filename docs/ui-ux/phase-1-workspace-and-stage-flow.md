@@ -1,7 +1,7 @@
 # Phase 1 Workspace 与阶段选择 UI/UX 轻量设计
 
 ---
-status: draft
+status: active
 updated: 2026-06-11
 ---
 

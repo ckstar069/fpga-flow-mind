@@ -1,7 +1,7 @@
 # Phase 1 概要设计
 
 ---
-status: draft
+status: active
 updated: 2026-06-11
 ---
 

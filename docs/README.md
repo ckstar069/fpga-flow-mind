@@ -71,11 +71,12 @@ docs/
 ### 实施计划任务
 
 1. `docs/planning/README.md`
-2. `docs/planning/phase-0-exit-criteria.md`（确认当前阶段退出标准）
-3. `docs/planning/phase-1-implementation-plan.md`（当前阶段实施计划）
-4. `docs/design/README.md`
-5. `docs/requirements/README.md`
-6. 当前阶段应完成的 story 列表
+2. `docs/planning/phase-1-documents-closure.md`（Phase 1 文档收口说明）
+3. `docs/planning/phase-1-implementation-plan.md`（Phase 1 编码实施计划）
+4. `docs/planning/phase-0-exit-criteria.md`（确认当前阶段退出标准）
+5. `docs/design/README.md`（Phase 1 设计文档索引）
+6. `docs/requirements/README.md`
+7. 当前阶段应完成的 story 列表
 
 ### 测试 / 验收任务
 

@@ -76,16 +76,14 @@ updated: YYYY-MM-DD
 | 文档 | 状态 | 说明 | 推荐阅读时机 |
 |------|------|------|-------------|
 | [`phase-0-exit-criteria.md`](phase-0-exit-criteria.md) | `active` | Phase 0 退出标准：必须完成的文档、检查表、不扩张边界、进入 Phase 1 的入口 | Phase 0 结束审核前必读 |
-| [`phase-1-implementation-plan.md`](phase-1-implementation-plan.md) | `draft` | Phase 1 实施计划：任务拆解、编码顺序、验证顺序、退出标准、风险与回滚 | Phase 1 实施前必读 |
+| [`phase-1-implementation-plan.md`](phase-1-implementation-plan.md) | `active` | Phase 1 实施计划：任务拆解、编码顺序、验证顺序、退出标准、风险与回滚 | Phase 1 编码实施依据 |
+| [`phase-1-documents-closure.md`](phase-1-documents-closure.md) | `active` | Phase 1 文档收口说明：收口范围、active 文档清单、进入编码条件 | Phase 1 编码前必读 |
 
-> 当前处于 **Phase 1 implementation plan 已创建/待审核：Workspace 扫描与阶段识别**。
+> 当前处于 **Phase 1 文档收口已完成，可进入 Phase 1 编码实施**。
 > Phase 0 文档体系与需求契约已完成。
-> Phase 1 技术设计已拆分为：概要设计（`phase-1-architecture.md`）、数据/API 契约（`phase-1-data-and-api-contract.md`）、详细设计（`phase-1-scanner-detail-design.md`），均处于 `draft` 状态，需审核后收口。
-> Phase 1 UI/UX 轻量设计已创建（`docs/ui-ux/phase-1-workspace-and-stage-flow.md`），处于 `draft` 状态。
-> Phase 1 testing/validation 设计已创建（`docs/testing/phase-1-workspace-scanning-validation.md`），处于 `draft` 状态，需审核后收口。
-> Phase 1 implementation plan 已创建（`docs/planning/phase-1-implementation-plan.md`），处于 `draft` 状态。
-> 下一步应先审核 implementation plan；审核通过后执行 Phase 1 文档收口，将可作为编码依据的 Phase 1 文档（`phase-1-data-and-api-contract.md`、`phase-1-scanner-detail-design.md`、`phase-1-architecture.md`、`phase-1-workspace-and-stage-flow.md`）状态更新为 `active` 或明确标记为 `approved-for-implementation`；完成后才进入 Phase 1 编码实施。
-> 在文档收口完成前，**不进入编码实施**。
+> Phase 1 编码依据文档已收口为 `active`：概要设计、数据/API 契约、详细设计、UI/UX 设计、验证设计、实施计划。
+> 进入编码实施必须遵守 `phase-1-implementation-plan.md` 的任务顺序和 `phase-1-workspace-scanning-validation.md` 的验证标准，不得跳过测试或安全验证。
+> 10 个 story 文档保持 `draft`，原因：后续实施中可局部细化交互细节，但主链路和跨 story 契约已稳定，不阻塞 Phase 1。
 >
 > Phase 0 已完成：
 > - ✅ `docs/` 文档体系与索引规则

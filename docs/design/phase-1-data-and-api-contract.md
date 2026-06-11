@@ -1,7 +1,7 @@
 # Phase 1 数据结构与 API 契约
 
 ---
-status: draft
+status: active
 updated: 2026-06-11
 ---
 
