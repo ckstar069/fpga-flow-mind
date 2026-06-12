@@ -75,9 +75,10 @@ docs/
 3. `docs/planning/phase-1-implementation-plan.md`（Phase 1 编码实施计划）
 4. `docs/planning/phase-2-implementation-plan.md`（Phase 2 编码实施计划）
 5. `docs/planning/phase-0-exit-criteria.md`（确认当前阶段退出标准）
-6. `docs/design/README.md`（设计文档索引）
-7. `docs/requirements/README.md`
-8. 当前阶段应完成的 story 列表
+6. `docs/planning/phase-3-completion-review.md`（Phase 3 完成状态）
+7. `docs/design/README.md`（设计文档索引）
+8. `docs/requirements/README.md`
+9. 当前阶段应完成的 story 列表
 
 ### 测试 / 验收任务
 

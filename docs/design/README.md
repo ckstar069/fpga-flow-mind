@@ -78,9 +78,12 @@ Phase 1 技术设计由以下文档组成，按阅读顺序排列：
 | [`phase-2-evidence-collector-design.md`](phase-2-evidence-collector-design.md) | `active` | Phase 2 evidence collector 后端设计：模块布局、collect_evidence command、文件读取策略、代码分块策略、提取器 trait、错误处理、单元测试设计 | Phase 2 后端编码前必读 |
 | [`phase-3-understanding-model.md`](phase-3-understanding-model.md) | `active` | Phase 3 ImplementationUnderstanding 数据结构设计：Rust/TypeScript 字段定义、StageSummary、ImplementationClaim、ClaimConfidence（5 值含 supported）、ClaimCategory、EvidenceRef、UnknownItem、EvidenceGap、摘要对象、GenerationMeta、UnderstandingStats | Phase 3 编码前必读 |
 | [`phase-3-understanding-generator-design.md`](phase-3-understanding-generator-design.md) | `active` | Phase 3 理解生成器后端设计：ContextBuilder、Provider trait、SchemaValidator、hallucination guard、Generator 主流程、generate_understanding command、degraded mode | Phase 3 后端编码前必读 |
+| [`phase-4-view-model.md`](phase-4-view-model.md) | `draft` | Phase 4 视图数据模型：ViewGraph/ViewNode/ViewEdge/ViewTraceRef/ViewLayoutHint/ViewMeta + NodeType/EdgeType/ViewType 枚举 + Rust/TypeScript 完整定义 | Phase 4 编码前必读 |
+| [`phase-4-view-generator-design.md`](phase-4-view-generator-design.md) | `draft` | Phase 4 视图生成器后端设计：ViewGraphGenerator + structure/dataflow/timing builder 转换规则 + generate_views command + 错误处理 | Phase 4 后端编码前必读 |
 
 > Phase 1 编码依据文档已收口。Phase 1 的 4 份设计文档与 `mvp-functional-contract.md` 共同构成 Phase 1 编码的权威依据。
 > Phase 2 编码依据文档已收口（status=active）：`phase-2-evidence-model.md` + `phase-2-evidence-collector-design.md` + `phase-2-evidence-requirements.md`。
 > Phase 3 编码依据文档已收口（status=active）：`phase-3-understanding-model.md` + `phase-3-understanding-generator-design.md`。
+> Phase 4 设计文档已创建（status=draft）：`phase-4-view-model.md` + `phase-4-view-generator-design.md`。
 
 > 注：当前设计应优先依据 active 的 `../requirements/` 需求文档和 `../requirements/mvp-functional-contract.md`；`../initial-requirements-draft/` 仅作为历史草案参考，当与正式文档冲突时以 active 文档为准。

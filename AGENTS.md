@@ -134,6 +134,18 @@
 - Phase 3 使用 MockProvider，不调用 LLM API，不引入新依赖
 - Phase 2 不修改目标项目文件，只使用 `std::fs::read_to_string`
 
+### Phase 4 View 规则（规划约束）
+
+- Phase 4 只消费 `ImplementationUnderstanding`，不重新扫描/收集/调 LLM
+- ViewGraph 从 IU 确定性派生，不引入新的语义判断
+- 后端只做 IU → ViewGraph 转换，不做布局/渲染/交互
+- 前端使用纯 SVG + CSS 渲染，不引入 React Flow / D3 / Mermaid
+- 三视图：结构图(structure) / 数据流(dataflow) / 时序流水(timing)
+- 每个 node/edge 必须含 `trace_refs`，指向 claim_id 和 evidence_id
+- evidence_id 回链点击和 EvidencePanel 高亮留给 Phase 5
+- 不实现自动布局引擎（MVP 使用 grid 布局 + layout_hints）
+- 不使用"正确/错误"、"PASS/HOLD"等审计用语
+
 ## 9. 审核关注点
 
 每次回报都应自查：
