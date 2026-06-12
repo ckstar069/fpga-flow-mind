@@ -2,7 +2,7 @@
 
 ---
 status: active
-updated: 2026-06-11
+updated: 2026-06-12
 ---
 
 > 本文档设计 Phase 2 evidence collector 的后端模块布局、`collect_evidence` command 设计、文件读取策略、代码分块策略、错误处理和单元测试设计。
@@ -115,13 +115,13 @@ collect_evidence(root_path, stage_id)
   │       ├─ 4b. 读取文件内容（只读）
   │       │     std::fs::read_to_string(source_path)
   │       │
-  │       ├─ 4c. 按 language 分派到对应提取器
-  │       │     Python → python_extractor.extract(content, source_path, language, source_kind)
-  │       │     Verilog → verilog_extractor.extract(...)
-  │       │     SystemVerilog → systemverilog_extractor.extract(...)
-  │       │     Markdown → markdown_extractor.extract(...)
-  │       │     Config → config_extractor.extract(...)
-  │       │     其他 → 整文件级 evidence (strength=indirect)
+  │       ├─ 4c. 调用 extract_by_language(language, source_kind, content) 分派提取
+  │       │     SourceKind::Config → ConfigExtractor.extract(content)
+  │       │     Language::Python → PythonExtractor.extract(content)
+  │       │     Language::Verilog → VerilogExtractor.extract(content)
+  │       │     Language::SystemVerilog → SystemVerilogExtractor.extract(content)
+  │       │     Language::Markdown → MarkdownExtractor.extract(content)
+  │       │     其他 → FallbackExtractor.extract(content) (整文件级 evidence, strength=indirect)
   │       │
   │       ├─ 4d. 收集提取结果
   │       │     为每个提取结果分配 evidence_id
@@ -147,28 +147,19 @@ collect_evidence(root_path, stage_id)
 ## 3. EvidenceExtractor Trait
 
 ```rust
-/// 证据提取器 trait
+/// 证据提取器 trait — 纯函数，仅接收文件内容
 trait EvidenceExtractor {
     /// 从文件内容中提取 evidence
     /// content: 文件全文
-    /// source_path: 文件绝对路径
-    /// language: 文件语言
-    /// source_kind: 文件来源类型
     /// 返回: Vec<RawExtraction>（未经 ID 分配和截断的原始提取结果）
-    fn extract(
-        &self,
-        content: &str,
-        source_path: &str,
-        language: Language,
-        source_kind: SourceKind,
-    ) -> Vec<RawExtraction>;
+    fn extract(&self, content: &str) -> Vec<RawExtraction>;
 }
 
 /// 原始提取结果（ID 和 summary 截断在 collector 层统一处理）
 struct RawExtraction {
     /// 符号名称
     symbol: Option<String>,
-    /// 行号范围
+    /// 行号范围（1-based 闭区间）
     line_range: LineRange,
     /// 原始代码片段（可能超过 500 字符，由 excerpt 模块截断）
     raw_excerpt: String,
@@ -179,18 +170,13 @@ struct RawExtraction {
 
 ### 3.1 提取器分派逻辑
 
-```rust
-fn dispatch_extractor(language: &Language) -> Box<dyn EvidenceExtractor> {
-    match language {
-        Language::Python => Box::new(PythonExtractor),
-        Language::Verilog => Box::new(VerilogExtractor),
-        Language::SystemVerilog => Box::new(SystemVerilogExtractor),
-        Language::Markdown => Box::new(MarkdownExtractor),
-        Language::Tcl | Language::Xdc => Box::new(ConfigExtractor),
-        _ => Box::new(FallbackExtractor), // 整文件级证据
-    }
-}
-```
+分派函数 `extract_by_language(language, source_kind, content)` 实现：
+
+1. **SourceKind::Config 优先**：若 `source_kind == SourceKind::Config`，直接使用 `ConfigExtractor`，不看 `language`
+2. **按 Language 匹配**：`Python` → `PythonExtractor`，`Verilog` → `VerilogExtractor`，`SystemVerilog` → `SystemVerilogExtractor`，`Markdown` → `MarkdownExtractor`
+3. **Fallback**：其余语言（`Text`、`Json`、`Yaml`、`Toml`、`Unknown`）使用 `FallbackExtractor`（整文件级证据，strength=Indirect）
+
+> **设计决策**：trait 只接收 `content`，不传 `source_path`/`language`/`source_kind`。这些上下文由 collector 层（分派函数）持有，提取器本身是纯函数。
 
 ## 4. 文件读取策略
 
@@ -567,3 +553,4 @@ impl IndexBuilder {
 | 日期 | 变更 | 作者 |
 |------|------|------|
 | 2026-06-11 | 初始创建 | Claude |
+| 2026-06-12 | 同步实现：trait 改为 content-only 单参数、分派逻辑改为 SourceKind::Config 优先 + Language 匹配、移除 Language::Tcl/Xdc、更新 step 4c 描述 | Claude |

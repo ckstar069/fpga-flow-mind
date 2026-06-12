@@ -7,6 +7,11 @@
 /// - 注释行中的关键字不提取
 /// - 无 end 关键字时 range 到 EOF
 /// - 不处理嵌套同名块（Phase 2 最小实现，实际 FPGA 代码极少嵌套同名块）
+///
+/// 配对算法：对每个 start 块，找到位于该 start 行之后第一个未使用的 end 关键字。
+/// 这保证 line_range.start <= line_range.end。
+/// 孤立 end 关键字（在第一个 start 之前）被自动跳过。
+/// 多行块注释（`/* ... */`）内的关键字不被收集。
 
 use super::{extract_lines_range, is_hdl_comment_line, strip_line_comment, EvidenceExtractor};
 use crate::evidence::models::{EvidenceStrength, LineRange, RawExtraction};
@@ -35,9 +40,22 @@ fn find_blocks(content: &str, start_kw: &str, end_kw: &str) -> Vec<RawExtraction
     let prefix = format!("{} ", start_kw);
     let mut starts: Vec<BlockEntry> = vec![];
     let mut ends: Vec<usize> = vec![];
+    let mut in_block_comment = false;
 
     for (i, line) in lines.iter().enumerate() {
+        // 多行块注释跟踪
+        if in_block_comment {
+            if line.contains("*/") {
+                in_block_comment = false;
+            }
+            continue;
+        }
         if is_hdl_comment_line(line) {
+            // 单行 /* ... */ 不进入块注释状态
+            let trimmed = line.trim_start();
+            if trimmed.starts_with("/*") && !line.contains("*/") {
+                in_block_comment = true;
+            }
             continue;
         }
 
@@ -76,15 +94,25 @@ fn find_blocks(content: &str, start_kw: &str, end_kw: &str) -> Vec<RawExtraction
     let total_lines = lines.len();
     let mut results = vec![];
 
-    for (idx, block) in starts.iter().enumerate() {
+    // 游标式配对：对每个 start，找其之后第一个未使用的 end
+    let mut end_cursor: usize = 0;
+
+    for block in &starts {
         let start_1based = (block.line_idx + 1) as u32;
 
-        let end_0based = if idx < ends.len() {
-            ends[idx]
-        } else {
-            total_lines - 1
-        };
-        let end_1based = (end_0based + 1) as u32;
+        // 找第一个 line_idx > block.line_idx 的未使用 end
+        let end_0based = ends[end_cursor..]
+            .iter()
+            .position(|&line| line > block.line_idx)
+            .map(|pos| {
+                let abs = end_cursor + pos;
+                end_cursor = abs + 1;
+                ends[abs]
+            })
+            .unwrap_or(total_lines - 1);
+
+        // end_1based 至少等于 start_1based（安全兜底）
+        let end_1based = ((end_0based + 1) as u32).max(start_1based);
 
         let raw_excerpt = extract_lines_range(content, start_1based, end_1based);
 
@@ -119,6 +147,19 @@ impl EvidenceExtractor for SystemVerilogExtractor {
 mod tests {
     use super::*;
 
+    /// 辅助：断言所有 extraction 的 line_range 合法
+    fn assert_valid_ranges(results: &[RawExtraction]) {
+        for r in results {
+            assert!(
+                r.line_range.start <= r.line_range.end,
+                "illegal range: start={} > end={} for symbol {:?}",
+                r.line_range.start,
+                r.line_range.end,
+                r.symbol,
+            );
+        }
+    }
+
     #[test]
     fn sv_01_module() {
         let content = "module top(\n    input logic clk\n);\nendmodule";
@@ -127,6 +168,7 @@ mod tests {
         assert_eq!(results[0].symbol.as_deref(), Some("top"));
         assert_eq!(results[0].line_range, LineRange { start: 1, end: 4 });
         assert_eq!(results[0].strength, EvidenceStrength::Direct);
+        assert_valid_ranges(&results);
     }
 
     #[test]
@@ -136,6 +178,7 @@ mod tests {
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].symbol.as_deref(), Some("bus_if"));
         assert_eq!(results[0].line_range, LineRange { start: 1, end: 4 });
+        assert_valid_ranges(&results);
     }
 
     #[test]
@@ -145,6 +188,7 @@ mod tests {
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].symbol.as_deref(), Some("pkg"));
         assert_eq!(results[0].line_range, LineRange { start: 1, end: 3 });
+        assert_valid_ranges(&results);
     }
 
     #[test]
@@ -154,6 +198,7 @@ mod tests {
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].symbol.as_deref(), Some("Packet"));
         assert_eq!(results[0].line_range, LineRange { start: 1, end: 3 });
+        assert_valid_ranges(&results);
     }
 
     #[test]
@@ -182,5 +227,30 @@ endinterface";
         assert_eq!(results[1].line_range, LineRange { start: 7, end: 10 });
         assert_eq!(results[2].symbol.as_deref(), Some("bus"));
         assert_eq!(results[2].line_range, LineRange { start: 12, end: 14 });
+        assert_valid_ranges(&results);
+    }
+
+    #[test]
+    fn sv_06_orphan_endinterface_before_real_interface() {
+        // 孤立 endinterface 在文件开头，后面有真实 interface/endinterface
+        let content = "endinterface\n\ninterface my_bus(\n    logic clk\n);\nendinterface";
+        let results = SystemVerilogExtractor.extract(content);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].symbol.as_deref(), Some("my_bus"));
+        // interface at idx 2 (1-based=3), endinterface at idx 5 (1-based=6)
+        assert_eq!(results[0].line_range, LineRange { start: 3, end: 6 });
+        assert_valid_ranges(&results);
+    }
+
+    #[test]
+    fn sv_07_block_comment_with_endmodule_before_real_module() {
+        // 块注释内 endmodule 不应影响后面真实 module 的配对
+        let content = "/*\n  endmodule\n*/\nmodule real_mod();\nendmodule";
+        let results = SystemVerilogExtractor.extract(content);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].symbol.as_deref(), Some("real_mod"));
+        // module at idx 3 (1-based=4), endmodule at idx 4 (1-based=5)
+        assert_eq!(results[0].line_range, LineRange { start: 4, end: 5 });
+        assert_valid_ranges(&results);
     }
 }
