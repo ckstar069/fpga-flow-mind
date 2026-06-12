@@ -80,17 +80,24 @@ export default function WorkspacePage() {
   );
 
   // ─── 收集证据 ───
+  // 支持从 stage_loaded / evidence_* / understanding_* 状态重新收集
+  // understanding_* → collecting_evidence 转换自动清除旧 understanding
   const handleCollectEvidence = useCallback(async () => {
     if (
       state.phase !== 'stage_loaded' &&
       state.phase !== 'evidence_loaded' &&
-      state.phase !== 'evidence_error'
+      state.phase !== 'evidence_error' &&
+      state.phase !== 'understanding_loaded' &&
+      state.phase !== 'understanding_error' &&
+      state.phase !== 'understanding_loading'
     ) return;
     const { profile, stageId, context } = state as {
       profile: WorkspaceProfile;
       stageId: string;
       context: StageContext;
     };
+    // 进入 collecting_evidence 时自动清除旧 understanding/understandingError
+    // （AppState 从 understanding_* 切换到 collecting_evidence）
     setState({ phase: 'collecting_evidence', profile, stageId, context });
     try {
       const evidence = await collectEvidence(profile.root_path, stageId);

@@ -224,6 +224,7 @@ Phase 3 编码阶段与 Phase 2 保持相同的安全约束：
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-06-12 | Batch C 收口：修复 understanding_* 状态下重新收集证据无效（handleCollectEvidence 状态覆盖）；UI/UX 与测试文档同步（evidence_id 回链标注为后续能力、按钮条件修正、状态机验证项新增） | Claude |
 | 2026-06-12 | Phase 3 Batch C 完成：P3-T08（UnderstandingPanel）、P3-T09（WorkspacePage 状态机 + StageDetail 集成）；npm run build + cargo test 通过 | Claude |
 | 2026-06-12 | Phase 3 Batch B 完成：P3-T04（generator 7 测试）、P3-T05（command 8 测试）；合计 15 测试 | Claude |
 | 2026-06-12 | 收口修复：status draft → active；文档审核通过，允许进入 Phase 3 编码实施 | Claude |

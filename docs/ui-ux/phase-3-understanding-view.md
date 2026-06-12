@@ -125,9 +125,11 @@ UnderstandingPanel
 - chip 显示 evidence_id（如 `EV-L0-000001`）
 - chip 可点击
 
-### 6.2 点击行为
+### 6.2 点击行为（后续 Phase 3 优化 / Phase 4 能力）
 
-点击 evidence_id chip 时：
+> **当前状态**：evidence_id chip 为静态展示，不可点击。回链高亮交互为后续能力。
+
+计划行为（未实现）：
 1. 在 EvidencePanel 中高亮对应的 evidence item
 2. 如果 EvidencePanel 未展示，自动滚动到 EvidencePanel 并高亮
 3. 高亮持续 2 秒后渐隐
@@ -142,8 +144,9 @@ UnderstandingPanel
 
 ### 7.1 显示条件
 
-- 仅在 `evidence_loaded` 状态且有证据项时显示
-- evidence 为空时不显示
+- 已选中可分析阶段（非 `stage_empty`、无 `error_code`）
+- 生成理解不依赖前端已收集证据 — command 内部自动执行 evidence collect + generator
+- 空阶段不显示生成按钮
 
 ### 7.2 按钮状态
 
@@ -382,6 +385,7 @@ Phase 3 前端**不做**：
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-06-12 | Batch C 收口：evidence_id 回链高亮标注为后续能力（非当前验收项）；按钮显示条件修正为"已选中可分析阶段"（不要求 evidence_loaded）；修复 understanding_* 状态下重新收集证据无效 | Claude |
 | 2026-06-12 | Batch C 实现：UnderstandingPanel 组件完成（全字段展示 + confidence 颜色映射）；AppState phase 名改为 understanding_loading/loaded/error；阶段切换清空旧 understanding | Claude |
 | 2026-06-12 | 收口修复：ClaimConfidence 补齐 supported + 琥珀色；summary 改为 StageSummary { short, detailed } 两层展示；TypeScript 类型同步；status draft → active | Claude |
 | 2026-06-12 | 初始创建（draft） | Claude |

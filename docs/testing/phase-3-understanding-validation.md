@@ -220,13 +220,13 @@ rg "GraphView|Dataflow|Q&A|QA|LLM" src src-tauri/src/understanding/
 | 步骤 | 操作 | 预期 |
 |------|------|------|
 | 1 | 打开 Tauri 桌面应用 | 正常启动 |
-| 2 | 打开项目，选择阶段，收集证据 | 证据面板展示正常 |
-| 3 | 点击"生成理解"按钮 | 按钮变为"生成理解中..." |
+| 2 | 打开项目，选择阶段 | 阶段详情展示正常 |
+| 3 | 点击"生成理解"按钮 | 按钮变为"生成中..." |
 | 4 | 等待生成完成 | 面板展示 UnderstandingPanel |
 | 5 | 查看阶段摘要 | 显示中文摘要文本 |
-| 6 | 查看 claim 列表 | 每个 claim 有 category + confidence + evidence_refs |
-| 7 | 点击 evidence_id chip | EvidencePanel 高亮对应 evidence item |
-| 8 | 查看 unknown 区域 | 显示"无法推断的信息" |
+| 6 | 查看 claim 列表 | 每个 claim 有 category + confidence + evidence_refs（蓝色 chip 可见） |
+| 7 | 查看 evidence_id chip | evidence_id 可见，作为后续回链入口（当前为静态展示，不可点击） |
+| 8 | 查看 unknown 区域 | 显示"未推断项" |
 | 9 | 查看 evidence gap 区域 | 显示"证据缺失" |
 | 10 | 检查目标项目目录 | 无新增/修改/删除文件 |
 
@@ -237,6 +237,17 @@ rg "GraphView|Dataflow|Q&A|QA|LLM" src src-tauri/src/understanding/
 - ❌ 隐藏或淡化 unknown / evidence gap
 - ❌ 显示原始 JSON
 - ❌ 显示图视图 / Q&A 面板
+
+### 10.3 前端状态机验证项（Batch C 收口）
+
+| 验证项 | 操作 | 预期 |
+|--------|------|------|
+| 生成理解后重新收集证据 | understanding_loaded → 点击"收集证据" | 进入 collecting_evidence → evidence_loaded，旧 understanding 被清除 |
+| 生成失败后重新收集 | understanding_error → 点击"收集证据" | 进入 collecting_evidence → evidence_loaded/evidence_error |
+| 生成中取消（当前不支持取消） | 无需验证 | 生成中按钮 disabled |
+| 生成失败不清空 stage context | understanding_error 状态 | profile / stageId / context 仍在，左侧阶段列表不变 |
+| 阶段切换清空旧 understanding | understanding_loaded → 选择其他 stage | 进入 selecting_stage → stage_loaded，无残存 understanding |
+| 空阶段无生成按钮 | 选择 stage_empty 阶段 | 不显示"生成理解"按钮 |
 
 ## 11. 验收标准总结
 
@@ -257,6 +268,7 @@ rg "GraphView|Dataflow|Q&A|QA|LLM" src src-tauri/src/understanding/
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-06-12 | Batch C 收口：修复验收步骤 7（evidence_id 回链改为静态展示）；新增 §10.3 状态机验证项（重新收集/清空/切换）；手工验收不要求 evidence_id 点击回链 | Claude |
 | 2026-06-12 | Phase 3 Batch C：前端验证更新（构建 + 代码路径检查 + UnderstandingPanel 渲染矩阵 8 项）；移除可选的组件单元测试预估 | Claude |
 | 2026-06-12 | Phase 3 Batch B：更新 generator 测试矩阵（7 用例）、command 测试矩阵（8 用例）、degraded mode 语义表、测试合计 49→55 | Claude |
 | 2026-06-12 | 审核收口：删除 UnknownWithFakeEvidence（统一用 UnknownEvidenceId）；测试数量更新（schema_validator 8→28，context_builder 5→8，合计 26→49）；新增 version/claim_id/description 非空 + claim_id 格式验证用例 | Claude |
