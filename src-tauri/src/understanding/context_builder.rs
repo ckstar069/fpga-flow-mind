@@ -204,19 +204,26 @@ impl ContextBuilder {
     /// 返回 ImplementationUnderstanding 的 JSON schema
     ///
     /// 使用 serde_json::json! 硬编码，不引入 JSON Schema crate。
+    /// 包含 12 个必填字段、confidence/category 枚举、evidence_refs/related_evidence_refs
+    /// 元素结构、summary minLength、generation_meta/stats 子字段定义。
     fn build_output_schema() -> serde_json::Value {
         serde_json::json!({
             "type": "object",
-            "required": ["stage_id", "version", "summary", "claims", "stats", "generation_meta"],
+            "required": [
+                "stage_id", "version", "summary", "claims",
+                "module_summaries", "signal_summaries", "interface_summaries",
+                "processing_steps", "unknowns", "evidence_gaps",
+                "generation_meta", "stats"
+            ],
             "properties": {
-                "stage_id": { "type": "string" },
-                "version": { "type": "string" },
+                "stage_id": { "type": "string", "minLength": 1 },
+                "version": { "type": "string", "minLength": 1 },
                 "summary": {
                     "type": "object",
                     "required": ["short", "detailed"],
                     "properties": {
-                        "short": { "type": "string" },
-                        "detailed": { "type": "string" }
+                        "short": { "type": "string", "minLength": 1 },
+                        "detailed": { "type": "string", "minLength": 1 }
                     }
                 },
                 "claims": {
@@ -226,22 +233,221 @@ impl ContextBuilder {
                         "required": ["claim_id", "category", "description", "confidence", "evidence_refs", "has_evidence_gap"],
                         "properties": {
                             "claim_id": { "type": "string" },
-                            "category": { "type": "string" },
+                            "category": {
+                                "type": "string",
+                                "enum": [
+                                    "module_structure", "signal_definition",
+                                    "interface_description", "data_processing",
+                                    "configuration", "documentation",
+                                    "test_coverage", "other"
+                                ]
+                            },
                             "description": { "type": "string" },
-                            "confidence": { "type": "string" },
-                            "evidence_refs": { "type": "array" },
+                            "confidence": {
+                                "type": "string",
+                                "enum": [
+                                    "confirmed", "supported", "inferred",
+                                    "unknown", "conflicting"
+                                ]
+                            },
+                            "evidence_refs": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "required": ["evidence_id"],
+                                    "properties": {
+                                        "evidence_id": { "type": "string" },
+                                        "relevance": { "type": "string" }
+                                    }
+                                }
+                            },
                             "has_evidence_gap": { "type": "boolean" }
                         }
                     }
                 },
-                "module_summaries": { "type": "array" },
-                "signal_summaries": { "type": "array" },
-                "interface_summaries": { "type": "array" },
-                "processing_steps": { "type": "array" },
-                "unknowns": { "type": "array" },
-                "evidence_gaps": { "type": "array" },
-                "generation_meta": { "type": "object" },
-                "stats": { "type": "object" }
+                "module_summaries": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": ["name", "description", "evidence_refs", "confidence"],
+                        "properties": {
+                            "name": { "type": "string" },
+                            "description": { "type": "string" },
+                            "evidence_refs": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "required": ["evidence_id"],
+                                    "properties": {
+                                        "evidence_id": { "type": "string" },
+                                        "relevance": { "type": "string" }
+                                    }
+                                }
+                            },
+                            "confidence": {
+                                "type": "string",
+                                "enum": ["confirmed", "supported", "inferred", "unknown", "conflicting"]
+                            }
+                        }
+                    }
+                },
+                "signal_summaries": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": ["name", "description", "evidence_refs", "confidence"],
+                        "properties": {
+                            "name": { "type": "string" },
+                            "description": { "type": "string" },
+                            "direction": { "type": "string" },
+                            "evidence_refs": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "required": ["evidence_id"],
+                                    "properties": {
+                                        "evidence_id": { "type": "string" },
+                                        "relevance": { "type": "string" }
+                                    }
+                                }
+                            },
+                            "confidence": {
+                                "type": "string",
+                                "enum": ["confirmed", "supported", "inferred", "unknown", "conflicting"]
+                            }
+                        }
+                    }
+                },
+                "interface_summaries": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": ["name", "description", "evidence_refs", "confidence"],
+                        "properties": {
+                            "name": { "type": "string" },
+                            "description": { "type": "string" },
+                            "interface_type": { "type": "string" },
+                            "evidence_refs": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "required": ["evidence_id"],
+                                    "properties": {
+                                        "evidence_id": { "type": "string" },
+                                        "relevance": { "type": "string" }
+                                    }
+                                }
+                            },
+                            "confidence": {
+                                "type": "string",
+                                "enum": ["confirmed", "supported", "inferred", "unknown", "conflicting"]
+                            }
+                        }
+                    }
+                },
+                "processing_steps": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": ["name", "description", "order", "evidence_refs", "confidence"],
+                        "properties": {
+                            "name": { "type": "string" },
+                            "description": { "type": "string" },
+                            "order": { "type": "integer" },
+                            "evidence_refs": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "required": ["evidence_id"],
+                                    "properties": {
+                                        "evidence_id": { "type": "string" },
+                                        "relevance": { "type": "string" }
+                                    }
+                                }
+                            },
+                            "confidence": {
+                                "type": "string",
+                                "enum": ["confirmed", "supported", "inferred", "unknown", "conflicting"]
+                            }
+                        }
+                    }
+                },
+                "unknowns": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": ["unknown_id", "description", "related_evidence_refs", "reason"],
+                        "properties": {
+                            "unknown_id": { "type": "string" },
+                            "description": { "type": "string" },
+                            "related_evidence_refs": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "required": ["evidence_id"],
+                                    "properties": {
+                                        "evidence_id": { "type": "string" },
+                                        "relevance": { "type": "string" }
+                                    }
+                                }
+                            },
+                            "reason": { "type": "string" }
+                        }
+                    }
+                },
+                "evidence_gaps": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": ["gap_id", "expected_evidence", "reason", "related_evidence_refs"],
+                        "properties": {
+                            "gap_id": { "type": "string" },
+                            "expected_evidence": { "type": "string" },
+                            "reason": { "type": "string" },
+                            "related_evidence_refs": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "required": ["evidence_id"],
+                                    "properties": {
+                                        "evidence_id": { "type": "string" },
+                                        "relevance": { "type": "string" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "generation_meta": {
+                    "type": "object",
+                    "required": ["provider", "generated_at", "input_evidence_count", "generation_time_ms", "is_degraded"],
+                    "properties": {
+                        "provider": { "type": "string" },
+                        "generated_at": { "type": "string" },
+                        "input_evidence_count": { "type": "integer" },
+                        "generation_time_ms": { "type": "integer" },
+                        "is_degraded": { "type": "boolean" }
+                    }
+                },
+                "stats": {
+                    "type": "object",
+                    "required": [
+                        "total_claims", "claims_by_confidence", "claims_by_category",
+                        "module_count", "signal_count", "interface_count",
+                        "processing_step_count", "unknown_count", "evidence_gap_count"
+                    ],
+                    "properties": {
+                        "total_claims": { "type": "integer" },
+                        "claims_by_confidence": { "type": "object" },
+                        "claims_by_category": { "type": "object" },
+                        "module_count": { "type": "integer" },
+                        "signal_count": { "type": "integer" },
+                        "interface_count": { "type": "integer" },
+                        "processing_step_count": { "type": "integer" },
+                        "unknown_count": { "type": "integer" },
+                        "evidence_gap_count": { "type": "integer" }
+                    }
+                }
             }
         })
     }
@@ -360,24 +566,153 @@ mod tests {
         // schema 是合法 JSON
         assert!(output.output_schema.is_object(), "schema must be a JSON object");
 
-        // 包含 ImplementationUnderstanding 关键字段
-        let props = output.output_schema.get("properties").unwrap();
-        assert!(props.get("stage_id").is_some(), "schema must have stage_id");
-        assert!(props.get("version").is_some(), "schema must have version");
-        assert!(props.get("summary").is_some(), "schema must have summary");
-        assert!(props.get("claims").is_some(), "schema must have claims");
-        assert!(props.get("stats").is_some(), "schema must have stats");
-        assert!(props.get("generation_meta").is_some(), "schema must have generation_meta");
-
-        // required 字段
+        // ─── 12 个必填字段 ────────────────────────────────────────────
         let required = output
             .output_schema
             .get("required")
             .unwrap()
             .as_array()
             .unwrap();
-        assert!(required.iter().any(|r| r == "stage_id"));
-        assert!(required.iter().any(|r| r == "claims"));
+        let required_names: Vec<&str> = required
+            .iter()
+            .filter_map(|v| v.as_str())
+            .collect();
+        let expected = [
+            "stage_id", "version", "summary", "claims",
+            "module_summaries", "signal_summaries", "interface_summaries",
+            "processing_steps", "unknowns", "evidence_gaps",
+            "generation_meta", "stats",
+        ];
+        for name in &expected {
+            assert!(
+                required_names.contains(name),
+                "schema required must contain '{}'",
+                name
+            );
+        }
+        assert_eq!(
+            required_names.len(),
+            expected.len(),
+            "schema must have exactly {} required fields",
+            expected.len()
+        );
+
+        // ─── properties 包含全部 12 个字段 ───────────────────────────
+        let props = output.output_schema.get("properties").unwrap();
+        for name in &expected {
+            assert!(
+                props.get(*name).is_some(),
+                "schema properties must contain '{}'",
+                name
+            );
+        }
+
+        // ─── confidence 枚举定义存在于 claims items ──────────────────
+        let claim_confidence = props
+            .get("claims")
+            .unwrap()
+            .get("items")
+            .unwrap()
+            .get("properties")
+            .unwrap()
+            .get("confidence")
+            .unwrap();
+        let conf_enum = claim_confidence.get("enum").unwrap().as_array().unwrap();
+        assert!(conf_enum.iter().any(|v| v == "confirmed"));
+        assert!(conf_enum.iter().any(|v| v == "supported"));
+        assert!(conf_enum.iter().any(|v| v == "inferred"));
+        assert!(conf_enum.iter().any(|v| v == "unknown"));
+        assert!(conf_enum.iter().any(|v| v == "conflicting"));
+
+        // ─── category 枚举定义存在于 claims items ────────────────────
+        let claim_category = props
+            .get("claims")
+            .unwrap()
+            .get("items")
+            .unwrap()
+            .get("properties")
+            .unwrap()
+            .get("category")
+            .unwrap();
+        let cat_enum = claim_category.get("enum").unwrap().as_array().unwrap();
+        assert!(cat_enum.iter().any(|v| v == "module_structure"));
+        assert!(cat_enum.iter().any(|v| v == "other"));
+
+        // ─── claims evidence_refs items.required 包含 evidence_id ────
+        let claims_refs_items = props
+            .get("claims")
+            .unwrap()
+            .get("items")
+            .unwrap()
+            .get("properties")
+            .unwrap()
+            .get("evidence_refs")
+            .unwrap()
+            .get("items")
+            .unwrap();
+        let refs_required = claims_refs_items.get("required").unwrap().as_array().unwrap();
+        assert!(
+            refs_required.iter().any(|v| v == "evidence_id"),
+            "claims evidence_refs items must require evidence_id"
+        );
+
+        // ─── unknowns related_evidence_refs item shape ────────────────
+        let unknowns_refs_items = props
+            .get("unknowns")
+            .unwrap()
+            .get("items")
+            .unwrap()
+            .get("properties")
+            .unwrap()
+            .get("related_evidence_refs")
+            .unwrap()
+            .get("items")
+            .unwrap();
+        let unk_refs_required = unknowns_refs_items.get("required").unwrap().as_array().unwrap();
+        assert!(
+            unk_refs_required.iter().any(|v| v == "evidence_id"),
+            "unknowns related_evidence_refs items must require evidence_id"
+        );
+
+        // ─── evidence_gaps related_evidence_refs item shape ────────────
+        let gaps_refs_items = props
+            .get("evidence_gaps")
+            .unwrap()
+            .get("items")
+            .unwrap()
+            .get("properties")
+            .unwrap()
+            .get("related_evidence_refs")
+            .unwrap()
+            .get("items")
+            .unwrap();
+        let gap_refs_required = gaps_refs_items.get("required").unwrap().as_array().unwrap();
+        assert!(
+            gap_refs_required.iter().any(|v| v == "evidence_id"),
+            "evidence_gaps related_evidence_refs items must require evidence_id"
+        );
+
+        // ─── summary.short 和 summary.detailed minLength: 1 ──────────
+        let summary_short = props.get("summary").unwrap().get("properties").unwrap().get("short").unwrap();
+        assert_eq!(summary_short.get("minLength").unwrap(), 1, "summary.short must have minLength: 1");
+        let summary_detailed = props.get("summary").unwrap().get("properties").unwrap().get("detailed").unwrap();
+        assert_eq!(summary_detailed.get("minLength").unwrap(), 1, "summary.detailed must have minLength: 1");
+
+        // ─── generation_meta 子字段定义 ────────────────────────────────
+        let gen_meta = props.get("generation_meta").unwrap();
+        let gm_required = gen_meta.get("required").unwrap().as_array().unwrap();
+        assert!(gm_required.iter().any(|v| v == "provider"));
+        assert!(gm_required.iter().any(|v| v == "generated_at"));
+        assert!(gm_required.iter().any(|v| v == "input_evidence_count"));
+        assert!(gm_required.iter().any(|v| v == "generation_time_ms"));
+        assert!(gm_required.iter().any(|v| v == "is_degraded"));
+
+        // ─── stats 子字段定义 ──────────────────────────────────────────
+        let stats_schema = props.get("stats").unwrap();
+        let stats_required = stats_schema.get("required").unwrap().as_array().unwrap();
+        assert!(stats_required.iter().any(|v| v == "total_claims"));
+        assert!(stats_required.iter().any(|v| v == "unknown_count"));
+        assert!(stats_required.iter().any(|v| v == "evidence_gap_count"));
     }
 
     #[test]

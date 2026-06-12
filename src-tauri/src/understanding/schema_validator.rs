@@ -45,11 +45,6 @@ pub enum ValidationError {
     },
     /// claim 缺少必要的 evidence_refs
     ClaimWithoutEvidence { claim_id: String },
-    /// unknown 项绑定了不存在的 evidence_id
-    UnknownWithFakeEvidence {
-        unknown_id: String,
-        evidence_id: String,
-    },
     /// 重复的 claim_id
     DuplicateClaimId { claim_id: String },
 }
@@ -140,12 +135,21 @@ impl SchemaValidator {
             }
         }
 
-        // 2. version: 字符串
-        if output.get("version").and_then(|v| v.as_str()).is_none() {
-            errors.push(ValidationError::SchemaViolation {
-                path: "/version".to_string(),
-                message: "缺少 version 字段".to_string(),
-            });
+        // 2. version: 非空字符串（建议 "3.0.0"）
+        match output.get("version").and_then(|v| v.as_str()) {
+            Some(s) if !s.is_empty() => {}
+            Some(_) => {
+                errors.push(ValidationError::SchemaViolation {
+                    path: "/version".to_string(),
+                    message: "version 不能为空字符串（建议 \"3.0.0\"）".to_string(),
+                });
+            }
+            None => {
+                errors.push(ValidationError::SchemaViolation {
+                    path: "/version".to_string(),
+                    message: "缺少 version 字段".to_string(),
+                });
+            }
         }
 
         // 3. summary: 对象 + short/detailed 非空字符串
@@ -360,12 +364,40 @@ impl SchemaValidator {
             return;
         }
 
-        // claim_id: 字符串
-        if claim.get("claim_id").and_then(|v| v.as_str()).is_none() {
-            errors.push(ValidationError::SchemaViolation {
-                path: format!("{}/claim_id", path_prefix),
-                message: "claim_id 必须是字符串".to_string(),
-            });
+        // claim_id: 非空字符串 + 格式 CL-<stage_id>-<6digit>
+        match claim.get("claim_id").and_then(|v| v.as_str()) {
+            Some(s) if !s.is_empty() => {
+                // 格式验证：CL-<stage_id>-<6 位数字>
+                let valid_format = s.starts_with("CL-")
+                    && s.chars().filter(|&c| c == '-').count() >= 2;
+                let suffix_ok = if valid_format {
+                    // 取最后一段，检查是否为 6 位数字
+                    s.rsplit('-').next().map(|suffix| suffix.len() == 6 && suffix.chars().all(|c| c.is_ascii_digit())).unwrap_or(false)
+                } else {
+                    false
+                };
+                if !suffix_ok {
+                    errors.push(ValidationError::SchemaViolation {
+                        path: format!("{}/claim_id", path_prefix),
+                        message: format!(
+                            "claim_id 格式应为 CL-<stage_id>-<6 位数字>，实际: {}",
+                            s
+                        ),
+                    });
+                }
+            }
+            Some(_) => {
+                errors.push(ValidationError::SchemaViolation {
+                    path: format!("{}/claim_id", path_prefix),
+                    message: "claim_id 不能为空字符串".to_string(),
+                });
+            }
+            None => {
+                errors.push(ValidationError::SchemaViolation {
+                    path: format!("{}/claim_id", path_prefix),
+                    message: "缺少 claim_id 字段".to_string(),
+                });
+            }
         }
 
         // category: 合法枚举值
@@ -385,12 +417,21 @@ impl SchemaValidator {
             }
         }
 
-        // description: 字符串
-        if claim.get("description").and_then(|v| v.as_str()).is_none() {
-            errors.push(ValidationError::SchemaViolation {
-                path: format!("{}/description", path_prefix),
-                message: "description 必须是字符串".to_string(),
-            });
+        // description: 非空字符串
+        match claim.get("description").and_then(|v| v.as_str()) {
+            Some(s) if !s.is_empty() => {}
+            Some(_) => {
+                errors.push(ValidationError::SchemaViolation {
+                    path: format!("{}/description", path_prefix),
+                    message: "description 不能为空字符串".to_string(),
+                });
+            }
+            None => {
+                errors.push(ValidationError::SchemaViolation {
+                    path: format!("{}/description", path_prefix),
+                    message: "缺少 description 字段".to_string(),
+                });
+            }
         }
 
         // confidence: 合法枚举值
@@ -1522,6 +1563,100 @@ mod tests {
                     if path.contains("evidence_id") && message.contains("不能为空")
                 )),
             "expected SchemaViolation for empty evidence_id, got: {:?}",
+            result.errors
+        );
+    }
+
+    // ─── val_25 ~ val_28: version/claim_id/description 加强 ───────────
+
+    #[test]
+    fn val_25_empty_version_fails() {
+        let mut output = make_valid_output();
+        output["version"] = serde_json::json!("");
+
+        let known_ids = make_known_ids(&["EV-L0-000001"]);
+        let result = SchemaValidator::validate(&output, &known_ids);
+
+        assert!(!result.is_valid);
+        assert!(
+            result
+                .errors
+                .iter()
+                .any(|e| matches!(
+                    e,
+                    ValidationError::SchemaViolation { path, message, .. }
+                    if path == "/version" && message.contains("不能为空")
+                )),
+            "expected SchemaViolation for empty version, got: {:?}",
+            result.errors
+        );
+    }
+
+    #[test]
+    fn val_26_empty_claim_id_fails() {
+        let mut output = make_valid_output();
+        output["claims"][0]["claim_id"] = serde_json::json!("");
+
+        let known_ids = make_known_ids(&["EV-L0-000001"]);
+        let result = SchemaValidator::validate(&output, &known_ids);
+
+        assert!(!result.is_valid);
+        assert!(
+            result
+                .errors
+                .iter()
+                .any(|e| matches!(
+                    e,
+                    ValidationError::SchemaViolation { path, message, .. }
+                    if path == "/claims/0/claim_id" && message.contains("不能为空")
+                )),
+            "expected SchemaViolation for empty claim_id, got: {:?}",
+            result.errors
+        );
+    }
+
+    #[test]
+    fn val_27_bad_claim_id_format_fails() {
+        let mut output = make_valid_output();
+        output["claims"][0]["claim_id"] = serde_json::json!("bad-format-id");
+
+        let known_ids = make_known_ids(&["EV-L0-000001"]);
+        let result = SchemaValidator::validate(&output, &known_ids);
+
+        assert!(!result.is_valid);
+        assert!(
+            result
+                .errors
+                .iter()
+                .any(|e| matches!(
+                    e,
+                    ValidationError::SchemaViolation { path, message, .. }
+                    if path == "/claims/0/claim_id" && message.contains("CL-<stage_id>-<6")
+                )),
+            "expected SchemaViolation for bad claim_id format, got: {:?}",
+            result.errors
+        );
+    }
+
+    #[test]
+    fn val_28_empty_description_fails() {
+        let mut output = make_valid_output();
+        output["claims"][0]["description"] = serde_json::json!("");
+
+        let known_ids = make_known_ids(&["EV-L0-000001"]);
+        let result = SchemaValidator::validate(&output, &known_ids);
+
+        assert!(!result.is_valid);
+        assert!(
+            result
+                .errors
+                .iter()
+                .any(|e| matches!(
+                    e,
+                    ValidationError::SchemaViolation { path, message, .. }
+                    if path == "/claims/0/description" && message.contains("不能为空")
+                )),
+            "expected SchemaViolation for empty description, got: {:?}",
             result.errors
         );
     }

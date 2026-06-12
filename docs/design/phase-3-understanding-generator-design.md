@@ -91,6 +91,14 @@ pub struct GeneratorOutput {
     pub output_schema: serde_json::Value,
     /// 已知的 evidence_id 集合（传给 validator）
     pub known_evidence_ids: HashSet<String>,
+    /// 结构化证据上下文条目
+    pub evidence_context_items: Vec<EvidenceContextItem>,
+    /// 索引摘要
+    pub index_summary: IndexSummary,
+    /// 统计摘要
+    pub stats_summary: StatsSummary,
+    /// 警告摘要（字符串列表）
+    pub warnings_summary: Vec<String>,
 }
 ```
 
@@ -279,12 +287,12 @@ pub struct ValidationResult {
 pub enum ValidationError {
     /// JSON schema 验证失败
     SchemaViolation { path: String, message: String },
-    /// evidence_id 不存在
+    /// evidence_id 不存在（hallucination guard — 覆盖 claims/unknowns/gaps/summaries 中所有伪造 ID）
     UnknownEvidenceId { evidence_id: String, location: String },
-    /// claim 无 evidence_refs 且无 evidence_gap
+    /// claim 无 evidence_refs 且不满足 unknown+gap 豁免条件
     ClaimWithoutEvidence { claim_id: String },
-    /// unknown 绑定了不存在的 evidence_id
-    UnknownWithFakeEvidence { unknown_id: String, evidence_id: String },
+    /// 重复的 claim_id
+    DuplicateClaimId { claim_id: String },
 }
 
 pub enum ValidationWarning {
@@ -456,5 +464,6 @@ Phase 3 后端代码遵循与 Phase 2 相同的安全约束：
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-06-12 | 审核收口：GeneratorOutput 新增 4 字段；ValidationError 删除 UnknownWithFakeEvidence，新增 DuplicateClaimId；version/claim_id/description 加强验证 | Claude |
 | 2026-06-12 | 收口修复：prompt confidence 描述补齐 supported；status draft → active | Claude |
 | 2026-06-12 | 初始创建（draft） | Claude |

@@ -31,11 +31,11 @@ Phase 3 编码完成后，以下维度应通过验证：
 | 测试位置 | 覆盖模块 | 预估数量 |
 |----------|----------|----------|
 | `understanding/models.rs` | 数据结构 serde（序列化/反序列化） | 4 |
-| `understanding/context_builder.rs` | ContextBuilder 输出正确性 | 5 |
-| `understanding/schema_validator.rs` | Schema 验证 + evidence_id check | 8 |
+| `understanding/context_builder.rs` | ContextBuilder 输出正确性 + schema 覆盖 | 8 |
+| `understanding/schema_validator.rs` | Schema 验证 + evidence_id check + confidence/claim_id/description | 28 |
 | `understanding/generator.rs` | Generator pipeline（mock provider） | 4 |
 | `commands/generate_understanding.rs` | Tauri command 层 | 5 |
-| **合计** | | **~26** |
+| **合计** | | **~49** |
 
 ### 2.2 前端测试
 
@@ -124,7 +124,7 @@ Phase 3 编码完成后，以下维度应通过验证：
 | 一个 ID 不存在 | 1 个 evidence_id 不在 known_ids 中 | UnknownEvidenceId error |
 | 空 evidence_refs | claim 无 evidence_refs 且 has_evidence_gap=false | ClaimWithoutEvidence error |
 | unknown 无伪造 ID | unknown 的 related_evidence_refs 全在 known_ids 中 | is_valid = true |
-| unknown 有伪造 ID | unknown 引用不存在的 ID | UnknownWithFakeEvidence error |
+| unknown 有伪造 ID | unknown 引用不存在的 ID | UnknownEvidenceId error（统一使用 UnknownEvidenceId 覆盖所有位置） |
 
 ### 5.3 业务规则检查
 
@@ -240,5 +240,9 @@ rg "GraphView|Dataflow|Q&A|QA|LLM" src src-tauri/src/understanding/
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-06-12 | 收口修复：ClaimConfidence 测试矩阵补齐 supported（4→5 种值）；前端渲染测试同步；status draft → active | Claude |
+| 日期 | 变更 | 作者 |
+|------|------|------|
+| 2026-06-12 | 审核收口：删除 UnknownWithFakeEvidence（统一用 UnknownEvidenceId）；测试数量更新（schema_validator 8→28，context_builder 5→8，合计 26→49）；新增 version/claim_id/description 非空 + claim_id 格式验证用例 | Claude |
 | 2026-06-12 | 收口修复：ClaimConfidence 测试矩阵补齐 supported（4→5 种值）；前端渲染测试同步；status draft → active | Claude |
 | 2026-06-12 | 初始创建（draft） | Claude |
