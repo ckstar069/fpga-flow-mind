@@ -1,22 +1,57 @@
 use std::collections::HashSet;
 
+// ─── 合法枚举值 ────────────────────────────────────────────────────────
+
+/// 合法 ClaimConfidence 枚举值（snake_case）
+const VALID_CONFIDENCES: &[&str] = &[
+    "confirmed",
+    "supported",
+    "inferred",
+    "unknown",
+    "conflicting",
+];
+
+/// 合法 ClaimCategory 枚举值（snake_case）
+const VALID_CATEGORIES: &[&str] = &[
+    "module_structure",
+    "signal_definition",
+    "interface_description",
+    "data_processing",
+    "configuration",
+    "documentation",
+    "test_coverage",
+    "other",
+];
+
+/// 需要 ≥1 evidence_ref 的 confidence（非 unknown）
+const CONFIDENCE_REQUIRES_REFS: &[&str] = &[
+    "confirmed",
+    "supported",
+    "inferred",
+    "conflicting",
+];
+
+// ─── Error/Warning 类型 ───────────────────────────────────────────────
+
 /// 验证错误 — 阻断性，导致 is_valid = false
 #[derive(Debug, Clone, PartialEq)]
 pub enum ValidationError {
-    /// JSON schema 验证失败（字段缺失、类型错误、枚举非法等）
+    /// JSON 结构验证失败（字段缺失、类型错误、枚举非法等）
     SchemaViolation { path: String, message: String },
     /// evidence_id 不存在于输入 EvidenceCollection 中（hallucination）
     UnknownEvidenceId {
         evidence_id: String,
         location: String,
     },
-    /// claim 无 evidence_refs 且未标注 has_evidence_gap
+    /// claim 缺少必要的 evidence_refs
     ClaimWithoutEvidence { claim_id: String },
     /// unknown 项绑定了不存在的 evidence_id
     UnknownWithFakeEvidence {
         unknown_id: String,
         evidence_id: String,
     },
+    /// 重复的 claim_id
+    DuplicateClaimId { claim_id: String },
 }
 
 /// 验证警告 — 非阻断性，不影响 is_valid
@@ -36,12 +71,12 @@ pub struct ValidationResult {
     pub warnings: Vec<ValidationWarning>,
 }
 
-/// SchemaValidator — 对 generator 输出进行两层验证
+/// SchemaValidator — 对 generator 输出进行三层验证
 ///
 /// 验证流程：
-/// 1. 结构验证：字段完整性、类型正确性
+/// 1. 结构验证：12 个必填字段、类型、枚举值、evidence_refs 元素结构
 /// 2. evidence_id existence check（hallucination guard）
-/// 3. 业务规则检查
+/// 3. 业务规则检查：confidence 与 refs 关系、重复 claim_id、阈值警告
 pub struct SchemaValidator;
 
 impl SchemaValidator {
@@ -76,7 +111,8 @@ impl SchemaValidator {
         }
     }
 
-    /// 第 1 层：结构验证
+    // ─── 第 1 层：结构验证 ─────────────────────────────────────────
+
     fn check_structure(output: &serde_json::Value, errors: &mut Vec<ValidationError>) {
         // 必须是 object
         if !output.is_object() {
@@ -87,49 +123,82 @@ impl SchemaValidator {
             return;
         }
 
-        // stage_id 非空
+        // 1. stage_id: 非空字符串
         match output.get("stage_id").and_then(|v| v.as_str()) {
             Some(s) if !s.is_empty() => {}
-            Some(_) | None => {
+            Some(_) => {
                 errors.push(ValidationError::SchemaViolation {
                     path: "/stage_id".to_string(),
-                    message: "stage_id 必须是非空字符串".to_string(),
+                    message: "stage_id 不能为空字符串".to_string(),
+                });
+            }
+            None => {
+                errors.push(ValidationError::SchemaViolation {
+                    path: "/stage_id".to_string(),
+                    message: "缺少 stage_id 字段".to_string(),
                 });
             }
         }
 
-        // summary 存在且包含 short 和 detailed
-        if let Some(summary) = output.get("summary") {
-            if !summary.is_object() {
+        // 2. version: 字符串
+        if output.get("version").and_then(|v| v.as_str()).is_none() {
+            errors.push(ValidationError::SchemaViolation {
+                path: "/version".to_string(),
+                message: "缺少 version 字段".to_string(),
+            });
+        }
+
+        // 3. summary: 对象 + short/detailed 非空字符串
+        match output.get("summary") {
+            Some(s) if s.is_object() => {
+                match s.get("short").and_then(|v| v.as_str()) {
+                    Some(v) if !v.is_empty() => {}
+                    Some(_) => {
+                        errors.push(ValidationError::SchemaViolation {
+                            path: "/summary/short".to_string(),
+                            message: "summary.short 不能为空字符串".to_string(),
+                        });
+                    }
+                    None => {
+                        errors.push(ValidationError::SchemaViolation {
+                            path: "/summary/short".to_string(),
+                            message: "缺少 summary.short 字段".to_string(),
+                        });
+                    }
+                }
+                match s.get("detailed").and_then(|v| v.as_str()) {
+                    Some(v) if !v.is_empty() => {}
+                    Some(_) => {
+                        errors.push(ValidationError::SchemaViolation {
+                            path: "/summary/detailed".to_string(),
+                            message: "summary.detailed 不能为空字符串".to_string(),
+                        });
+                    }
+                    None => {
+                        errors.push(ValidationError::SchemaViolation {
+                            path: "/summary/detailed".to_string(),
+                            message: "缺少 summary.detailed 字段".to_string(),
+                        });
+                    }
+                }
+            }
+            Some(_) => {
                 errors.push(ValidationError::SchemaViolation {
                     path: "/summary".to_string(),
                     message: "summary 必须是对象".to_string(),
                 });
-            } else {
-                if summary.get("short").and_then(|v| v.as_str()).is_none() {
-                    errors.push(ValidationError::SchemaViolation {
-                        path: "/summary/short".to_string(),
-                        message: "summary.short 必须是字符串".to_string(),
-                    });
-                }
-                if summary.get("detailed").and_then(|v| v.as_str()).is_none() {
-                    errors.push(ValidationError::SchemaViolation {
-                        path: "/summary/detailed".to_string(),
-                        message: "summary.detailed 必须是字符串".to_string(),
-                    });
-                }
             }
-        } else {
-            errors.push(ValidationError::SchemaViolation {
-                path: "/summary".to_string(),
-                message: "缺少 summary 字段".to_string(),
-            });
+            None => {
+                errors.push(ValidationError::SchemaViolation {
+                    path: "/summary".to_string(),
+                    message: "缺少 summary 字段".to_string(),
+                });
+            }
         }
 
-        // claims 是数组
+        // 4. claims: 数组 + 逐项验证
         match output.get("claims") {
             Some(v) if v.is_array() => {
-                // 检查每个 claim 的必填字段
                 if let Some(claims) = v.as_array() {
                     for (i, claim) in claims.iter().enumerate() {
                         let path_prefix = format!("/claims/{}", i);
@@ -150,9 +219,134 @@ impl SchemaValidator {
                 });
             }
         }
+
+        // 5-8. 摘要数组 + evidence_refs 元素结构检查
+        for field in &[
+            "module_summaries",
+            "signal_summaries",
+            "interface_summaries",
+            "processing_steps",
+        ] {
+            match output.get(*field) {
+                Some(v) if v.is_array() => {
+                    if let Some(arr) = v.as_array() {
+                        for (i, item) in arr.iter().enumerate() {
+                            let refs_path = format!("/{}/{}/evidence_refs", field, i);
+                            Self::check_evidence_ref_elements(
+                                item.get("evidence_refs"),
+                                &refs_path,
+                                errors,
+                            );
+                        }
+                    }
+                }
+                Some(_) => {
+                    errors.push(ValidationError::SchemaViolation {
+                        path: format!("/{}", field),
+                        message: format!("{} 必须是数组", field),
+                    });
+                }
+                None => {
+                    errors.push(ValidationError::SchemaViolation {
+                        path: format!("/{}", field),
+                        message: format!("缺少 {} 字段", field),
+                    });
+                }
+            }
+        }
+
+        // 9. unknowns: 数组 + related_evidence_refs 元素结构检查
+        match output.get("unknowns") {
+            Some(v) if v.is_array() => {
+                if let Some(arr) = v.as_array() {
+                    for (i, item) in arr.iter().enumerate() {
+                        let refs_path = format!("/unknowns/{}/related_evidence_refs", i);
+                        Self::check_evidence_ref_elements(
+                            item.get("related_evidence_refs"),
+                            &refs_path,
+                            errors,
+                        );
+                    }
+                }
+            }
+            Some(_) => {
+                errors.push(ValidationError::SchemaViolation {
+                    path: "/unknowns".to_string(),
+                    message: "unknowns 必须是数组".to_string(),
+                });
+            }
+            None => {
+                errors.push(ValidationError::SchemaViolation {
+                    path: "/unknowns".to_string(),
+                    message: "缺少 unknowns 字段".to_string(),
+                });
+            }
+        }
+
+        // 10. evidence_gaps: 数组 + related_evidence_refs 元素结构检查
+        match output.get("evidence_gaps") {
+            Some(v) if v.is_array() => {
+                if let Some(arr) = v.as_array() {
+                    for (i, item) in arr.iter().enumerate() {
+                        let refs_path = format!("/evidence_gaps/{}/related_evidence_refs", i);
+                        Self::check_evidence_ref_elements(
+                            item.get("related_evidence_refs"),
+                            &refs_path,
+                            errors,
+                        );
+                    }
+                }
+            }
+            Some(_) => {
+                errors.push(ValidationError::SchemaViolation {
+                    path: "/evidence_gaps".to_string(),
+                    message: "evidence_gaps 必须是数组".to_string(),
+                });
+            }
+            None => {
+                errors.push(ValidationError::SchemaViolation {
+                    path: "/evidence_gaps".to_string(),
+                    message: "缺少 evidence_gaps 字段".to_string(),
+                });
+            }
+        }
+
+        // 11. generation_meta: 对象
+        match output.get("generation_meta") {
+            Some(v) if v.is_object() => {}
+            Some(_) => {
+                errors.push(ValidationError::SchemaViolation {
+                    path: "/generation_meta".to_string(),
+                    message: "generation_meta 必须是对象".to_string(),
+                });
+            }
+            None => {
+                errors.push(ValidationError::SchemaViolation {
+                    path: "/generation_meta".to_string(),
+                    message: "缺少 generation_meta 字段".to_string(),
+                });
+            }
+        }
+
+        // 12. stats: 对象
+        match output.get("stats") {
+            Some(v) if v.is_object() => {}
+            Some(_) => {
+                errors.push(ValidationError::SchemaViolation {
+                    path: "/stats".to_string(),
+                    message: "stats 必须是对象".to_string(),
+                });
+            }
+            None => {
+                errors.push(ValidationError::SchemaViolation {
+                    path: "/stats".to_string(),
+                    message: "缺少 stats 字段".to_string(),
+                });
+            }
+        }
     }
 
-    /// 检查单个 claim 的结构
+    /// 检查单个 claim 的结构（含枚举值验证和 evidence_refs 元素结构）
     fn check_claim_structure(
         claim: &serde_json::Value,
         path_prefix: &str,
@@ -166,7 +360,7 @@ impl SchemaValidator {
             return;
         }
 
-        // claim_id
+        // claim_id: 字符串
         if claim.get("claim_id").and_then(|v| v.as_str()).is_none() {
             errors.push(ValidationError::SchemaViolation {
                 path: format!("{}/claim_id", path_prefix),
@@ -174,15 +368,24 @@ impl SchemaValidator {
             });
         }
 
-        // category
-        if claim.get("category").and_then(|v| v.as_str()).is_none() {
-            errors.push(ValidationError::SchemaViolation {
-                path: format!("{}/category", path_prefix),
-                message: "category 必须是字符串".to_string(),
-            });
+        // category: 合法枚举值
+        match claim.get("category").and_then(|v| v.as_str()) {
+            Some(s) if VALID_CATEGORIES.contains(&s) => {}
+            Some(s) => {
+                errors.push(ValidationError::SchemaViolation {
+                    path: format!("{}/category", path_prefix),
+                    message: format!("非法 category 值: {}", s),
+                });
+            }
+            None => {
+                errors.push(ValidationError::SchemaViolation {
+                    path: format!("{}/category", path_prefix),
+                    message: "缺少 category 字段".to_string(),
+                });
+            }
         }
 
-        // description
+        // description: 字符串
         if claim.get("description").and_then(|v| v.as_str()).is_none() {
             errors.push(ValidationError::SchemaViolation {
                 path: format!("{}/description", path_prefix),
@@ -190,17 +393,29 @@ impl SchemaValidator {
             });
         }
 
-        // confidence
-        if claim.get("confidence").and_then(|v| v.as_str()).is_none() {
-            errors.push(ValidationError::SchemaViolation {
-                path: format!("{}/confidence", path_prefix),
-                message: "confidence 必须是字符串".to_string(),
-            });
+        // confidence: 合法枚举值
+        match claim.get("confidence").and_then(|v| v.as_str()) {
+            Some(s) if VALID_CONFIDENCES.contains(&s) => {}
+            Some(s) => {
+                errors.push(ValidationError::SchemaViolation {
+                    path: format!("{}/confidence", path_prefix),
+                    message: format!("非法 confidence 值: {}", s),
+                });
+            }
+            None => {
+                errors.push(ValidationError::SchemaViolation {
+                    path: format!("{}/confidence", path_prefix),
+                    message: "缺少 confidence 字段".to_string(),
+                });
+            }
         }
 
-        // evidence_refs 是数组
+        // evidence_refs: 数组 + 元素结构检查
         match claim.get("evidence_refs") {
-            Some(v) if v.is_array() => {}
+            Some(v) if v.is_array() => {
+                let refs_path = format!("{}/evidence_refs", path_prefix);
+                Self::check_evidence_ref_elements(Some(v), &refs_path, errors);
+            }
             Some(_) => {
                 errors.push(ValidationError::SchemaViolation {
                     path: format!("{}/evidence_refs", path_prefix),
@@ -215,7 +430,7 @@ impl SchemaValidator {
             }
         }
 
-        // has_evidence_gap 是布尔
+        // has_evidence_gap: 布尔值
         match claim.get("has_evidence_gap").and_then(|v| v.as_bool()) {
             Some(_) => {}
             None => {
@@ -227,13 +442,51 @@ impl SchemaValidator {
         }
     }
 
-    /// 第 2 层：evidence_id existence check（hallucination guard）
+    /// 检查 evidence_refs 数组中每个元素的结构
+    ///
+    /// 每个元素必须是对象且包含非空 evidence_id 字符串。
+    fn check_evidence_ref_elements(
+        refs_value: Option<&serde_json::Value>,
+        path_prefix: &str,
+        errors: &mut Vec<ValidationError>,
+    ) {
+        if let Some(refs) = refs_value.and_then(|v| v.as_array()) {
+            for (j, r) in refs.iter().enumerate() {
+                let ref_path = format!("{}/{}", path_prefix, j);
+                if !r.is_object() {
+                    errors.push(ValidationError::SchemaViolation {
+                        path: ref_path,
+                        message: "evidence_ref 必须是对象".to_string(),
+                    });
+                    continue;
+                }
+                match r.get("evidence_id").and_then(|v| v.as_str()) {
+                    Some(s) if !s.is_empty() => { /* OK */ }
+                    Some(_) => {
+                        errors.push(ValidationError::SchemaViolation {
+                            path: format!("{}/evidence_id", ref_path),
+                            message: "evidence_id 不能为空字符串".to_string(),
+                        });
+                    }
+                    None => {
+                        errors.push(ValidationError::SchemaViolation {
+                            path: format!("{}/evidence_id", ref_path),
+                            message: "缺少 evidence_id 字段".to_string(),
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    // ─── 第 2 层：evidence_id existence check ──────────────────────
+
     fn check_evidence_ids(
         output: &serde_json::Value,
         known_evidence_ids: &HashSet<String>,
         errors: &mut Vec<ValidationError>,
     ) {
-        // 检查 claims[].evidence_refs[].evidence_id
+        // claims[].evidence_refs[].evidence_id
         if let Some(claims) = output.get("claims").and_then(|v| v.as_array()) {
             for claim in claims {
                 if let Some(claim_id) = claim.get("claim_id").and_then(|v| v.as_str()) {
@@ -247,7 +500,7 @@ impl SchemaValidator {
             }
         }
 
-        // 检查 module_summaries[].evidence_refs
+        // module_summaries[].evidence_refs
         if let Some(arr) = output.get("module_summaries").and_then(|v| v.as_array()) {
             for (i, item) in arr.iter().enumerate() {
                 Self::check_refs_against_known(
@@ -259,7 +512,7 @@ impl SchemaValidator {
             }
         }
 
-        // 检查 signal_summaries[].evidence_refs
+        // signal_summaries[].evidence_refs
         if let Some(arr) = output.get("signal_summaries").and_then(|v| v.as_array()) {
             for (i, item) in arr.iter().enumerate() {
                 Self::check_refs_against_known(
@@ -271,7 +524,7 @@ impl SchemaValidator {
             }
         }
 
-        // 检查 interface_summaries[].evidence_refs
+        // interface_summaries[].evidence_refs
         if let Some(arr) = output.get("interface_summaries").and_then(|v| v.as_array()) {
             for (i, item) in arr.iter().enumerate() {
                 Self::check_refs_against_known(
@@ -283,7 +536,7 @@ impl SchemaValidator {
             }
         }
 
-        // 检查 processing_steps[].evidence_refs
+        // processing_steps[].evidence_refs
         if let Some(arr) = output.get("processing_steps").and_then(|v| v.as_array()) {
             for (i, item) in arr.iter().enumerate() {
                 Self::check_refs_against_known(
@@ -295,7 +548,7 @@ impl SchemaValidator {
             }
         }
 
-        // 检查 unknowns[].related_evidence_refs
+        // unknowns[].related_evidence_refs
         if let Some(unknowns) = output.get("unknowns").and_then(|v| v.as_array()) {
             for unknown in unknowns {
                 if let Some(unknown_id) = unknown.get("unknown_id").and_then(|v| v.as_str()) {
@@ -309,7 +562,7 @@ impl SchemaValidator {
             }
         }
 
-        // 检查 evidence_gaps[].related_evidence_refs
+        // evidence_gaps[].related_evidence_refs
         if let Some(gaps) = output.get("evidence_gaps").and_then(|v| v.as_array()) {
             for gap in gaps {
                 if let Some(gap_id) = gap.get("gap_id").and_then(|v| v.as_str()) {
@@ -334,7 +587,7 @@ impl SchemaValidator {
         if let Some(refs) = refs_value.and_then(|v| v.as_array()) {
             for r in refs {
                 if let Some(eid) = r.get("evidence_id").and_then(|v| v.as_str()) {
-                    if !known_ids.contains(eid) {
+                    if !eid.is_empty() && !known_ids.contains(eid) {
                         errors.push(ValidationError::UnknownEvidenceId {
                             evidence_id: eid.to_string(),
                             location: location.to_string(),
@@ -345,19 +598,44 @@ impl SchemaValidator {
         }
     }
 
-    /// 第 3 层：业务规则检查
+    // ─── 第 3 层：业务规则检查 ─────────────────────────────────────
+
     fn check_business_rules(
         output: &serde_json::Value,
         errors: &mut Vec<ValidationError>,
         warnings: &mut Vec<ValidationWarning>,
     ) {
-        // claim 无 evidence_refs 且 has_evidence_gap=false → 错误
+        // 获取 top-level evidence_gaps 是否非空
+        let top_gaps_non_empty = output
+            .get("evidence_gaps")
+            .and_then(|v| v.as_array())
+            .map(|a| !a.is_empty())
+            .unwrap_or(false);
+
         if let Some(claims) = output.get("claims").and_then(|v| v.as_array()) {
+            // 1a. 重复 claim_id 检测
+            let mut seen_claim_ids = HashSet::new();
+            for claim in claims {
+                if let Some(id) = claim.get("claim_id").and_then(|v| v.as_str()) {
+                    if !seen_claim_ids.insert(id.to_string()) {
+                        errors.push(ValidationError::DuplicateClaimId {
+                            claim_id: id.to_string(),
+                        });
+                    }
+                }
+            }
+
+            // 1b. confidence-specific evidence requirements
             for claim in claims {
                 let claim_id = claim
                     .get("claim_id")
                     .and_then(|v| v.as_str())
-                    .unwrap_or("unknown");
+                    .unwrap_or("unknown")
+                    .to_string();
+                let confidence = claim
+                    .get("confidence")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
                 let refs_empty = claim
                     .get("evidence_refs")
                     .and_then(|v| v.as_array())
@@ -368,21 +646,25 @@ impl SchemaValidator {
                     .and_then(|v| v.as_bool())
                     .unwrap_or(false);
 
-                if refs_empty && !has_gap {
-                    errors.push(ValidationError::ClaimWithoutEvidence {
-                        claim_id: claim_id.to_string(),
-                    });
+                if refs_empty {
+                    if CONFIDENCE_REQUIRES_REFS.contains(&confidence) {
+                        // confirmed/supported/inferred/conflicting: 必须有 refs
+                        errors.push(ValidationError::ClaimWithoutEvidence {
+                            claim_id: claim_id.clone(),
+                        });
+                    } else if confidence == "unknown" {
+                        // unknown: 仅当 has_gap=true 且 top-level gaps 非空时允许
+                        if !has_gap || !top_gaps_non_empty {
+                            errors.push(ValidationError::ClaimWithoutEvidence {
+                                claim_id: claim_id.clone(),
+                            });
+                        }
+                    }
                 }
             }
         }
 
-        // unknown 的 related_evidence_refs 含不存在的 ID → 错误
-        // （已在 check_evidence_ids 中处理为 UnknownEvidenceId）
-        // 这里专门检查 unknown 中是否有伪造 ID 并用更具体的错误类型
-        // 注意：evidence_id existence check 已经在 check_evidence_ids 中完成
-        // 此处不需要重复
-
-        // unknown 数量 > claims 数量 → 警告
+        // 2. unknown 数量 > claims 数量 → 警告
         let claim_count = output
             .get("claims")
             .and_then(|v| v.as_array())
@@ -401,7 +683,7 @@ impl SchemaValidator {
             });
         }
 
-        // gaps 数量 > 10 → 警告
+        // 3. gaps 数量 > 10 → 警告
         let gap_count = output
             .get("evidence_gaps")
             .and_then(|v| v.as_array())
@@ -470,13 +752,19 @@ mod tests {
         })
     }
 
+    // ─── val_01 ~ val_08: 基础测试 ──────────────────────────────────
+
     #[test]
     fn val_01_valid_output_passes() {
         let output = make_valid_output();
         let known_ids = make_known_ids(&["EV-L0-000001"]);
         let result = SchemaValidator::validate(&output, &known_ids);
 
-        assert!(result.is_valid, "valid output should pass: {:?}", result.errors);
+        assert!(
+            result.is_valid,
+            "valid output should pass: {:?}",
+            result.errors
+        );
         assert!(result.errors.is_empty());
         assert!(result.warnings.is_empty());
     }
@@ -484,7 +772,6 @@ mod tests {
     #[test]
     fn val_02_missing_stage_id_fails() {
         let mut output = make_valid_output();
-        // 移除 stage_id
         output.as_object_mut().unwrap().remove("stage_id");
 
         let known_ids = make_known_ids(&["EV-L0-000001"]);
@@ -492,10 +779,13 @@ mod tests {
 
         assert!(!result.is_valid);
         assert!(
-            result.errors.iter().any(|e| matches!(
-                e,
-                ValidationError::SchemaViolation { path, .. } if path == "/stage_id"
-            )),
+            result
+                .errors
+                .iter()
+                .any(|e| matches!(
+                    e,
+                    ValidationError::SchemaViolation { path, .. } if path == "/stage_id"
+                )),
             "expected SchemaViolation for /stage_id, got: {:?}",
             result.errors
         );
@@ -559,27 +849,32 @@ mod tests {
         let known_ids = make_known_ids(&["EV-L0-000001", "EV-L0-000002", "EV-L0-000003"]);
         let result = SchemaValidator::validate(&output, &known_ids);
 
-        assert!(result.is_valid, "all IDs exist, should pass: {:?}", result.errors);
+        assert!(
+            result.is_valid,
+            "all IDs exist, should pass: {:?}",
+            result.errors
+        );
     }
 
     #[test]
     fn val_04_unknown_evidence_id_fails() {
         let mut output = make_valid_output();
-        // 引用不存在的 evidence_id
-        output["claims"][0]["evidence_refs"] = serde_json::json!([
-            {"evidence_id": "EV-L0-009999"}
-        ]);
+        output["claims"][0]["evidence_refs"] =
+            serde_json::json!([{"evidence_id": "EV-L0-009999"}]);
 
         let known_ids = make_known_ids(&["EV-L0-000001"]);
         let result = SchemaValidator::validate(&output, &known_ids);
 
         assert!(!result.is_valid);
         assert!(
-            result.errors.iter().any(|e| matches!(
-                e,
-                ValidationError::UnknownEvidenceId { evidence_id, .. }
-                if evidence_id == "EV-L0-009999"
-            )),
+            result
+                .errors
+                .iter()
+                .any(|e| matches!(
+                    e,
+                    ValidationError::UnknownEvidenceId { evidence_id, .. }
+                    if evidence_id == "EV-L0-009999"
+                )),
             "expected UnknownEvidenceId for EV-L0-009999, got: {:?}",
             result.errors
         );
@@ -632,16 +927,20 @@ mod tests {
 
         assert!(!result.is_valid);
         assert!(
-            result.errors.iter().any(|e| matches!(
-                e,
-                ValidationError::ClaimWithoutEvidence { claim_id }
-                if claim_id == "CL-L0-000001"
-            )),
+            result
+                .errors
+                .iter()
+                .any(|e| matches!(
+                    e,
+                    ValidationError::ClaimWithoutEvidence { claim_id }
+                    if claim_id == "CL-L0-000001"
+                )),
             "expected ClaimWithoutEvidence, got: {:?}",
             result.errors
         );
     }
 
+    /// val_06: unknown + has_gap=true + top-level evidence_gaps 非空 → 通过
     #[test]
     fn val_06_claim_with_gap_passes() {
         let output = serde_json::json!({
@@ -652,8 +951,8 @@ mod tests {
                 {
                     "claim_id": "CL-L0-000001",
                     "category": "module_structure",
-                    "description": "有 gap 的 claim",
-                    "confidence": "inferred",
+                    "description": "有 gap 的 unknown claim",
+                    "confidence": "unknown",
                     "evidence_refs": [],
                     "has_evidence_gap": true
                 }
@@ -663,7 +962,14 @@ mod tests {
             "interface_summaries": [],
             "processing_steps": [],
             "unknowns": [],
-            "evidence_gaps": [],
+            "evidence_gaps": [
+                {
+                    "gap_id": "GAP-L0-000001",
+                    "expected_evidence": "需要更多证据",
+                    "reason": "证据不足",
+                    "related_evidence_refs": []
+                }
+            ],
             "generation_meta": {
                 "provider": "mock",
                 "generated_at": "2026-06-12T10:00:00Z",
@@ -680,7 +986,7 @@ mod tests {
                 "interface_count": 0,
                 "processing_step_count": 0,
                 "unknown_count": 0,
-                "evidence_gap_count": 0
+                "evidence_gap_count": 1
             }
         });
 
@@ -689,7 +995,7 @@ mod tests {
 
         assert!(
             result.is_valid,
-            "claim with has_evidence_gap=true should pass: {:?}",
+            "unknown claim with gap and top-level gaps should pass: {:?}",
             result.errors
         );
     }
@@ -750,11 +1056,14 @@ mod tests {
 
         assert!(!result.is_valid);
         assert!(
-            result.errors.iter().any(|e| matches!(
-                e,
-                ValidationError::UnknownEvidenceId { evidence_id, location, .. }
-                if evidence_id == "EV-L0-009999" && location.contains("UNK-L0-000001")
-            )),
+            result
+                .errors
+                .iter()
+                .any(|e| matches!(
+                    e,
+                    ValidationError::UnknownEvidenceId { evidence_id, location, .. }
+                    if evidence_id == "EV-L0-009999" && location.contains("UNK-L0-000001")
+                )),
             "expected UnknownEvidenceId for fake ID in unknown, got: {:?}",
             result.errors
         );
@@ -818,13 +1127,11 @@ mod tests {
         let known_ids = make_known_ids(&["EV-L0-000001"]);
         let result = SchemaValidator::validate(&output, &known_ids);
 
-        // is_valid=true — warnings 不影响
         assert!(
             result.is_valid,
             "too many unknowns should still be valid: {:?}",
             result.errors
         );
-        // 有 warning
         assert!(
             result.warnings.iter().any(|w| matches!(
                 w,
@@ -832,6 +1139,390 @@ mod tests {
             )),
             "expected TooManyUnknowns warning, got: {:?}",
             result.warnings
+        );
+    }
+
+    // ─── val_09 ~ val_15: 结构验证加强 ─────────────────────────────
+
+    #[test]
+    fn val_09_missing_version_fails() {
+        let mut output = make_valid_output();
+        output.as_object_mut().unwrap().remove("version");
+
+        let known_ids = make_known_ids(&["EV-L0-000001"]);
+        let result = SchemaValidator::validate(&output, &known_ids);
+
+        assert!(!result.is_valid);
+        assert!(
+            result
+                .errors
+                .iter()
+                .any(|e| matches!(
+                    e,
+                    ValidationError::SchemaViolation { path, .. } if path == "/version"
+                )),
+            "expected SchemaViolation for /version, got: {:?}",
+            result.errors
+        );
+    }
+
+    #[test]
+    fn val_10_missing_generation_meta_fails() {
+        let mut output = make_valid_output();
+        output.as_object_mut().unwrap().remove("generation_meta");
+
+        let known_ids = make_known_ids(&["EV-L0-000001"]);
+        let result = SchemaValidator::validate(&output, &known_ids);
+
+        assert!(!result.is_valid);
+        assert!(
+            result
+                .errors
+                .iter()
+                .any(|e| matches!(
+                    e,
+                    ValidationError::SchemaViolation { path, .. } if path == "/generation_meta"
+                )),
+            "expected SchemaViolation for /generation_meta, got: {:?}",
+            result.errors
+        );
+    }
+
+    #[test]
+    fn val_11_missing_stats_fails() {
+        let mut output = make_valid_output();
+        output.as_object_mut().unwrap().remove("stats");
+
+        let known_ids = make_known_ids(&["EV-L0-000001"]);
+        let result = SchemaValidator::validate(&output, &known_ids);
+
+        assert!(!result.is_valid);
+        assert!(
+            result
+                .errors
+                .iter()
+                .any(|e| matches!(
+                    e,
+                    ValidationError::SchemaViolation { path, .. } if path == "/stats"
+                )),
+            "expected SchemaViolation for /stats, got: {:?}",
+            result.errors
+        );
+    }
+
+    #[test]
+    fn val_12_invalid_confidence_fails() {
+        let mut output = make_valid_output();
+        output["claims"][0]["confidence"] = serde_json::json!("definitely");
+
+        let known_ids = make_known_ids(&["EV-L0-000001"]);
+        let result = SchemaValidator::validate(&output, &known_ids);
+
+        assert!(!result.is_valid);
+        assert!(
+            result
+                .errors
+                .iter()
+                .any(|e| matches!(
+                    e,
+                    ValidationError::SchemaViolation { path, message, .. }
+                    if path == "/claims/0/confidence" && message.contains("definitely")
+                )),
+            "expected SchemaViolation for invalid confidence, got: {:?}",
+            result.errors
+        );
+    }
+
+    #[test]
+    fn val_13_invalid_category_fails() {
+        let mut output = make_valid_output();
+        output["claims"][0]["category"] = serde_json::json!("nonexistent");
+
+        let known_ids = make_known_ids(&["EV-L0-000001"]);
+        let result = SchemaValidator::validate(&output, &known_ids);
+
+        assert!(!result.is_valid);
+        assert!(
+            result
+                .errors
+                .iter()
+                .any(|e| matches!(
+                    e,
+                    ValidationError::SchemaViolation { path, message, .. }
+                    if path == "/claims/0/category" && message.contains("nonexistent")
+                )),
+            "expected SchemaViolation for invalid category, got: {:?}",
+            result.errors
+        );
+    }
+
+    #[test]
+    fn val_14_empty_summary_short_fails() {
+        let mut output = make_valid_output();
+        output["summary"]["short"] = serde_json::json!("");
+
+        let known_ids = make_known_ids(&["EV-L0-000001"]);
+        let result = SchemaValidator::validate(&output, &known_ids);
+
+        assert!(!result.is_valid);
+        assert!(
+            result
+                .errors
+                .iter()
+                .any(|e| matches!(
+                    e,
+                    ValidationError::SchemaViolation { path, .. } if path == "/summary/short"
+                )),
+            "expected SchemaViolation for empty summary.short, got: {:?}",
+            result.errors
+        );
+    }
+
+    #[test]
+    fn val_15_empty_summary_detailed_fails() {
+        let mut output = make_valid_output();
+        output["summary"]["detailed"] = serde_json::json!("");
+
+        let known_ids = make_known_ids(&["EV-L0-000001"]);
+        let result = SchemaValidator::validate(&output, &known_ids);
+
+        assert!(!result.is_valid);
+        assert!(
+            result
+                .errors
+                .iter()
+                .any(|e| matches!(
+                    e,
+                    ValidationError::SchemaViolation { path, .. }
+                    if path == "/summary/detailed"
+                )),
+            "expected SchemaViolation for empty summary.detailed, got: {:?}",
+            result.errors
+        );
+    }
+
+    // ─── val_16: 重复 claim_id ──────────────────────────────────────
+
+    #[test]
+    fn val_16_duplicate_claim_id_fails() {
+        let output = serde_json::json!({
+            "stage_id": "L0",
+            "version": "3.0.0",
+            "summary": {"short": "test", "detailed": "test"},
+            "claims": [
+                {
+                    "claim_id": "CL-L0-000001",
+                    "category": "module_structure",
+                    "description": "claim 1",
+                    "confidence": "confirmed",
+                    "evidence_refs": [{"evidence_id": "EV-L0-000001"}],
+                    "has_evidence_gap": false
+                },
+                {
+                    "claim_id": "CL-L0-000001",
+                    "category": "signal_definition",
+                    "description": "duplicate claim",
+                    "confidence": "supported",
+                    "evidence_refs": [{"evidence_id": "EV-L0-000001"}],
+                    "has_evidence_gap": false
+                }
+            ],
+            "module_summaries": [],
+            "signal_summaries": [],
+            "interface_summaries": [],
+            "processing_steps": [],
+            "unknowns": [],
+            "evidence_gaps": [],
+            "generation_meta": {
+                "provider": "mock",
+                "generated_at": "2026-06-12T10:00:00Z",
+                "input_evidence_count": 1,
+                "generation_time_ms": 100,
+                "is_degraded": false
+            },
+            "stats": {
+                "total_claims": 2,
+                "claims_by_confidence": {},
+                "claims_by_category": {},
+                "module_count": 0,
+                "signal_count": 0,
+                "interface_count": 0,
+                "processing_step_count": 0,
+                "unknown_count": 0,
+                "evidence_gap_count": 0
+            }
+        });
+
+        let known_ids = make_known_ids(&["EV-L0-000001"]);
+        let result = SchemaValidator::validate(&output, &known_ids);
+
+        assert!(!result.is_valid);
+        assert!(
+            result
+                .errors
+                .iter()
+                .any(|e| matches!(
+                    e,
+                    ValidationError::DuplicateClaimId { claim_id }
+                    if claim_id == "CL-L0-000001"
+                )),
+            "expected DuplicateClaimId, got: {:?}",
+            result.errors
+        );
+    }
+
+    // ─── val_17 ~ val_22: confidence 与 evidence_refs 关系 ──────────
+
+    /// 辅助：验证非 unknown confidence + 空 refs → ClaimWithoutEvidence
+    fn check_confidence_requires_refs(confidence: &str) {
+        let mut output = make_valid_output();
+        output["claims"][0]["confidence"] = serde_json::json!(confidence);
+        output["claims"][0]["evidence_refs"] = serde_json::json!([]);
+        output["claims"][0]["has_evidence_gap"] = serde_json::json!(true);
+
+        let known_ids = make_known_ids(&[]);
+        let result = SchemaValidator::validate(&output, &known_ids);
+
+        assert!(
+            !result.is_valid,
+            "{} with empty refs should fail even with has_evidence_gap=true",
+            confidence
+        );
+        assert!(
+            result
+                .errors
+                .iter()
+                .any(|e| matches!(
+                    e,
+                    ValidationError::ClaimWithoutEvidence { claim_id }
+                    if claim_id == "CL-L0-000001"
+                )),
+            "expected ClaimWithoutEvidence for {} with empty refs, got: {:?}",
+            confidence,
+            result.errors
+        );
+    }
+
+    #[test]
+    fn val_17_confirmed_requires_refs() {
+        check_confidence_requires_refs("confirmed");
+    }
+
+    #[test]
+    fn val_18_supported_requires_refs() {
+        check_confidence_requires_refs("supported");
+    }
+
+    #[test]
+    fn val_19_inferred_requires_refs() {
+        check_confidence_requires_refs("inferred");
+    }
+
+    #[test]
+    fn val_20_conflicting_requires_refs() {
+        check_confidence_requires_refs("conflicting");
+    }
+
+    #[test]
+    fn val_21_unknown_without_gap_fails() {
+        let mut output = make_valid_output();
+        output["claims"][0]["confidence"] = serde_json::json!("unknown");
+        output["claims"][0]["evidence_refs"] = serde_json::json!([]);
+        output["claims"][0]["has_evidence_gap"] = serde_json::json!(false);
+
+        let known_ids = make_known_ids(&[]);
+        let result = SchemaValidator::validate(&output, &known_ids);
+
+        assert!(!result.is_valid);
+        assert!(
+            result
+                .errors
+                .iter()
+                .any(|e| matches!(
+                    e,
+                    ValidationError::ClaimWithoutEvidence { .. }
+                )),
+            "unknown without gap should fail, got: {:?}",
+            result.errors
+        );
+    }
+
+    /// val_22: unknown + has_gap=true 但 top-level evidence_gaps 为空 → 失败
+    #[test]
+    fn val_22_unknown_with_gap_but_empty_top_gaps_fails() {
+        let mut output = make_valid_output();
+        output["claims"][0]["confidence"] = serde_json::json!("unknown");
+        output["claims"][0]["evidence_refs"] = serde_json::json!([]);
+        output["claims"][0]["has_evidence_gap"] = serde_json::json!(true);
+        // evidence_gaps 保持为空 []
+
+        let known_ids = make_known_ids(&[]);
+        let result = SchemaValidator::validate(&output, &known_ids);
+
+        assert!(
+            !result.is_valid,
+            "unknown with gap=true but empty top-level gaps should fail: {:?}",
+            result.errors
+        );
+        assert!(
+            result
+                .errors
+                .iter()
+                .any(|e| matches!(
+                    e,
+                    ValidationError::ClaimWithoutEvidence { .. }
+                )),
+            "expected ClaimWithoutEvidence, got: {:?}",
+            result.errors
+        );
+    }
+
+    // ─── val_23 ~ val_24: evidence_ref 元素结构 ────────────────────
+
+    #[test]
+    fn val_23_evidence_ref_missing_evidence_id_fails() {
+        let mut output = make_valid_output();
+        output["claims"][0]["evidence_refs"] = serde_json::json!([{}]);
+
+        let known_ids = make_known_ids(&[]);
+        let result = SchemaValidator::validate(&output, &known_ids);
+
+        assert!(!result.is_valid);
+        assert!(
+            result
+                .errors
+                .iter()
+                .any(|e| matches!(
+                    e,
+                    ValidationError::SchemaViolation { path, .. }
+                    if path.contains("evidence_id")
+                )),
+            "expected SchemaViolation for missing evidence_id, got: {:?}",
+            result.errors
+        );
+    }
+
+    #[test]
+    fn val_24_evidence_ref_empty_evidence_id_fails() {
+        let mut output = make_valid_output();
+        output["claims"][0]["evidence_refs"] =
+            serde_json::json!([{"evidence_id": ""}]);
+
+        let known_ids = make_known_ids(&[]);
+        let result = SchemaValidator::validate(&output, &known_ids);
+
+        assert!(!result.is_valid);
+        assert!(
+            result
+                .errors
+                .iter()
+                .any(|e| matches!(
+                    e,
+                    ValidationError::SchemaViolation { path, message, .. }
+                    if path.contains("evidence_id") && message.contains("不能为空")
+                )),
+            "expected SchemaViolation for empty evidence_id, got: {:?}",
+            result.errors
         );
     }
 }
