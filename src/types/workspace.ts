@@ -272,3 +272,70 @@ export interface ImplementationUnderstanding {
   generation_meta: GenerationMeta;
   stats: UnderstandingStats;
 }
+
+// ─── Phase 4: View Model Types ──────────────────────────────────────
+
+export type ViewType = 'structure' | 'dataflow' | 'timing';
+
+export type NodeType =
+  | 'module' | 'function' | 'interface' | 'signal' | 'processing_step'
+  | 'class' | 'constant'
+  | 'input_source' | 'output_target' | 'intermediate_data'
+  | 'pipeline_stage' | 'clock_domain' | 'reset_domain';
+
+export type EdgeType =
+  | 'contains' | 'calls' | 'references' | 'depends_on'
+  | 'data_flow'
+  | 'sequential_order' | 'pipeline_forward' | 'clock_driven';
+
+export interface ViewTraceRef {
+  claim_id?: string;
+  evidence_id?: string;
+  confidence: ClaimConfidence;
+  relevance?: string;
+}
+
+export interface ViewLayoutHint {
+  column?: number;
+  row?: number;
+  depth?: number;
+  group?: string;
+}
+
+export interface ViewMeta {
+  stage_id: string;
+  view_type: ViewType;
+  source_provider: string;
+  is_degraded_source: boolean;
+  generated_at: string;
+  empty_reason?: string;
+}
+
+export interface ViewNode {
+  node_id: string;
+  node_type: NodeType;
+  label: string;
+  description: string;
+  confidence: ClaimConfidence;
+  trace_refs: ViewTraceRef[];
+  layout?: ViewLayoutHint;
+}
+
+export interface ViewEdge {
+  edge_id: string;
+  edge_type: EdgeType;
+  source_node_id: string;
+  target_node_id: string;
+  label?: string;
+  description: string;
+  confidence: ClaimConfidence;
+  trace_refs: ViewTraceRef[];
+}
+
+export interface ViewGraph {
+  view_type: ViewType;
+  stage_id: string;
+  nodes: ViewNode[];
+  edges: ViewEdge[];
+  meta: ViewMeta;
+}

@@ -2,6 +2,7 @@ pub mod commands;
 pub mod evidence;
 pub mod models;
 pub mod understanding;
+pub mod views;
 pub mod workspace;
 
 use commands::collect_evidence::collect_evidence;
