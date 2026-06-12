@@ -1,7 +1,7 @@
 # Phase 4 视图生成器后端设计
 
 ---
-status: draft
+status: active
 updated: 2026-06-12
 ---
 

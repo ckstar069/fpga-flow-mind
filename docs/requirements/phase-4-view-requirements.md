@@ -1,7 +1,7 @@
 # Phase 4 三类视图展示需求
 
 ---
-status: draft
+status: active
 updated: 2026-06-12
 ---
 

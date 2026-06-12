@@ -1,7 +1,7 @@
 # Phase 4 视图验证设计
 
 ---
-status: draft
+status: active
 updated: 2026-06-12
 ---
 

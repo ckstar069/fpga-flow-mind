@@ -1,7 +1,7 @@
 # Phase 4 视图数据模型设计
 
 ---
-status: draft
+status: active
 updated: 2026-06-12
 ---
 

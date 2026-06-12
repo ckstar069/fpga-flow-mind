@@ -1,7 +1,7 @@
 # Phase 4 三视图面板前端设计
 
 ---
-status: draft
+status: active
 updated: 2026-06-12
 ---
 

@@ -1,7 +1,7 @@
 # Phase 4 编码实施计划
 
 ---
-status: draft
+status: active
 updated: 2026-06-12
 ---
 

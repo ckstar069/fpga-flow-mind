@@ -83,7 +83,7 @@ updated: YYYY-MM-DD
 | [`phase-2-completion-review.md`](phase-2-completion-review.md) | `active` | Phase 2 收尾验收与完成审查：P2-T01~P2-T10 完成状态、真实 Tauri 桌面验收结果、允许进入 Phase 3 | Phase 2 编码完成后必读 |
 | [`phase-3-implementation-plan.md`](phase-3-implementation-plan.md) | `active` | Phase 3 编码实施计划：进入条件、P3-T01~P3-T10 任务拆解、依赖关系、4 个 Batch 划分、退出条件、安全边界 | Phase 3 编码实施依据 |
 | [`phase-3-completion-review.md`](phase-3-completion-review.md) | `active` | Phase 3 收尾验收与完成审查：P3-T01~P3-T10 全部完成、后端/前端/桌面验收 11/11 通过、**允许进入 Phase 4** | Phase 3 完成后必读 |
-| [`phase-4-implementation-plan.md`](phase-4-implementation-plan.md) | `draft` | Phase 4 编码实施计划：进入条件、P4-T01~P4-T09 任务拆解、依赖关系、4 个 Batch 划分、退出条件、安全边界 | Phase 4 编码实施依据 |
+| [`phase-4-implementation-plan.md`](phase-4-implementation-plan.md) | `active` | Phase 4 编码实施计划：进入条件、P4-T01~P4-T09 任务拆解、依赖关系、4 个 Batch 划分、退出条件、安全边界 | Phase 4 编码实施依据 |
 
 > **Phase 3 已完成，允许进入 Phase 4。**
 >
@@ -97,4 +97,7 @@ updated: YYYY-MM-DD
 >
 > Phase 3 编码依据文档已收口（status=active）：`phase-3-understanding-requirements.md` + `phase-3-understanding-model.md` + `phase-3-understanding-generator-design.md` + `phase-3-understanding-view.md` + `phase-3-understanding-validation.md` + `phase-3-implementation-plan.md`。
 >
-> **Phase 4 规划文档已创建（status=draft），尚未进入编码实施。**
+> **Phase 4 文档已收口（status=active），允许进入 Phase 4 Batch A 编码。**
+>
+> Batch A 范围限定为 P4-T01~P4-T04：ViewGraph 数据模型 + structure/dataflow/timing builder。
+> 不允许在 Batch A 中实现前端 UI、Tauri command、Phase 5 回链、真实 LLM、目标项目文件访问。
