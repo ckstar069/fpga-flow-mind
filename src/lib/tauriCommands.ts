@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { CommandResult, WorkspaceProfile, StageContext, EvidenceCollection, ImplementationUnderstanding } from '../types/workspace';
+import type { CommandResult, WorkspaceProfile, StageContext, EvidenceCollection, ImplementationUnderstanding, ViewGraph } from '../types/workspace';
 
 export class CommandError extends Error {
   error_code: string;
@@ -47,6 +47,13 @@ export async function generateUnderstanding(rootPath: string, stageId: string): 
   const result = await invoke<CommandResult<ImplementationUnderstanding>>('generate_understanding', {
     rootPath: rootPath,
     stageId: stageId,
+  });
+  return handleResult(result);
+}
+
+export async function generateViews(understanding: ImplementationUnderstanding): Promise<ViewGraph[]> {
+  const result = await invoke<CommandResult<ViewGraph[]>>('generate_views', {
+    understanding: understanding,
   });
   return handleResult(result);
 }

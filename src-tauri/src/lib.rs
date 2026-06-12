@@ -7,6 +7,7 @@ pub mod workspace;
 
 use commands::collect_evidence::collect_evidence;
 use commands::generate_understanding::generate_understanding;
+use commands::generate_views::generate_views;
 use commands::open_workspace::open_workspace;
 use commands::select_stage::select_stage;
 
@@ -18,7 +19,8 @@ pub fn run() {
             open_workspace,
             select_stage,
             collect_evidence,
-            generate_understanding
+            generate_understanding,
+            generate_views
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
