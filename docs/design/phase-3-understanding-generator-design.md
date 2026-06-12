@@ -1,13 +1,13 @@
 # Phase 3 理解生成器后端设计
 
 ---
-status: draft
+status: active
 updated: 2026-06-12
 ---
 
 > 本文档定义 Phase 3 后端理解生成流程，包含确定性预打包层（context builder）和 agent/LLM 生成层（generator），以及 schema 验证和 hallucination 防护。
 >
-> **Phase 3 不编码**。本文档是 draft，编码前需审核收口。
+> **本文档已审核收口，作为 Phase 3 编码依据。**
 
 ## 1. 整体架构
 
@@ -144,7 +144,7 @@ impl ContextBuilder {
 3. 无法推断的内容标注为 unknown
 4. 缺失的 evidence 标注为 evidence_gap
 5. 不使用"正确/错误"、"PASS/HOLD"等审计用语
-6. confidence 语义：confirmed（充分证据）、inferred（有限证据）、unknown（证据不足）、conflicting（证据矛盾）
+6. confidence 语义：confirmed（充分证据）、supported（有证据需辅助推断）、inferred（有限证据）、unknown（证据不足）、conflicting（证据矛盾）
 
 === User Prompt ===
 阶段 ID: {stage_id}
@@ -456,4 +456,5 @@ Phase 3 后端代码遵循与 Phase 2 相同的安全约束：
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-06-12 | 收口修复：prompt confidence 描述补齐 supported；status draft → active | Claude |
 | 2026-06-12 | 初始创建（draft） | Claude |

@@ -62,4 +62,4 @@ updated: 2026-06-11
 |------|------|------|-------------|
 | [`phase-1-workspace-scanning-validation.md`](phase-1-workspace-scanning-validation.md) | `active` | Phase 1 workspace 扫描与阶段识别验证设计：样例矩阵、后端/前端/安全验证点、手工验证清单、自动化测试规划、验收标准 | Phase 1 验证与验收依据 |
 | [`phase-2-evidence-validation.md`](phase-2-evidence-validation.md) | `active` | Phase 2 evidence collection 验证设计：测试夹具、Rust 单元/集成测试矩阵、前端组件测试、安全回归测试、手工验收 10 步骤、Phase 1 样例复用 | Phase 2 验证与验收依据 |
-| [`phase-3-understanding-validation.md`](phase-3-understanding-validation.md) | `draft` | Phase 3 理解生成验证设计：数据模型 serde、context builder、schema validator、evidence_id 检查、claim 约束、unknown/gap 处理、mock provider pipeline、前端渲染、安全回归、手工验收 10 步骤 | Phase 3 验证与验收依据 |
+| [`phase-3-understanding-validation.md`](phase-3-understanding-validation.md) | `active` | Phase 3 理解生成验证设计：数据模型 serde、context builder、schema validator、evidence_id 检查、claim 约束、unknown/gap 处理、mock provider pipeline、前端渲染、安全回归、手工验收 10 步骤 | Phase 3 验证与验收依据 |

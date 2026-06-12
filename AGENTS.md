@@ -120,6 +120,18 @@
 - Phase 2 不调用大模型 API
 - 所有 evidence item 的 `source_path` 为绝对路径，`line_range` 为 1-based 闭区间
 - `summary` 最大 500 字符，超出截断并追加 `"...(已截断，共 N 行)"`
+
+### Phase 3 Understanding 规则
+
+- `ImplementationUnderstanding` 是不含视图的中间产物，Phase 4 从其 claims/summaries 生成视图
+- `summary` 是 `StageSummary { short, detailed }` 对象，非纯字符串
+- `ClaimConfidence` 枚举 5 个值：`confirmed` / `supported` / `inferred` / `unknown` / `conflicting`（与 mvp-functional-contract 对齐）
+- `supported` 语义：有 evidence 支撑，需辅助推断，强度低于 confirmed、高于 inferred
+- 每 claim 必须有 `evidence_refs` 或明确标注 `evidence_gap`，无证据 claim 不允许
+- evidence_id 必须通过 existence check（hallucination guard），不存在则验证失败
+- confidence 与 strength 是不同层级：strength 是 Phase 2 静态判定，confidence 是 Phase 3 语义判定
+- 不使用"正确/错误"、"PASS/HOLD"等审计用语
+- Phase 3 使用 MockProvider，不调用 LLM API，不引入新依赖
 - Phase 2 不修改目标项目文件，只使用 `std::fs::read_to_string`
 
 ## 9. 审核关注点

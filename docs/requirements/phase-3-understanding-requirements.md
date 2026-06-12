@@ -1,13 +1,15 @@
 # Phase 3 单阶段结构化理解需求
 
 ---
-status: draft
+status: active
 updated: 2026-06-12
 ---
 
 > 本文档定义 Phase 3（单阶段结构化理解产物）的产品需求。Phase 3 基于 Phase 2 的 `EvidenceCollection`，生成结构化的 `ImplementationUnderstanding`，使用户能在不通读全部代码的情况下理解单个阶段实现了什么。
 >
 > **约束**：Phase 3 仍然不做图视图、不做 Q&A、不做持久化、不做跨阶段对比。Phase 3 的核心产出是结构化理解对象及其前端展示。
+>
+> **本文档已审核收口，作为 Phase 3 编码依据。**
 
 ## 1. Phase 3 目标
 
@@ -15,7 +17,7 @@ Phase 3 编码完成后，产品应能：
 
 1. 从 Phase 2 的 `EvidenceCollection` 出发，生成结构化的 `ImplementationUnderstanding` 对象
 2. 每个 ImplementationClaim 必须绑定 evidence_id，可追溯到源码文件和行号
-3. 明确区分 confirmed / inferred / unknown / conflicting 的置信度
+3. 明确区分 confirmed / supported / inferred / unknown / conflicting 的置信度
 4. 对 evidence 不足或无法理解的项标注 unknown 和 evidence gap
 5. 生成模块、信号、接口、数据处理的结构化摘要
 6. 前端展示单阶段理解摘要，用户能看到"这个阶段做了什么"
@@ -37,7 +39,7 @@ Phase 3 编码完成后，产品应能：
 
 - 基于 `EvidenceCollection` 生成 `ImplementationUnderstanding`
 - 每条 claim 绑定 evidence_id，支持 evidence 追溯
-- 区分 claim confidence（confirmed / inferred / unknown / conflicting）
+- 区分 claim confidence（confirmed / supported / inferred / unknown / conflicting）
 - 标注 unknown 和 evidence gap
 - 生成模块/信号/接口/数据处理摘要
 - 前端展示理解摘要面板
@@ -65,6 +67,7 @@ Phase 3 编码完成后，产品应能：
 
 **输出**：
 - `ImplementationUnderstanding`（结构化理解对象）
+  - `summary: StageSummary { short, detailed }`（short ≤ 80 字一句话摘要，detailed ≤ 500 字详细摘要）
 
 **后端责任**：
 - 接收 `EvidenceCollection` 作为输入
@@ -143,7 +146,7 @@ Phase 3 编码完成后，产品应能：
 
 ---
 
-### IU-004 claim confidence：confirmed / inferred / unknown / conflicting
+### IU-004 claim confidence：confirmed / supported / inferred / unknown / conflicting
 
 **输入**：
 - evidence strength（direct / indirect）
@@ -153,16 +156,17 @@ Phase 3 编码完成后，产品应能：
 - `ImplementationClaim.confidence: ClaimConfidence`
 
 **后端责任**：
-- 定义 ClaimConfidence 枚举：confirmed / inferred / unknown / conflicting
+- 定义 ClaimConfidence 枚举：confirmed / supported / inferred / unknown / conflicting
 - confidence 判定规则：
   - `confirmed`：有多条 direct strength evidence 支持
+  - `supported`：有 evidence 支撑，但仍需要辅助推断或上下文解释，强度低于 confirmed，高于 inferred
   - `inferred`：有 indirect evidence 或仅有单条 direct evidence 支持
   - `unknown`：evidence 不足或无法从 evidence 推断
   - `conflicting`：evidence 之间存在矛盾
 
 **前端责任**：
 - 每个 claim 展示 confidence 标签
-- 颜色映射：confirmed=绿、inferred=蓝、unknown=灰、conflicting=红
+- 颜色映射：confirmed=绿、supported=琥珀、inferred=蓝、unknown=灰、conflicting=红
 - 不使用"正确/错误"、"PASS/HOLD"、"审计结论"等用语
 
 **验收标准**：
@@ -198,7 +202,7 @@ Phase 3 编码完成后，产品应能：
 **验收标准**：
 - unknown 和 evidence gap 在前端可见
 - 无伪造 evidence_id
-- 用户能区分 confirmed / inferred / unknown / conflicting 内容
+- 用户能区分 confirmed / supported / inferred / unknown / conflicting 内容
 
 **非目标**：
 - 不自动解决 unknown 或填补 evidence gap
@@ -318,4 +322,5 @@ Phase 4: 基于 ImplementationUnderstanding 生成结构图、数据流图、时
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-06-12 | 收口修复：IU-004 ClaimConfidence 补齐 supported（与 mvp-contract 对齐）；IU-001 summary 改为 StageSummary { short, detailed }；status draft → active | Claude |
 | 2026-06-12 | 初始创建（draft） | Claude |

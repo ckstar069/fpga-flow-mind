@@ -1,13 +1,13 @@
 # Phase 3 理解生成验证设计
 
 ---
-status: draft
+status: active
 updated: 2026-06-12
 ---
 
 > 本文档定义 Phase 3（单阶段结构化理解产物）的验证策略，覆盖数据模型、context builder、schema validator、evidence_id 检查、claim 约束、unknown/gap 处理、mock provider、前端渲染、安全回归和手工验收。
 >
-> **Phase 3 不编码**。本文档是 draft，编码前需审核收口。
+> **本文档已审核收口，作为 Phase 3 编码依据。**
 
 ## 1. 验证目标
 
@@ -68,8 +68,8 @@ Phase 3 编码完成后，以下维度应通过验证：
 
 | 用例 | 输入 | 预期 |
 |------|------|------|
-| 四种值 | confirmed / inferred / unknown / conflicting | 序列化为 snake_case 字符串 |
-| 反序列化 | "confirmed" / "inferred" / "unknown" / "conflicting" | 正确解析 |
+| 五种值 | confirmed / supported / inferred / unknown / conflicting | 序列化为 snake_case 字符串 |
+| 反序列化 | "confirmed" / "supported" / "inferred" / "unknown" / "conflicting" | 正确解析 |
 | 非法值 | "definitely" | 反序列化失败 |
 
 ### 3.3 ClaimCategory 枚举
@@ -168,7 +168,7 @@ Phase 3 编码完成后，以下维度应通过验证：
 | 用例 | 输入 | 预期 |
 |------|------|------|
 | 正常渲染 | 含 5 claims + 2 modules + 1 unknown | 各区域正确展示 |
-| confidence 标签颜色 | confirmed / inferred / unknown / conflicting | 对应颜色正确 |
+| confidence 标签颜色 | confirmed / supported / inferred / unknown / conflicting | 对应颜色正确 |
 | evidence 回链 | 点击 evidence_id chip | 触发高亮事件 |
 | unknown-heavy 警告 | unknown_count > claim_count | 显示警告 |
 | 空理解 | 0 claims | 显示空状态 |
@@ -240,4 +240,5 @@ rg "GraphView|Dataflow|Q&A|QA|LLM" src src-tauri/src/understanding/
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-06-12 | 收口修复：ClaimConfidence 测试矩阵补齐 supported（4→5 种值）；前端渲染测试同步；status draft → active | Claude |
 | 2026-06-12 | 初始创建（draft） | Claude |

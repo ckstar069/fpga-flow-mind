@@ -1,13 +1,13 @@
 # Phase 3 ImplementationUnderstanding 数据结构设计
 
 ---
-status: draft
+status: active
 updated: 2026-06-12
 ---
 
-> 本文档定义 Phase 3 `ImplementationUnderstanding` 及其子对象的数据结构草案，覆盖 Rust 和 TypeScript 字段设计。设计约束来自 [`phase-3-understanding-requirements.md`](../requirements/phase-3-understanding-requirements.md) 和 [`phase-2-evidence-model.md`](phase-2-evidence-model.md)。
+> 本文档定义 Phase 3 `ImplementationUnderstanding` 及其子对象的数据结构，覆盖 Rust 和 TypeScript 字段设计。设计约束来自 [`phase-3-understanding-requirements.md`](../requirements/phase-3-understanding-requirements.md) 和 [`phase-2-evidence-model.md`](phase-2-evidence-model.md)。
 >
-> **Phase 3 不编码**。本文档是 draft，编码前需审核收口。
+> **本文档已审核收口，作为 Phase 3 编码依据。**
 
 ## 1. 核心对象概览
 
@@ -15,7 +15,7 @@ updated: 2026-06-12
 ImplementationUnderstanding
 ├── stage_id: String
 ├── version: String
-├── summary: String
+├── summary: StageSummary
 ├── claims: Vec<ImplementationClaim>
 ├── module_summaries: Vec<ModuleSummary>
 ├── signal_summaries: Vec<SignalSummary>
@@ -39,8 +39,8 @@ pub struct ImplementationUnderstanding {
     pub stage_id: String,
     /// 版本号，格式 "3.0.0"
     pub version: String,
-    /// 阶段实现的自然语言摘要
-    pub summary: String,
+    /// 阶段摘要（short + detailed）
+    pub summary: StageSummary,
     /// 实现声明列表
     pub claims: Vec<ImplementationClaim>,
     /// 模块摘要
@@ -68,7 +68,7 @@ pub struct ImplementationUnderstanding {
 interface ImplementationUnderstanding {
   stage_id: string;
   version: string;
-  summary: string;
+  summary: StageSummary;
   claims: ImplementationClaim[];
   module_summaries: ModuleSummary[];
   signal_summaries: SignalSummary[];
@@ -81,9 +81,33 @@ interface ImplementationUnderstanding {
 }
 ```
 
-## 3. ImplementationClaim
+## 3. StageSummary
 
 ### 3.1 Rust 定义
+
+```rust
+/// 阶段摘要 — 分 short（一句话）和 detailed（详细描述）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StageSummary {
+    /// 一句话摘要，建议 ≤ 80 字
+    pub short: String,
+    /// 详细摘要，建议 ≤ 500 字
+    pub detailed: String,
+}
+```
+
+### 3.2 TypeScript 定义
+
+```typescript
+interface StageSummary {
+  short: string;   // 一句话摘要，≤ 80 字
+  detailed: string; // 详细摘要，≤ 500 字
+}
+```
+
+## 4. ImplementationClaim
+
+### 4.1 Rust 定义
 
 ```rust
 /// 实现声明 — 描述阶段实现的某个方面
@@ -104,7 +128,7 @@ pub struct ImplementationClaim {
 }
 ```
 
-### 3.2 TypeScript 定义
+### 4.2 TypeScript 定义
 
 ```typescript
 interface ImplementationClaim {
@@ -117,17 +141,19 @@ interface ImplementationClaim {
 }
 ```
 
-## 4. ClaimConfidence
+## 5. ClaimConfidence
 
-### 4.1 枚举定义
+### 5.1 枚举定义
 
 ```rust
 /// 声明置信度 — 与 EvidenceStrength 是不同层级
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum ClaimConfidence {
-    /// 有多条 direct evidence 支持
+    /// 有充分证据直接支持（≥ 2 条 direct evidence，无矛盾）
     Confirmed,
+    /// 有证据支撑，需辅助推断或上下文解释
+    Supported,
     /// 有 indirect evidence 或仅单条 direct evidence 支持
     Inferred,
     /// evidence 不足或无法从 evidence 推断
@@ -138,15 +164,15 @@ pub enum ClaimConfidence {
 ```
 
 ```typescript
-type ClaimConfidence = 'confirmed' | 'inferred' | 'unknown' | 'conflicting';
+type ClaimConfidence = 'confirmed' | 'supported' | 'inferred' | 'unknown' | 'conflicting';
 ```
 
-### 4.2 ClaimConfidence vs EvidenceStrength
+### 5.2 ClaimConfidence vs EvidenceStrength
 
 | 概念 | 字段名 | 枚举值 | 生成阶段 |
 |------|--------|--------|----------|
 | **evidence strength** | `EvidenceItem.strength` | `direct` / `indirect` / `weak` / `conflicting` / `missing` | Phase 2 静态提取 |
-| **claim confidence** | `ImplementationClaim.confidence` | `confirmed` / `inferred` / `unknown` / `conflicting` | Phase 3 语义理解 |
+| **claim confidence** | `ImplementationClaim.confidence` | `confirmed` / `supported` / `inferred` / `unknown` / `conflicting` | Phase 3 语义理解 |
 
 **两者关系**：
 - evidence strength 描述单条证据的可靠性
@@ -155,16 +181,17 @@ type ClaimConfidence = 'confirmed' | 'inferred' | 'unknown' | 'conflicting';
 - inferred claim 可能基于 indirect evidence 或少量 evidence
 - **Phase 2 不生成 claim confidence**
 
-### 4.3 confidence 语义
+### 5.3 confidence 语义
 
 | 值 | 含义 | evidence 要求 |
 |----|------|--------------|
-| `confirmed` | 有充分证据支持 | ≥ 2 条 direct evidence，且无矛盾 |
-| `inferred` | 有证据支持但不够充分 | ≥ 1 条 evidence（direct 或 indirect），但不满足 confirmed |
+| `confirmed` | 有充分证据直接支持 | ≥ 2 条 direct evidence，且无矛盾 |
+| `supported` | 有证据支撑，需辅助推断 | ≥ 1 条 direct evidence + 辅助上下文，但不满足 confirmed |
+| `inferred` | 有证据支持但不够充分 | ≥ 1 条 evidence（direct 或 indirect），但不满足 confirmed 或 supported |
 | `unknown` | 无法从现有 evidence 推断 | evidence 不足或无法理解 |
 | `conflicting` | evidence 之间存在矛盾 | ≥ 2 条 evidence 但互相矛盾 |
 
-## 5. ClaimCategory
+## 6. ClaimCategory
 
 ```rust
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -201,7 +228,7 @@ type ClaimCategory =
   | 'other';
 ```
 
-## 6. EvidenceRef
+## 7. EvidenceRef
 
 ```rust
 /// 证据引用 — 通过 evidence_id 回链到 Phase 2 EvidenceCollection
@@ -226,7 +253,7 @@ interface EvidenceRef {
 - `source_path` 和 `line_range` 不在 claim 中重复，通过 `evidence_id` 回链到 EvidenceItem 获取
 - hallucination guard：输出 claim 中 `evidence_refs` 里的 `evidence_id` 必须通过 existence check
 
-## 7. UnknownItem
+## 8. UnknownItem
 
 ```rust
 /// 无法从现有 evidence 推断的信息项
@@ -257,7 +284,7 @@ interface UnknownItem {
 - `related_evidence_refs` 可以为空（完全无证据）
 - `related_evidence_refs` 中的 evidence_id 也必须通过 existence check
 
-## 8. EvidenceGap
+## 9. EvidenceGap
 
 ```rust
 /// 期望存在但缺失的证据
@@ -283,9 +310,9 @@ interface EvidenceGap {
 }
 ```
 
-## 9. 摘要对象
+## 10. 摘要对象
 
-### 9.1 ModuleSummary
+### 10.1 ModuleSummary
 
 ```rust
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -310,7 +337,7 @@ interface ModuleSummary {
 }
 ```
 
-### 9.2 SignalSummary
+### 10.2 SignalSummary
 
 ```rust
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -338,7 +365,7 @@ interface SignalSummary {
 }
 ```
 
-### 9.3 InterfaceSummary
+### 10.3 InterfaceSummary
 
 ```rust
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -366,7 +393,7 @@ interface InterfaceSummary {
 }
 ```
 
-### 9.4 ProcessingStepSummary
+### 10.4 ProcessingStepSummary
 
 ```rust
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -394,7 +421,7 @@ interface ProcessingStepSummary {
 }
 ```
 
-## 10. GenerationMeta
+## 11. GenerationMeta
 
 ```rust
 /// 生成元信息
@@ -423,7 +450,7 @@ interface GenerationMeta {
 }
 ```
 
-## 11. UnderstandingStats
+## 12. UnderstandingStats
 
 ```rust
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -463,7 +490,7 @@ interface UnderstandingStats {
 }
 ```
 
-## 12. claim_id / unknown_id / gap_id 生成规则
+## 13. claim_id / unknown_id / gap_id 生成规则
 
 | ID 类型 | 格式 | 说明 |
 |---------|------|------|
@@ -473,16 +500,18 @@ interface UnderstandingStats {
 
 生成器与 Phase 2 的 `EvidenceIdGenerator` 模式一致，各自独立的 counter。
 
-## 13. 核心约束总结
+## 14. 核心约束总结
 
 1. **evidence_id 引用来自 Phase 2 EvidenceCollection**：claim / summary / unknown / gap 中的 evidence_refs 必须引用实际存在的 evidence_id
 2. **source_path 和 line_range 通过 evidence_id 回链**：不在 claim 中重复存储，避免不一致
 3. **每条用户可见主要 claim 必须有 evidence_refs 或明确 evidence_gap**：不允许无任何依据的 claim
 4. **unknown 不允许绑定伪造 evidence_id**：related_evidence_refs 中的 evidence_id 也必须通过 existence check
 5. **confidence 与 strength 是不同层级**：evidence strength 是 Phase 2 静态判定，claim confidence 是 Phase 3 语义判定
-6. **confirmed / inferred / unknown / conflicting 语义严格**：不使用"正确/错误"等审计用语
+6. **confirmed / supported / inferred / unknown / conflicting 语义严格**：不使用"正确/错误"等审计用语
 
-## 14. 版本字段与后续 Phase 消费关系
+## 15. 版本字段与后续 Phase 消费关系
+
+> **重要声明**：Phase 3 的 `ImplementationUnderstanding` 是**不含 `structure_view` / `dataflow_view` / `timing_view` 的中间产物**。[`mvp-functional-contract.md`](../requirements/mvp-functional-contract.md) 中定义的 `implementation_understanding.json`（含三类视图）是 Phase 4+ 扩展后的最终形态。Phase 4 将从 Phase 3 的 `module_summaries` / `interface_summaries` / `signal_summaries` / `processing_steps` / `claims` 生成视图结构。Phase 3 不做图视图。
 
 ```text
 Phase 3: ImplementationUnderstanding (version "3.0.0")
@@ -502,11 +531,12 @@ Phase 3: ImplementationUnderstanding (version "3.0.0")
 - Phase 4 扩展 visualization spec 时更新 minor version
 - 字段增加不破坏向后兼容
 
-## 15. 与 Phase 2 EvidenceCollection 的输入关系
+## 16. 与 Phase 2 EvidenceCollection 的输入关系
 
 ```text
 Phase 2: EvidenceCollection
   - stage_id → ImplementationUnderstanding.stage_id
+  - evidence_items[] → summary.short / summary.detailed（由生成器从 evidence 提炼）
   - evidence_items[] → claims[].evidence_refs[].evidence_id
   - evidence_items[] → module_summaries[].evidence_refs[].evidence_id
   - evidence_items[] → signal_summaries[].evidence_refs[].evidence_id
@@ -517,8 +547,9 @@ Phase 2: EvidenceCollection
   - stats → generation_meta.input_evidence_count
 ```
 
-## 16. 文档变更记录
+## 17. 文档变更记录
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-06-12 | 收口修复：ClaimConfidence 补齐 supported（5→5 与 mvp-contract 对齐）；summary 改为 StageSummary { short, detailed }；§15 加中间产物显式声明；status draft → active | Claude |
 | 2026-06-12 | 初始创建（draft） | Claude |

@@ -1,13 +1,13 @@
 # Phase 3 理解面板前端设计
 
 ---
-status: draft
+status: active
 updated: 2026-06-12
 ---
 
 > 本文档定义 Phase 3 前端 `UnderstandingPanel` 组件的设计，用于展示 `ImplementationUnderstanding` 的结构化理解结果。
 >
-> **Phase 3 不编码**。本文档是 draft，编码前需审核收口。
+> **本文档已审核收口，作为 Phase 3 编码依据。**
 
 ## 1. 组件定位
 
@@ -57,10 +57,11 @@ StageDetail
 UnderstandingPanel
 ├── 状态栏（生成状态、provider 信息、耗时）
 ├── 阶段摘要区
-│   └── summary 文本
+│   ├── summary.short 文本（一句话摘要）
+│   └── summary.detailed 文本（可展开详细摘要）
 ├── 统计概览
 │   ├── claim 总数
-│   ├── confidence 分布（confirmed/inferred/unknown/conflicting）
+│   ├── confidence 分布（confirmed/supported/inferred/unknown/conflicting）
 │   └── 摘要数量（模块/信号/接口/处理步骤）
 ├── Claim 列表
 │   └── ClaimCard × N
@@ -98,6 +99,7 @@ UnderstandingPanel
 | Confidence | 背景色 | 文字色 | 标签文字 |
 |-----------|--------|--------|----------|
 | `confirmed` | `#e8f5e9`（浅绿） | `#2e7d32`（深绿） | 已确认 |
+| `supported` | `#fff8e1`（浅琥珀） | `#f57f17`（深琥珀） | 有支撑 |
 | `inferred` | `#e3f2fd`（浅蓝） | `#1565c0`（深蓝） | 推断 |
 | `unknown` | `#f5f5f5`（浅灰） | `#757575`（灰色） | 未知 |
 | `conflicting` | `#ffebee`（浅红） | `#c62828`（深红） | 矛盾 |
@@ -196,6 +198,7 @@ Unknown 和 Evidence Gap 区域使用灰色背景（`#fafafa`），与正常的 
 | 允许 | 用途 |
 |------|------|
 | "已确认" | confidence = confirmed |
+| "有支撑" | confidence = supported |
 | "推断" | confidence = inferred |
 | "未知" | confidence = unknown |
 | "矛盾" | confidence = conflicting |
@@ -234,10 +237,15 @@ interface StageDetailProps {
 ### 11.1 新增类型（在 `workspace.ts` 中）
 
 ```typescript
+interface StageSummary {
+  short: string;   // 一句话摘要，≤ 80 字
+  detailed: string; // 详细摘要，≤ 500 字
+}
+
 interface ImplementationUnderstanding {
   stage_id: string;
   version: string;
-  summary: string;
+  summary: StageSummary;
   claims: ImplementationClaim[];
   module_summaries: ModuleSummary[];
   signal_summaries: SignalSummary[];
@@ -249,7 +257,7 @@ interface ImplementationUnderstanding {
   stats: UnderstandingStats;
 }
 
-type ClaimConfidence = 'confirmed' | 'inferred' | 'unknown' | 'conflicting';
+type ClaimConfidence = 'confirmed' | 'supported' | 'inferred' | 'unknown' | 'conflicting';
 type ClaimCategory = 'module_structure' | 'signal_definition' | 'interface_description' | 'data_processing' | 'configuration' | 'documentation' | 'test_coverage' | 'other';
 
 interface ImplementationClaim {
@@ -366,12 +374,13 @@ Phase 3 前端**不做**：
 
 - 按钮：生成理解 / 重新生成 / 生成理解中... / 重试生成
 - 区域标题：阶段摘要 / 实现声明 / 模块摘要 / 信号摘要 / 接口摘要 / 处理步骤 / 无法推断的信息 / 证据缺失
-- 标签：已确认 / 推断 / 未知 / 矛盾
-- 统计：声明总数 / 确认 / 推断 / 未知 / 矛盾
+- 标签：已确认 / 有支撑 / 推断 / 未知 / 矛盾
+- 统计：声明总数 / 确认 / 有支撑 / 推断 / 未知 / 矛盾
 - 错误：理解生成失败 / 降级模式
 
 ## 14. 文档变更记录
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-06-12 | 收口修复：ClaimConfidence 补齐 supported + 琥珀色；summary 改为 StageSummary { short, detailed } 两层展示；TypeScript 类型同步；status draft → active | Claude |
 | 2026-06-12 | 初始创建（draft） | Claude |
