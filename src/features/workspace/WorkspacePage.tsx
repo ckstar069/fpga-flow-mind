@@ -5,8 +5,9 @@ import type {
   WorkspaceWarning,
   EvidenceCollection,
   ImplementationUnderstanding,
+  ViewGraph,
 } from '../../types/workspace';
-import { openWorkspace, selectStage, collectEvidence, generateUnderstanding, CommandError } from '../../lib/tauriCommands';
+import { openWorkspace, selectStage, collectEvidence, generateUnderstanding, generateViews, CommandError } from '../../lib/tauriCommands';
 import type { CommandError as CommandErrorType } from '../../types/workspace';
 import type { UiError } from './workspaceUiTypes';
 
@@ -29,7 +30,10 @@ type AppState =
   | { phase: 'evidence_error'; profile: WorkspaceProfile; stageId: string; context: StageContext; error: UiError }
   | { phase: 'understanding_loading'; profile: WorkspaceProfile; stageId: string; context: StageContext; evidence?: EvidenceCollection }
   | { phase: 'understanding_loaded'; profile: WorkspaceProfile; stageId: string; context: StageContext; evidence?: EvidenceCollection; understanding: ImplementationUnderstanding }
-  | { phase: 'understanding_error'; profile: WorkspaceProfile; stageId: string; context: StageContext; evidence?: EvidenceCollection; understandingError: UiError };
+  | { phase: 'understanding_error'; profile: WorkspaceProfile; stageId: string; context: StageContext; evidence?: EvidenceCollection; understandingError: UiError }
+  | { phase: 'views_loading'; profile: WorkspaceProfile; stageId: string; context: StageContext; evidence?: EvidenceCollection; understanding: ImplementationUnderstanding }
+  | { phase: 'views_loaded'; profile: WorkspaceProfile; stageId: string; context: StageContext; evidence?: EvidenceCollection; understanding: ImplementationUnderstanding; views: ViewGraph[] }
+  | { phase: 'views_error'; profile: WorkspaceProfile; stageId: string; context: StageContext; evidence?: EvidenceCollection; understanding: ImplementationUnderstanding; viewsError: UiError };
 
 function makeUiError(err: unknown): UiError {
   return err instanceof CommandError
@@ -64,7 +68,10 @@ export default function WorkspacePage() {
         state.phase === 'evidence_loaded' ||
         state.phase === 'evidence_error' ||
         state.phase === 'understanding_loaded' ||
-        state.phase === 'understanding_error'
+        state.phase === 'understanding_error' ||
+        state.phase === 'views_loaded' ||
+        state.phase === 'views_error' ||
+        state.phase === 'views_loading'
           ? (state as { profile: WorkspaceProfile }).profile
           : null;
       if (!profile) return;
@@ -89,7 +96,10 @@ export default function WorkspacePage() {
       state.phase !== 'evidence_error' &&
       state.phase !== 'understanding_loaded' &&
       state.phase !== 'understanding_error' &&
-      state.phase !== 'understanding_loading'
+      state.phase !== 'understanding_loading' &&
+      state.phase !== 'views_loading' &&
+      state.phase !== 'views_loaded' &&
+      state.phase !== 'views_error'
     ) return;
     const { profile, stageId, context } = state as {
       profile: WorkspaceProfile;
@@ -114,7 +124,9 @@ export default function WorkspacePage() {
       state.phase !== 'evidence_loaded' &&
       state.phase !== 'evidence_error' &&
       state.phase !== 'understanding_loaded' &&
-      state.phase !== 'understanding_error'
+      state.phase !== 'understanding_error' &&
+      state.phase !== 'views_loaded' &&
+      state.phase !== 'views_error'
     ) return;
     const { profile, stageId, context } = state as {
       profile: WorkspaceProfile;
@@ -139,6 +151,37 @@ export default function WorkspacePage() {
     }
   }, [state]);
 
+  // ─── 生成视图 ───
+  const handleGenerateViews = useCallback(async () => {
+    if (
+      state.phase !== 'understanding_loaded' &&
+      state.phase !== 'views_loaded' &&
+      state.phase !== 'views_error'
+    ) return;
+    const { profile, stageId, context, evidence, understanding } = state as {
+      profile: WorkspaceProfile;
+      stageId: string;
+      context: StageContext;
+      evidence?: EvidenceCollection;
+      understanding: ImplementationUnderstanding;
+    };
+    setState({ phase: 'views_loading', profile, stageId, context, evidence, understanding });
+    try {
+      const views = await generateViews(understanding);
+      setState({ phase: 'views_loaded', profile, stageId, context, evidence, understanding, views });
+    } catch (err) {
+      setState({
+        phase: 'views_error',
+        profile,
+        stageId,
+        context,
+        evidence,
+        understanding,
+        viewsError: makeUiError(err),
+      });
+    }
+  }, [state]);
+
   // ─── 当前 profile 提取 ───
   const currentProfile = useMemo<WorkspaceProfile | null>(() => {
     if (state.phase === 'loaded') return state.profile;
@@ -150,7 +193,9 @@ export default function WorkspacePage() {
     if (state.phase === 'evidence_error') return state.profile;
     if (state.phase === 'understanding_loading') return state.profile;
     if (state.phase === 'understanding_loaded') return state.profile;
-    if (state.phase === 'understanding_error') return state.profile;
+    if (state.phase === 'views_loading') return state.profile;
+    if (state.phase === 'views_loaded') return state.profile;
+    if (state.phase === 'views_error') return state.profile;
     return null;
   }, [state]);
 
@@ -167,7 +212,9 @@ export default function WorkspacePage() {
     if (state.phase === 'evidence_error') return state.stageId;
     if (state.phase === 'understanding_loading') return state.stageId;
     if (state.phase === 'understanding_loaded') return state.stageId;
-    if (state.phase === 'understanding_error') return state.stageId;
+    if (state.phase === 'views_loading') return state.stageId;
+    if (state.phase === 'views_loaded') return state.stageId;
+    if (state.phase === 'views_error') return state.stageId;
     return null;
   }, [state]);
 
@@ -206,6 +253,30 @@ export default function WorkspacePage() {
         context: state.context,
         evidence: state.evidence,
         understandingError: state.understandingError,
+      };
+    }
+    if (state.phase === 'views_loading') {
+      return {
+        context: state.context,
+        evidence: state.evidence,
+        understanding: state.understanding,
+        viewsLoading: true,
+      };
+    }
+    if (state.phase === 'views_loaded') {
+      return {
+        context: state.context,
+        evidence: state.evidence,
+        understanding: state.understanding,
+        views: state.views,
+      };
+    }
+    if (state.phase === 'views_error') {
+      return {
+        context: state.context,
+        evidence: state.evidence,
+        understanding: state.understanding,
+        viewsError: state.viewsError,
       };
     }
     return null;
@@ -348,6 +419,10 @@ export default function WorkspacePage() {
               understandingLoading={'understandingLoading' in evidenceState ? evidenceState.understandingLoading : undefined}
               understandingError={'understandingError' in evidenceState ? evidenceState.understandingError : undefined}
               onGenerateUnderstanding={handleGenerateUnderstanding}
+              views={'views' in evidenceState ? evidenceState.views : undefined}
+              viewsLoading={'viewsLoading' in evidenceState ? evidenceState.viewsLoading : undefined}
+              viewsError={'viewsError' in evidenceState ? evidenceState.viewsError : undefined}
+              onGenerateViews={handleGenerateViews}
             />
           )}
 
@@ -358,7 +433,7 @@ export default function WorkspacePage() {
             </div>
           )}
 
-          {!['selecting_stage', 'stage_loaded', 'stage_error', 'collecting_evidence', 'evidence_loaded', 'evidence_error', 'understanding_loading', 'understanding_loaded', 'understanding_error'].includes(state.phase) &&
+          {!['selecting_stage', 'stage_loaded', 'stage_error', 'collecting_evidence', 'evidence_loaded', 'evidence_error', 'understanding_loading', 'understanding_loaded', 'understanding_error', 'views_loading', 'views_loaded', 'views_error'].includes(state.phase) &&
             !currentProfile && (
               <div
                 style={{

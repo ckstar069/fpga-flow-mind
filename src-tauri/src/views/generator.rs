@@ -26,7 +26,7 @@ impl ViewGraphGenerator {
 mod tests {
     use super::*;
     use crate::understanding::models::{
-        ClaimConfidence, GenerationMeta, ImplementationClaim, ModuleSummary, ProcessingStepSummary,
+        ClaimConfidence, GenerationMeta, ModuleSummary, ProcessingStepSummary,
         SignalSummary, StageSummary, UnderstandingStats,
     };
     use crate::views::models::{NodeType, ViewType};

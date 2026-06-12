@@ -1,8 +1,9 @@
-import type { StageContext, StageFile, UpstreamRef, EvidenceCollection, ImplementationUnderstanding } from '../../../types/workspace';
+import type { StageContext, StageFile, UpstreamRef, EvidenceCollection, ImplementationUnderstanding, ViewGraph } from '../../../types/workspace';
 import type { UiError } from '../workspaceUiTypes';
 import { formatBytes } from '../workspaceUiUtils';
 import EvidencePanel from './EvidencePanel';
 import UnderstandingPanel from './UnderstandingPanel';
+import MultiViewPanel from './MultiViewPanel';
 
 interface StageDetailProps {
   context: StageContext;
@@ -14,6 +15,10 @@ interface StageDetailProps {
   understandingLoading?: boolean;
   understandingError?: UiError;
   onGenerateUnderstanding?: () => void;
+  views?: ViewGraph[];
+  viewsLoading?: boolean;
+  viewsError?: UiError;
+  onGenerateViews?: () => void;
 }
 
 export default function StageDetail({
@@ -26,6 +31,10 @@ export default function StageDetail({
   understandingLoading,
   understandingError,
   onGenerateUnderstanding,
+  views,
+  viewsLoading,
+  viewsError,
+  onGenerateViews,
 }: StageDetailProps) {
   const canCollect =
     !context.error_code && context.files.length > 0 && !!onCollectEvidence;
@@ -115,20 +124,20 @@ export default function StageDetail({
           <h3 style={{ fontSize: 15, margin: '0 0 12px' }}>证据收集</h3>
           <button
             onClick={onCollectEvidence}
-            disabled={isCollecting || understandingLoading}
+            disabled={isCollecting || understandingLoading || viewsLoading}
             style={{
               padding: '8px 20px',
               borderRadius: 6,
               border: evidence
                 ? '1px solid #4caf50'
                 : '1px solid #1976d2',
-              background: (isCollecting || understandingLoading)
+              background: (isCollecting || understandingLoading || viewsLoading)
                 ? '#e0e0e0'
                 : evidence
                   ? '#4caf50'
                   : '#1976d2',
-              color: (isCollecting || understandingLoading) ? '#999' : '#fff',
-              cursor: (isCollecting || understandingLoading) ? 'not-allowed' : 'pointer',
+              color: (isCollecting || understandingLoading || viewsLoading) ? '#999' : '#fff',
+              cursor: (isCollecting || understandingLoading || viewsLoading) ? 'not-allowed' : 'pointer',
               fontSize: 14,
             }}
           >
@@ -136,9 +145,11 @@ export default function StageDetail({
               ? '收集中...'
               : understandingLoading
                 ? '生成中，请稍候'
-                : evidence
-                  ? `重新收集 (${evidence.evidence_items.length} 项)`
-                  : '收集证据'}
+                : viewsLoading
+                  ? '视图生成中，请稍候'
+                  : evidence
+                    ? `重新收集 (${evidence.evidence_items.length} 项)`
+                    : '收集证据'}
           </button>
         </div>
       )}
@@ -192,30 +203,32 @@ export default function StageDetail({
             <>
               <button
                 onClick={onGenerateUnderstanding}
-                disabled={understandingLoading}
+                disabled={understandingLoading || viewsLoading}
                 style={{
                   padding: '8px 20px',
                   borderRadius: 6,
                   border: understanding
                     ? '1px solid #2e7d32'
                     : '1px solid #7b1fa2',
-                  background: understandingLoading
+                  background: (understandingLoading || viewsLoading)
                     ? '#e0e0e0'
                     : understanding
                       ? '#2e7d32'
                       : '#7b1fa2',
-                  color: understandingLoading ? '#999' : '#fff',
-                  cursor: understandingLoading ? 'not-allowed' : 'pointer',
+                  color: (understandingLoading || viewsLoading) ? '#999' : '#fff',
+                  cursor: (understandingLoading || viewsLoading) ? 'not-allowed' : 'pointer',
                   fontSize: 14,
                 }}
               >
                 {understandingLoading
                   ? '生成中...'
-                  : understanding
-                    ? '重新生成'
-                    : '生成理解'}
+                  : viewsLoading
+                    ? '视图生成中，请稍候'
+                    : understanding
+                      ? '重新生成'
+                      : '生成理解'}
               </button>
-              {!understanding && !understandingLoading && (
+              {!understanding && !understandingLoading && !viewsLoading && (
                 <span style={{ fontSize: 12, color: '#999', marginLeft: 12 }}>
                   基于已收集的证据生成结构化理解
                 </span>
@@ -293,6 +306,99 @@ export default function StageDetail({
         <div style={{ marginBottom: 24 }}>
           <UnderstandingPanel understanding={understanding} />
         </div>
+      )}
+
+      {/* 视图生成区域 */}
+      {onGenerateViews && !context.error_code && (
+        <div style={{ marginBottom: 24 }}>
+          <h3 style={{ fontSize: 15, margin: '0 0 12px' }}>视图生成</h3>
+          {!understanding ? (
+            <p style={{ fontSize: 13, color: '#999', margin: 0 }}>
+              请先生成理解
+            </p>
+          ) : (
+            <>
+              <button
+                onClick={onGenerateViews}
+                disabled={viewsLoading || understandingLoading}
+                style={{
+                  padding: '8px 20px',
+                  borderRadius: 6,
+                  border: views
+                    ? '1px solid #2e7d32'
+                    : '1px solid #1976d2',
+                  background: (viewsLoading || understandingLoading)
+                    ? '#e0e0e0'
+                    : views
+                      ? '#2e7d32'
+                      : '#1976d2',
+                  color: (viewsLoading || understandingLoading) ? '#999' : '#fff',
+                  cursor: (viewsLoading || understandingLoading) ? 'not-allowed' : 'pointer',
+                  fontSize: 14,
+                }}
+              >
+                {viewsLoading
+                  ? '生成视图中...'
+                  : views
+                    ? '重新生成视图'
+                    : '生成视图'}
+              </button>
+              {!views && !viewsLoading && (
+                <span style={{ fontSize: 12, color: '#999', marginLeft: 12 }}>
+                  基于理解结果生成结构图、数据流和时序流水视图
+                </span>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* 视图错误 */}
+      {viewsError && (
+        <div
+          style={{
+            padding: 16,
+            background: '#fce4ec',
+            borderRadius: 8,
+            marginBottom: 16,
+            border: '1px solid #ef9a9a',
+          }}
+        >
+          <h4 style={{ margin: '0 0 8px', fontSize: 14, color: '#c62828' }}>视图生成失败</h4>
+          <div style={{ fontSize: 13 }}>
+            {'error_code' in viewsError && (
+              <div style={{ marginBottom: 4 }}>
+                <span style={{ color: '#666' }}>错误码：</span>
+                <code>{viewsError.error_code}</code>
+              </div>
+            )}
+            <div style={{ marginBottom: 4 }}>
+              <span style={{ color: '#666' }}>信息：</span>
+              {viewsError.message}
+            </div>
+            {'source_path' in viewsError && viewsError.source_path && (
+              <div style={{ marginBottom: 4 }}>
+                <span style={{ color: '#666' }}>路径：</span>
+                <code style={{ fontSize: 12 }}>{viewsError.source_path}</code>
+              </div>
+            )}
+            {'details' in viewsError && viewsError.details && (
+              <div>
+                <span style={{ color: '#666' }}>详情：</span>
+                {viewsError.details}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 视图面板 */}
+      {views && (
+        <MultiViewPanel
+          views={views}
+          loading={viewsLoading}
+          error={viewsError}
+        />
       )}
 
       {evidence && <EvidencePanel evidence={evidence} />}
