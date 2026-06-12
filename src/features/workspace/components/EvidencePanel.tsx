@@ -115,18 +115,46 @@ export default function EvidencePanel({ evidence }: EvidencePanelProps) {
             {warnings.map((w, i) => (
               <li key={i} style={{ marginBottom: 2 }}>
                 <code>{w.error_code}</code>: {w.message}
+                {w.source_path && (
+                  <span style={{ color: '#999', marginLeft: 6 }}>
+                    ({w.source_path})
+                  </span>
+                )}
               </li>
             ))}
           </ul>
         </div>
       )}
 
+      {/* 空状态 */}
+      {evidence_items.length === 0 && (
+        <div
+          style={{
+            padding: 32,
+            background: '#fafafa',
+            borderRadius: 8,
+            textAlign: 'center',
+            color: '#999',
+          }}
+        >
+          <p style={{ margin: '0 0 8px', fontSize: 15 }}>未收集到证据</p>
+          <p style={{ margin: 0, fontSize: 13 }}>
+            该阶段可能无可提取的结构信息。
+            {stats.files_processed > 0 && (
+              <>收集了 {stats.files_processed} 个文件，跳过了 {stats.files_skipped} 个文件。</>
+            )}
+          </p>
+        </div>
+      )}
+
       {/* 证据列表 */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {evidence_items.map((item) => (
-          <EvidenceItemCard key={item.evidence_id} item={item} />
-        ))}
-      </div>
+      {evidence_items.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {evidence_items.map((item) => (
+            <EvidenceItemCard key={item.evidence_id} item={item} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -182,9 +210,11 @@ function EvidenceItemCard({ item }: { item: EvidenceItem }) {
         {item.summary}
       </div>
 
-      {/* 底行：文件路径 + 行号 + 语言/类型 */}
+      {/* 底行：文件名 + 行号 + 语言/类型 */}
       <div style={{ fontSize: 11, color: '#999' }}>
-        <span style={{ wordBreak: 'break-all' }}>{item.source_path}</span>
+        <span title={item.source_path} style={{ cursor: 'help' }}>
+          {item.source_path.split('/').pop() || item.source_path}
+        </span>
         {' · '}
         <span>
           行 {item.line_range.start}–{item.line_range.end}

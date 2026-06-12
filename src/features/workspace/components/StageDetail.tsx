@@ -110,14 +110,24 @@ export default function StageDetail({
             style={{
               padding: '8px 20px',
               borderRadius: 6,
-              border: '1px solid #1976d2',
-              background: isCollecting ? '#e0e0e0' : '#1976d2',
+              border: evidence
+                ? '1px solid #4caf50'
+                : '1px solid #1976d2',
+              background: isCollecting
+                ? '#e0e0e0'
+                : evidence
+                  ? '#4caf50'
+                  : '#1976d2',
               color: isCollecting ? '#999' : '#fff',
               cursor: isCollecting ? 'not-allowed' : 'pointer',
               fontSize: 14,
             }}
           >
-            {isCollecting ? '收集中...' : '收集证据'}
+            {isCollecting
+              ? '收集中...'
+              : evidence
+                ? `重新收集 (${evidence.evidence_items.length} 项)`
+                : '收集证据'}
           </button>
         </div>
       )}

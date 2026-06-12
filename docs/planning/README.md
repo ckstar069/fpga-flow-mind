@@ -80,22 +80,20 @@ updated: YYYY-MM-DD
 | [`phase-1-documents-closure.md`](phase-1-documents-closure.md) | `active` | Phase 1 文档收口说明：收口范围、active 文档清单、进入编码条件 | Phase 1 编码前必读 |
 | [`phase-1-completion-review.md`](phase-1-completion-review.md) | `active` | Phase 1 收尾验收与完成审查：P1-T01~P1-T13 完成状态、真实 Tauri 桌面验收结果、允许进入 Phase 2 | Phase 1 编码完成后必读 |
 | [`phase-2-implementation-plan.md`](phase-2-implementation-plan.md) | `active` | Phase 2 实施计划：入口条件、P2-T01~P2-T10 任务拆解、编码顺序、验证顺序、退出标准、风险与回滚 | Phase 2 编码实施依据 |
+| [`phase-2-completion-review.md`](phase-2-completion-review.md) | `active` | Phase 2 收尾验收与完成审查：P2-T01~P2-T10 完成状态、真实 Tauri 桌面验收结果、允许进入 Phase 3 | Phase 2 编码完成后必读 |
 
-> **Phase 2 文档收口完成，可进入 Phase 2 编码实施。**
-> 编码必须遵守 `phase-2-implementation-plan.md` 的任务顺序和验证要求。
+> **Phase 2 已完成，允许进入 Phase 3。**
 >
-> Phase 2 文档已收口（status=active）：
-> - ✅ `docs/requirements/phase-2-evidence-requirements.md` — Phase 2 需求
-> - ✅ `docs/design/phase-2-evidence-model.md` — 数据结构设计
-> - ✅ `docs/design/phase-2-evidence-collector-design.md` — 后端收集器设计
-> - ✅ `docs/ui-ux/phase-2-evidence-view.md` — 前端面板设计
-> - ✅ `docs/testing/phase-2-evidence-validation.md` — 验证计划
-> - ✅ `docs/planning/phase-2-implementation-plan.md` — 实施计划
+> Phase 2 验收结果：
+> - ✅ P2-T01~P2-T10 全部完成
+> - ✅ `npm run build` 通过，`cargo test` 160 passed，`cargo check` 通过
+> - ✅ 真实 Tauri 桌面验收 10 步全部通过
+> - ✅ 安全约束满足（目标目录只读、无写入 API、无 Vivado）
+> - ✅ 允许进入 Phase 3
 >
 > Phase 1 已完成：
 > - ✅ P1-T01~P1-T12 编码完成（`npm run build` ✅，`cargo test` 65 passed ✅，`cargo check` ✅）
 > - ✅ P1-T13 验收完成：文档同步完成、真实 Tauri 桌面验收通过
-> - ✅ 验收中发现 1 个 bug（`select_stage` 参数命名），已修复并验证
-> - ✅ 允许进入 Phase 2
+> - ✅ 允许进入 Phase 2（已完成）
 >
-> Phase 2 将基于 Phase 1 的 `StageContext`（含文件列表、外部依赖、上游引用）进行 evidence 收集。
+> Phase 3 将基于 Phase 2 的 `EvidenceCollection`（含 evidence_items、索引、warnings、stats）进行结构化理解。
