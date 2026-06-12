@@ -9,7 +9,7 @@ use crate::workspace::safety_guard::validate_workspace_root;
 use crate::workspace::scanner::scan_workspace_files;
 use crate::workspace::stage_detector::detect_stages;
 
-/// Tauri command：选择单个阶段并返回 `StageContext`。
+/// 共享校验 + StageContext 构建（供 select_stage 和 collect_evidence 复用）。
 ///
 /// 处理流程：
 /// 1. 校验 root_path（复用 safety_guard）
@@ -19,10 +19,9 @@ use crate::workspace::stage_detector::detect_stages;
 /// 5. 阶段不可读 → success=false + stage_unreadable
 /// 6. 收集阶段文件、外部依赖、上游引用推断
 /// 7. 空阶段 → success=true + error_code=stage_empty
-#[tauri::command]
-pub fn select_stage(root_path: String, stage_id: String) -> CommandResult<StageContext> {
+pub fn resolve_stage_context(root_path: &str, stage_id: &str) -> CommandResult<StageContext> {
     // 1. 校验 root_path
-    let validated = validate_workspace_root(Path::new(&root_path));
+    let validated = validate_workspace_root(Path::new(root_path));
     if !validated.success {
         return CommandResult {
             success: false,
@@ -129,7 +128,7 @@ pub fn select_stage(root_path: String, stage_id: String) -> CommandResult<StageC
     };
 
     let context = StageContext {
-        stage_id: stage_id.clone(),
+        stage_id: stage_id.to_string(),
         source_path: stage.source_path.clone(),
         files,
         external_deps,
@@ -143,6 +142,14 @@ pub fn select_stage(root_path: String, stage_id: String) -> CommandResult<StageC
         error: None,
         warnings: Vec::new(),
     }
+}
+
+/// Tauri command：选择单个阶段并返回 `StageContext`。
+///
+/// 委托 `resolve_stage_context` 执行校验与构建。
+#[tauri::command]
+pub fn select_stage(root_path: String, stage_id: String) -> CommandResult<StageContext> {
+    resolve_stage_context(&root_path, &stage_id)
 }
 
 /// Phase 1 最小上游引用推断。

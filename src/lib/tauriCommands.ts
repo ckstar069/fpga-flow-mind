@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { CommandResult, WorkspaceProfile, StageContext } from '../types/workspace';
+import type { CommandResult, WorkspaceProfile, StageContext, EvidenceCollection } from '../types/workspace';
 
 export class CommandError extends Error {
   error_code: string;
@@ -35,6 +35,14 @@ export async function selectStage(rootPath: string, stageId: string): Promise<St
   return handleResult(result);
 }
 
+export async function collectEvidence(rootPath: string, stageId: string): Promise<EvidenceCollection> {
+  const result = await invoke<CommandResult<EvidenceCollection>>('collect_evidence', {
+    rootPath: rootPath,
+    stageId: stageId,
+  });
+  return handleResult(result);
+}
+
 function handleResult<T>(result: CommandResult<T>): T {
   if (!result.success) {
     if (result.error) {
@@ -46,7 +54,11 @@ function handleResult<T>(result: CommandResult<T>): T {
       recoverable: false,
     });
   }
+  // success=true 但 data 为空且有 error（如 stage_empty）→ 抛出
   if (result.data === undefined || result.data === null) {
+    if (result.error) {
+      throw new CommandError(result.error);
+    }
     throw new CommandError({
       error_code: 'unknown',
       message: '返回数据缺失',

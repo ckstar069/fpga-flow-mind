@@ -1,7 +1,26 @@
-import type { StageContext, StageFile, UpstreamRef } from '../../../types/workspace';
+import type { StageContext, StageFile, UpstreamRef, EvidenceCollection } from '../../../types/workspace';
+import type { UiError } from '../workspaceUiTypes';
 import { formatBytes } from '../workspaceUiUtils';
+import EvidencePanel from './EvidencePanel';
 
-export default function StageDetail({ context }: { context: StageContext }) {
+interface StageDetailProps {
+  context: StageContext;
+  evidence?: EvidenceCollection;
+  evidenceError?: UiError;
+  isCollecting?: boolean;
+  onCollectEvidence?: () => void;
+}
+
+export default function StageDetail({
+  context,
+  evidence,
+  evidenceError,
+  isCollecting,
+  onCollectEvidence,
+}: StageDetailProps) {
+  const canCollect =
+    !context.error_code && context.files.length > 0 && !!onCollectEvidence;
+
   return (
     <div>
       <h2 style={{ margin: '0 0 16px', fontSize: 20 }}>
@@ -80,6 +99,44 @@ export default function StageDetail({ context }: { context: StageContext }) {
           </div>
         </div>
       )}
+
+      {/* 证据收集区域 */}
+      {canCollect && (
+        <div style={{ marginBottom: 24 }}>
+          <h3 style={{ fontSize: 15, margin: '0 0 12px' }}>证据收集</h3>
+          <button
+            onClick={onCollectEvidence}
+            disabled={isCollecting}
+            style={{
+              padding: '8px 20px',
+              borderRadius: 6,
+              border: '1px solid #1976d2',
+              background: isCollecting ? '#e0e0e0' : '#1976d2',
+              color: isCollecting ? '#999' : '#fff',
+              cursor: isCollecting ? 'not-allowed' : 'pointer',
+              fontSize: 14,
+            }}
+          >
+            {isCollecting ? '收集中...' : '收集证据'}
+          </button>
+        </div>
+      )}
+
+      {evidenceError && (
+        <div
+          style={{
+            padding: 16,
+            background: '#fff3e0',
+            borderRadius: 8,
+            marginBottom: 16,
+          }}
+        >
+          <h4 style={{ margin: '0 0 8px', fontSize: 14 }}>证据收集失败</h4>
+          <p style={{ margin: 0, fontSize: 13 }}>{evidenceError.message}</p>
+        </div>
+      )}
+
+      {evidence && <EvidencePanel evidence={evidence} />}
 
       {context.external_deps.length > 0 && (
         <div style={{ marginBottom: 24 }}>

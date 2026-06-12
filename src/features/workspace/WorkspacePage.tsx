@@ -3,8 +3,9 @@ import type {
   WorkspaceProfile,
   StageContext,
   WorkspaceWarning,
+  EvidenceCollection,
 } from '../../types/workspace';
-import { openWorkspace, selectStage, CommandError } from '../../lib/tauriCommands';
+import { openWorkspace, selectStage, collectEvidence, CommandError } from '../../lib/tauriCommands';
 import type { CommandError as CommandErrorType } from '../../types/workspace';
 import type { UiError } from './workspaceUiTypes';
 
@@ -21,7 +22,10 @@ type AppState =
   | { phase: 'error'; error: UiError }
   | { phase: 'selecting_stage'; profile: WorkspaceProfile; stageId: string }
   | { phase: 'stage_loaded'; profile: WorkspaceProfile; stageId: string; context: StageContext }
-  | { phase: 'stage_error'; profile: WorkspaceProfile; stageId: string; error: UiError };
+  | { phase: 'stage_error'; profile: WorkspaceProfile; stageId: string; error: UiError }
+  | { phase: 'collecting_evidence'; profile: WorkspaceProfile; stageId: string; context: StageContext }
+  | { phase: 'evidence_loaded'; profile: WorkspaceProfile; stageId: string; context: StageContext; evidence: EvidenceCollection }
+  | { phase: 'evidence_error'; profile: WorkspaceProfile; stageId: string; context: StageContext; error: UiError };
 
 function makeUiError(err: unknown): UiError {
   return err instanceof CommandError
@@ -52,7 +56,9 @@ export default function WorkspacePage() {
       const profile =
         state.phase === 'loaded' ||
         state.phase === 'stage_loaded' ||
-        state.phase === 'stage_error'
+        state.phase === 'stage_error' ||
+        state.phase === 'evidence_loaded' ||
+        state.phase === 'evidence_error'
           ? (state as { profile: WorkspaceProfile }).profile
           : null;
       if (!profile) return;
@@ -67,12 +73,36 @@ export default function WorkspacePage() {
     [state]
   );
 
+  // ─── 收集证据 ───
+  const handleCollectEvidence = useCallback(async () => {
+    if (
+      state.phase !== 'stage_loaded' &&
+      state.phase !== 'evidence_loaded' &&
+      state.phase !== 'evidence_error'
+    ) return;
+    const { profile, stageId, context } = state as {
+      profile: WorkspaceProfile;
+      stageId: string;
+      context: StageContext;
+    };
+    setState({ phase: 'collecting_evidence', profile, stageId, context });
+    try {
+      const evidence = await collectEvidence(profile.root_path, stageId);
+      setState({ phase: 'evidence_loaded', profile, stageId, context, evidence });
+    } catch (err) {
+      setState({ phase: 'evidence_error', profile, stageId, context, error: makeUiError(err) });
+    }
+  }, [state]);
+
   // ─── 当前 profile 提取 ───
   const currentProfile = useMemo<WorkspaceProfile | null>(() => {
     if (state.phase === 'loaded') return state.profile;
     if (state.phase === 'selecting_stage') return state.profile;
     if (state.phase === 'stage_loaded') return state.profile;
     if (state.phase === 'stage_error') return state.profile;
+    if (state.phase === 'collecting_evidence') return state.profile;
+    if (state.phase === 'evidence_loaded') return state.profile;
+    if (state.phase === 'evidence_error') return state.profile;
     return null;
   }, [state]);
 
@@ -84,10 +114,30 @@ export default function WorkspacePage() {
     if (state.phase === 'selecting_stage') return state.stageId;
     if (state.phase === 'stage_loaded') return state.stageId;
     if (state.phase === 'stage_error') return state.stageId;
+    if (state.phase === 'collecting_evidence') return state.stageId;
+    if (state.phase === 'evidence_loaded') return state.stageId;
+    if (state.phase === 'evidence_error') return state.stageId;
     return null;
   }, [state]);
 
   const isLoadingStage = state.phase === 'selecting_stage';
+
+  // ─── 右栏 evidence 状态提取 ───
+  const evidenceState = useMemo(() => {
+    if (state.phase === 'collecting_evidence') {
+      return { context: state.context, isCollecting: true };
+    }
+    if (state.phase === 'evidence_loaded') {
+      return { context: state.context, evidence: state.evidence };
+    }
+    if (state.phase === 'evidence_error') {
+      return { context: state.context, evidenceError: state.error };
+    }
+    if (state.phase === 'stage_loaded') {
+      return { context: state.context };
+    }
+    return null;
+  }, [state]);
 
   // ─── 渲染 ───
   return (
@@ -215,7 +265,15 @@ export default function WorkspacePage() {
             </div>
           )}
 
-          {state.phase === 'stage_loaded' && <StageDetail context={state.context} />}
+          {evidenceState && (
+            <StageDetail
+              context={evidenceState.context}
+              evidence={'evidence' in evidenceState ? evidenceState.evidence : undefined}
+              evidenceError={'evidenceError' in evidenceState ? evidenceState.evidenceError : undefined}
+              isCollecting={'isCollecting' in evidenceState ? evidenceState.isCollecting : undefined}
+              onCollectEvidence={handleCollectEvidence}
+            />
+          )}
 
           {state.phase === 'stage_error' && (
             <div style={{ padding: 24, background: '#fff3e0', borderRadius: 8 }}>
@@ -224,7 +282,7 @@ export default function WorkspacePage() {
             </div>
           )}
 
-          {!['selecting_stage', 'stage_loaded', 'stage_error'].includes(state.phase) &&
+          {!['selecting_stage', 'stage_loaded', 'stage_error', 'collecting_evidence', 'evidence_loaded', 'evidence_error'].includes(state.phase) &&
             !currentProfile && (
               <div
                 style={{
