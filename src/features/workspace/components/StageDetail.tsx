@@ -354,7 +354,7 @@ export default function StageDetail({
       )}
 
       {/* 视图错误 */}
-      {viewsError && (
+      {viewsError && !viewsLoading && (
         <div
           style={{
             padding: 16,
@@ -392,12 +392,12 @@ export default function StageDetail({
         </div>
       )}
 
-      {/* 视图面板 */}
-      {views && (
+      {/* 视图面板 — 当 views / viewsLoading / viewsError 任一存在时渲染 */}
+      {(views || viewsLoading || (!viewsLoading && viewsError)) && (
         <MultiViewPanel
-          views={views}
+          views={views ?? []}
           loading={viewsLoading}
-          error={viewsError}
+          error={!viewsLoading ? viewsError : undefined}
         />
       )}
 

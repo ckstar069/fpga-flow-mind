@@ -70,8 +70,7 @@ export default function WorkspacePage() {
         state.phase === 'understanding_loaded' ||
         state.phase === 'understanding_error' ||
         state.phase === 'views_loaded' ||
-        state.phase === 'views_error' ||
-        state.phase === 'views_loading'
+        state.phase === 'views_error'
           ? (state as { profile: WorkspaceProfile }).profile
           : null;
       if (!profile) return;
@@ -87,8 +86,8 @@ export default function WorkspacePage() {
   );
 
   // ─── 收集证据 ───
-  // 支持从 stage_loaded / evidence_* / understanding_* 状态重新收集
-  // understanding_* → collecting_evidence 转换自动清除旧 understanding
+  // 允许从以下状态重新收集：stage_loaded / evidence_* / understanding_loaded / understanding_error / views_loaded / views_error
+  // 禁止在 loading 状态（understanding_loading / views_loading）下启动收集
   const handleCollectEvidence = useCallback(async () => {
     if (
       state.phase !== 'stage_loaded' &&
@@ -96,8 +95,6 @@ export default function WorkspacePage() {
       state.phase !== 'evidence_error' &&
       state.phase !== 'understanding_loaded' &&
       state.phase !== 'understanding_error' &&
-      state.phase !== 'understanding_loading' &&
-      state.phase !== 'views_loading' &&
       state.phase !== 'views_loaded' &&
       state.phase !== 'views_error'
     ) return;
@@ -106,8 +103,8 @@ export default function WorkspacePage() {
       stageId: string;
       context: StageContext;
     };
-    // 进入 collecting_evidence 时自动清除旧 understanding/understandingError
-    // （AppState 从 understanding_* 切换到 collecting_evidence）
+    // 进入 collecting_evidence 时自动清除旧 understanding / views
+    // （AppState 从 understanding_* / views_* 切换到 collecting_evidence）
     setState({ phase: 'collecting_evidence', profile, stageId, context });
     try {
       const evidence = await collectEvidence(profile.root_path, stageId);
@@ -218,7 +215,11 @@ export default function WorkspacePage() {
     return null;
   }, [state]);
 
-  const isLoadingStage = state.phase === 'selecting_stage';
+  const isLoadingStage =
+    state.phase === 'selecting_stage' ||
+    state.phase === 'collecting_evidence' ||
+    state.phase === 'understanding_loading' ||
+    state.phase === 'views_loading';
 
   // ─── 右栏 evidence + understanding 状态提取 ───
   const evidenceState = useMemo(() => {
