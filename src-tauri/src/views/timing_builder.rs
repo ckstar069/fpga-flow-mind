@@ -185,7 +185,7 @@ fn build_trace_refs(evidence_refs: &[EvidenceRef]) -> Vec<ViewTraceRef> {
 mod tests {
     use super::*;
     use crate::understanding::models::{
-        ClaimCategory, EvidenceRef, GenerationMeta, ImplementationClaim,
+        ClaimCategory, GenerationMeta, ImplementationClaim,
         ImplementationUnderstanding, ProcessingStepSummary, StageSummary, UnderstandingStats,
     };
     use std::collections::HashMap;
