@@ -60,6 +60,7 @@ docs/
 2. `docs/requirements/README.md`
 3. 相关 story 文件（了解用户目标）
 4. `docs/design/README.md`（了解技术约束和数据契约）
+5. `docs/ui-ux/phase-4-multi-view-panel.md`（Phase 4 三视图面板设计，active）
 
 ### 架构 / 技术设计任务
 
@@ -67,6 +68,8 @@ docs/
 2. `docs/requirements/README.md`
 3. `docs/initial-requirements-draft/MVP_ARCHITECTURE.md`
 4. 相关 story 文件
+5. `docs/design/phase-4-view-model.md`（Phase 4 视图数据模型，active）
+6. `docs/design/phase-4-view-generator-design.md`（Phase 4 视图生成器设计，active）
 
 ### 实施计划任务
 
@@ -76,9 +79,10 @@ docs/
 4. `docs/planning/phase-2-implementation-plan.md`（Phase 2 编码实施计划）
 5. `docs/planning/phase-0-exit-criteria.md`（确认当前阶段退出标准）
 6. `docs/planning/phase-3-completion-review.md`（Phase 3 完成状态）
-7. `docs/design/README.md`（设计文档索引）
-8. `docs/requirements/README.md`
-9. 当前阶段应完成的 story 列表
+7. `docs/planning/phase-4-implementation-plan.md`（Phase 4 编码实施计划，active）
+8. `docs/design/README.md`（设计文档索引）
+9. `docs/requirements/README.md`
+10. 当前阶段应完成的 story 列表
 
 ### 测试 / 验收任务
 
@@ -89,9 +93,10 @@ docs/
 5. `docs/planning/phase-2-completion-review.md`（Phase 2 收尾验收与完成审查）
 6. `docs/planning/phase-3-completion-review.md`（Phase 3 收尾验收与完成审查）
 7. `docs/testing/phase-3-understanding-validation.md`（Phase 3 验证设计与验收标准）
-8. `docs/requirements/README.md`（验收标准来源）
-9. `docs/planning/README.md`（当前阶段验收要求）
-10. 相关 story 文件中的验收标准
+8. `docs/testing/phase-4-view-validation.md`（Phase 4 视图验证设计与验收标准，active）
+9. `docs/requirements/README.md`（验收标准来源）
+10. `docs/planning/README.md`（当前阶段验收要求）
+11. 相关 story 文件中的验收标准
 
 ### 审核任务
 
