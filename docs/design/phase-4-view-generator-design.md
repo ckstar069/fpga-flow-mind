@@ -81,14 +81,21 @@ impl ViewGraphGenerator {
 
 ## 4. build_structure_view 转换规则
 
-### 4.1 节点生成
+### 4.1 节点生成（node_id 唯一性保证：类型前缀 + 全局递增序号）
 
 | IU 字段 | → NodeType | node_id 格式 | layout hint |
 |---------|-----------|-------------|-------------|
-| `module_summaries[i]` | Module | `N-S-{:04}` | column=0, row=i, depth=0 |
-| `signal_summaries[i]` | Signal | `N-S-{:04}` | column=1, row=i, depth=0 |
-| `interface_summaries[i]` | Interface | `N-S-{:04}` | column=2, row=i, depth=0 |
-| `processing_steps[i]` | ProcessingStep | `N-S-{:04}` | column=0, row=i+N, depth=1 |
+| `module_summaries[i]` | Module | `N-structure-{:04}` | column=0, row=i, depth=0 |
+| `signal_summaries[i]` | Signal | `N-structure-{:04}` | column=1, row=i, depth=0 |
+| `interface_summaries[i]` | Interface | `N-structure-{:04}` | column=2, row=i, depth=0 |
+| `processing_steps[i]` | ProcessingStep | `N-structure-{:04}` | column=0, row=i+N, depth=1 |
+
+**node_id 规则**：
+- 三个 builder 使用独立的全局计数器，各 ViewGraph 内节点从 0001 起递增
+- 格式：`N-<view_type>-<4位递增序号>`
+- view_type 分别取 `structure` / `dataflow` / `timing`
+- 同一 ViewGraph 内所有 `node_id` 必须唯一
+- `edge.source_node_id` 和 `edge.target_node_id` 必须引用当前 ViewGraph.nodes 中已存在的 node_id
 
 ### 4.2 边生成
 
@@ -143,46 +150,44 @@ impl ViewGraphGenerator {
 
 ### 6.3 无 timing 信息处理
 
-- `processing_steps` 为空且无 clock/reset claims → 生成最小 ViewGraph
-- 单一节点标注"No timing information available from evidence"
-- 前端显示"时序信息不足"
+- `processing_steps` 为空且无 clock/reset claims → 生成空 ViewGraph：`nodes=[], edges=[]`
+- `ViewMeta.empty_reason` 设置为 `Some("时序信息不足：当前阶段无 processing_steps 且无 clock/reset 相关声明")`
+- 不创建伪节点（如单一标注节点），不留无 trace_refs 的占位元素
+- 前端根据 `empty_reason` 显示空状态文案，不为空 ViewGraph 渲染 SVG 画布
+
+> 数据流图同理：无 dataflow 信息时 `empty_reason` 设为 `"数据流信息不足：无 processing_steps 且无可识别的输入/输出信号"`
 
 ## 7. Tauri Command
+
+Phase 4 后端只做 IU → ViewGraph 纯转换。`generate_views` 不访问目标项目文件系统、不调用 `generate_understanding`、不收集 evidence。
 
 ```rust
 #[tauri::command]
 pub fn generate_views(
-    root_path: String,
-    stage_id: String,
+    understanding: ImplementationUnderstanding,
 ) -> CommandResult<Vec<ViewGraph>> {
-    // 1. resolve_stage_context + EvidenceCollector + generate_understanding
-    //    复用 Phase 3 链路的 generate_understanding 逻辑
-    // 2. ViewGraphGenerator::generate_all(&iu)
-    // 3. 返回 CommandResult<Vec<ViewGraph>>
+    // 纯转换：ViewGraphGenerator::generate_all(&understanding)
+    // 不涉及 root_path / stage_id / 文件 I/O
 }
 ```
 
-**与 Phase 3 的关系**：
-- 方案 A：`generate_views` 内部先调用 `generate_understanding` 再转换
-- 方案 B：前端先 `generateUnderstanding`，再传 IU 给 `generate_views`
-- MVP 阶段建议方案 A（简化前端状态机）
+**前置条件**：前端必须已持有 `ImplementationUnderstanding`（通过 Phase 3 `generateUnderstanding` 获取）。若尚未生成理解，前端不展示"生成视图"按钮。
 
 ## 8. 错误处理
 
 | 场景 | 行为 |
 |------|------|
-| IU 不存在（尚未生成） | 返回 error，前端不展示三视图 tab |
-| IU 为 degraded | 仍生成 ViewGraph（含空状态标注） |
-| 单个 view builder panic | catch panic，对应 ViewGraph 含 error meta |
+| IU 为 degraded | 仍生成 ViewGraph（`is_degraded_source=true`、`empty_reason` 标明降级来源） |
+| 单个 view builder 返回空 ViewGraph | nodes=[], edges=[]，不 panic |
 | claims/module_summaries 等为空 | 生成空 nodes/edges 的 ViewGraph，不 panic |
 
 ## 9. 与 Phase 3 代码的关系
 
-- 复用 `resolve_stage_context`（Phase 1/2 共享）
-- 复用 `EvidenceCollector`（Phase 2）
-- 复用 `generate_understanding` command 逻辑（Phase 3）
-- `ViewGraphGenerator` 是纯转换函数，不调用外部系统
+- `generate_views` 是纯函数：`ImplementationUnderstanding → Vec<ViewGraph>`
+- 不依赖 `root_path` / `stage_id` / 目标项目文件
+- 不调用 `resolve_stage_context` / `EvidenceCollector` / `generate_understanding`
 - `ViewGraph` 不包含文件路径或行号范围 — 相关信息通过 `trace_refs` 间接引用
+- 后端不做布局计算、不做渲染
 
 ## 10. 安全约束
 

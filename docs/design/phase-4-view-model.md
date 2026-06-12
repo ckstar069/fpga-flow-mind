@@ -245,6 +245,10 @@ pub struct ViewMeta {
     pub is_degraded_source: bool,
     /// 生成时间
     pub generated_at: String,
+    /// 空视图原因（nodes=[] 且 edges=[] 时说明为何无数据）
+    /// 非空视图时为 None
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub empty_reason: Option<String>,
 }
 ```
 
@@ -255,6 +259,7 @@ interface ViewMeta {
   source_provider: string;
   is_degraded_source: boolean;
   generated_at: string;
+  empty_reason?: string;  // nodes/edges 为空时的原因说明
 }
 ```
 
@@ -282,8 +287,9 @@ interface ViewGraph {
 ```
 
 **约束**：
-- `nodes` 和 `edges` 允许为空（表示无数据可生成视图）
-- 所有 `source_node_id` 和 `target_node_id` 必须存在于 `nodes` 中
+- `nodes` 和 `edges` 允许为空（表示无数据可生成视图，此时 `meta.empty_reason` 应非空）
+- 同一 `ViewGraph` 内所有 `node_id` 必须唯一
+- 所有 `source_node_id` 和 `target_node_id` 必须引用当前 `nodes` 中已存在的 `node_id`
 - 每个 ViewGraph 专属于一个 stage + 一种 ViewType
 
 ## 9. 与 ImplementationUnderstanding 的关系

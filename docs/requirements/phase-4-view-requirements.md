@@ -107,12 +107,12 @@ Phase 4 **只消费** Phase 3 的 `ImplementationUnderstanding`，不重复以�
 | 维度 | 说明 |
 |------|------|
 | **输入** | ViewNode / ViewEdge 中的 trace_refs |
-| **输出** | hover tooltip 显示 claim_id + evidence_id + confidence |
-| **前端责任** | hover/click 展示 trace 信息；不实现点击跳转源码（Phase 5） |
+| **输出** | tooltip / popover 显示 claim_id + evidence_id + confidence |
+| **前端责任** | 桌面端 hover 或 keyboard focus 展示 trace tooltip；touch 设备 tap 展示 popover；均为只读信息展示层 |
 | **后端责任** | 无（trace_refs 已在 ViewGraph 中） |
-| **状态** | hover tooltip；无 trace 时标注"无证据追溯" |
-| **验收标准** | hover 节点显示关联 claim_id 和 evidence_id 列表 |
-| **非目标** | 不实现点击打开源码；不实现 EvidencePanel 高亮回链（Phase 5） |
+| **状态** | tooltip 浮层；无 trace 时标注"无证据追溯" |
+| **验收标准** | hover 节点/边出现 tooltip，显示关联 claim_id 和 evidence_id 列表 |
+| **禁止事项** | 禁止点击打开源码文件；禁止点击 evidence_id 跳转；禁止 EvidencePanel 高亮回链；禁止任何形式的源码导航交互（全部留给 Phase 5） |
 
 ## 5. 异常 / 空状态
 

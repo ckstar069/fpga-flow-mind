@@ -37,6 +37,8 @@ StageDetail
 | { phase: 'views_error'; profile; stageId; context; evidence?; understanding; viewsError: UiError; }
 ```
 
+**前置条件**：进入 `views_*` 状态前必须已持有 `understanding`（Phase 3 `understanding_loaded` 状态）。若 `understanding` 不存在，不展示"生成视图"按钮。
+
 ### 2.2 MultiViewPanel 显示状态
 
 | 状态 | 含义 | UI 表现 |
@@ -130,9 +132,11 @@ MultiViewPanel
 | unknown | 点线 1px | 点线 1px 灰色 |
 | conflicting | 实线 2px 红色 `#c62828` | 实线 1.5px 红色 |
 
-## 6. Hover Tooltip 设计
+## 6. Tooltip 设计（只读信息层）
 
-- hover 节点/边时 200ms 后显示 tooltip
+- 桌面端 hover 节点/边 200ms 后显示 tooltip
+- touch 设备 tap 节点/边显示 popover（不做 hover）
+- keyboard focus 也触发 tooltip（可访问性）
 - tooltip 内容：
   - 名称（加粗）
   - 类型标签（NodeType 中文）
@@ -140,8 +144,8 @@ MultiViewPanel
   - trace_refs 列表：`claim_id` + `evidence_id`（蓝色 chip）
   - 无 trace 时显示"无证据追溯"
 - tooltip 位于鼠标右下方
-- mouseleave 时立即消失
-- touch 设备点击显示（不做 hover）
+- mouseleave / blur / tap-away 时立即消失
+- **禁止**：点击 tooltip 或节点/边触发源码导航、evidence 跳转、EvidencePanel 高亮（Phase 5）
 
 ## 7. 空状态与错误状态
 
@@ -149,12 +153,10 @@ MultiViewPanel
 
 | 场景 | 显示 |
 |------|------|
-| IU 尚未生成 | 不显示 MultiViewPanel |
+| IU 尚未生成 | 不显示 MultiViewPanel（无"生成视图"按钮） |
 | IU 为 degraded | 三视图 tab + "降级数据，视图内容有限" 横幅 |
-| claims 为空 | "无声明数据，无法生成结构图" |
-| module_summaries 为空 | "无模块信息，结构图内容有限" |
-| processing_steps 为空 | 数据流 tab / 时序 tab 显示"无处理步骤信息" |
-| 任意 view 的 nodes 为空 | 对应 tab 显示轻量空状态图标 + 说明文本 |
+| ViewMeta.empty_reason 非空 | 对应 tab 显示 `empty_reason` 中的文案 + 轻量空状态图标 |
+| nodes=[] 且 edges=[] | 不渲染 SVG 画布，直接展示空状态 |
 
 ### 7.2 错误状态
 

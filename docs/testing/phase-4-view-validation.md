@@ -31,8 +31,8 @@ Phase 4 编码完成后，以下维度应通过验证：
 | `views/dataflow_builder.rs` | IU → ViewGraph(dataflow) 正确性 | 6 |
 | `views/timing_builder.rs` | IU → ViewGraph(timing) 正确性 | 6 |
 | `views/generator.rs` | ViewGraphGenerator 总调度 + 空 IU + degraded IU | 6 |
-| `commands/generate_views.rs` | Tauri command 层（E2E + 只读 + 错误路径） | 8 |
-| **合计** | | **~36** |
+| `commands/generate_views.rs` | Tauri command 层（纯转换 + degraded + 空 IU） | 5 |
+| **合计** | | **~33** |
 
 ### 2.2 前端验证
 
@@ -48,18 +48,20 @@ Phase 4 编码完成后，以下维度应通过验证：
 
 | 用例 | 输入 | 预期 |
 |------|------|------|
-| 正常 IU（含 module + signal + interface） | 3 modules + 2 signals + 1 interface | 6 nodes + 关联边，trace_refs 非空 |
+| 正常 IU（含 module + signal + interface） | 3 modules + 2 signals + 1 interface | 6 nodes + 关联边，trace_refs 非空，所有 node_id 唯一，edge endpoints 指向存在节点 |
 | 仅 modules | 2 modules，无 signal/interface | 2 nodes，0 edges |
-| 空 IU | 全部字段为空 | ViewGraph nodes=[], edges=[]，不 panic |
-| Degraded IU | is_degraded=true | ViewMeta.is_degraded_source=true，nodes/edges 最小 |
+| 空 IU | 全部字段为空 | ViewGraph nodes=[], edges=[]，meta.empty_reason 非空，不 panic |
+| Degraded IU | is_degraded=true | ViewMeta.is_degraded_source=true，empty_reason 说明降级来源 |
 | IU 含 claims | 3 claims 匹配 module 描述 | trace_refs 包含对应 claim_id |
+| node_id 唯一性 | 多类型 nodes | 同 ViewGraph 内无重复 node_id |
+| edge endpoint 存在 | edge 引用不存在 node_id | panic 或返回 error（不应出现） |
 
 ### 3.2 DataflowBuilder
 
 | 用例 | 输入 | 预期 |
 |------|------|------|
 | 正常 IU（含 processing_steps + input/output signals） | 3 steps + 1 input + 1 output | 5 nodes + 顺序边 DataFlow |
-| 无 processing_steps | 仅有 signals | 空 ViewGraph，不 panic |
+| 无 processing_steps | 仅有 signals | nodes=[], edges=[], empty_reason 非空，不 panic |
 | 单 processing_step | 1 step | 1 node，0 edges |
 | steps 带 order 字段 | out-of-order order | 按 order 排序生成节点 |
 
@@ -67,18 +69,18 @@ Phase 4 编码完成后，以下维度应通过验证：
 
 | 用例 | 输入 | 预期 |
 |------|------|------|
-| 正常 IU（含 processing_steps + clock claims） | 3 steps + 1 clock claim | PipelineStage nodes + ClockDomain node |
-| 无 processing_steps + 无 clock claims | 空 | 最小 ViewGraph + "No timing info" 标注 |
+| 正常 IU（含 processing_steps + clock claims） | 3 steps + 1 clock claim | PipelineStage nodes + ClockDomain node，所有 node_id 唯一 |
+| 无 processing_steps + 无 clock claims | 空 | nodes=[], edges=[], empty_reason 非空（如"时序信息不足"），不创建伪节点 |
 | 仅 clock/reset claims | 2 clock claims | ClockDomain + ResetDomain nodes |
 
 ### 3.4 Generator 集成
 
 | 用例 | 输入 | 预期 |
 |------|------|------|
-| generate_all 正常 IU | full IU | 返回 3 个 ViewGraph |
-| generate_all degraded IU | degraded IU | 3 个 ViewGraph，均 is_degraded_source=true |
-| generate_all 空 IU | empty IU | 3 个空 ViewGraph，不 panic |
-| 单个 builder 独立性 | IU 含 modules 但无 steps | structure 正常，dataflow/timing 空 |
+| generate_all 正常 IU | full IU | 返回 3 个 ViewGraph，每个 node_id 唯一，edge endpoints 存在 |
+| generate_all degraded IU | degraded IU | 3 个 ViewGraph，均 is_degraded_source=true，empty_reason 说明 |
+| generate_all 空 IU | empty IU | 3 个空 ViewGraph（nodes=[]），empty_reason 非空，不 panic |
+| 单个 builder 独立性 | IU 含 modules 但无 steps | structure 正常，dataflow/timing 空 + empty_reason 非空 |
 
 ## 4. 前端验证矩阵
 

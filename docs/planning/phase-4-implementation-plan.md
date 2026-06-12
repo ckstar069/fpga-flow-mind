@@ -63,10 +63,11 @@ updated: 2026-06-12
 
 | 维度 | 说明 |
 |------|------|
-| **目标** | 总调度器 + Tauri command |
+| **目标** | 总调度器 + Tauri command（纯转换：`generate_views(understanding) → Vec<ViewGraph>`） |
 | **文件** | `src-tauri/src/views/generator.rs`（新增）、`src-tauri/src/commands/generate_views.rs`（新增） |
-| **测试** | generator 6 个 + command 8 个 |
+| **测试** | generator 6 个 + command 5 个（纯转换 + degraded + 空 IU） |
 | **依赖** | P4-T02～P4-T04 |
+| **约束** | command 不接收 root_path/stage_id，不访问目标项目文件，不调用 generate_understanding |
 
 ### P4-T06 前端 TypeScript 类型 + command 调用
 
@@ -135,15 +136,16 @@ P4-T01 (models)
 | P4-T03 | DataflowBuilder |
 | P4-T04 | TimingBuilder |
 
-**预估测试**：22 个（model 4 + builder 6×3）
+**预估测试**：22 个（model 4 + builder 6×3）。含 node_id 唯一 + edge endpoint 存在 + empty_reason 验证。
 
 ### 4.2 Batch B: Generator + Command（后端链路）
 
 | 任务 | 内容 |
 |------|------|
-| P4-T05 | ViewGraphGenerator + generate_views command |
+| P4-T05 | ViewGraphGenerator + generate_views command（纯 IU→ViewGraph 转换） |
 
-**预估测试**：14 个（generator 6 + command 8）
+**预估测试**：11 个（generator 6 + command 5）
+**约束**：command 不接收 root_path/stage_id，前端必须先有 understanding
 
 ### 4.3 Batch C: 前端类型 + MultiViewPanel（前端）
 
