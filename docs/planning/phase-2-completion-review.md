@@ -42,9 +42,26 @@ Phase 2 **不解决**：LLM 调用、结构图/Q&A、持久化回放、AST 深�
 
 ---
 
-## 3. 验收样例路径
+## 3. 自动化 E2E 测试与桌面验收样例
+
+### 3.1 自动化 E2E 测试
+
+`ev_08_e2e_temp_project_pipeline` 测试在每次运行时通过 `tempfile::tempdir()` 自建临时项目，包含：
+
+- `L0/top.py`：2 个 def + 1 个 class
+- `L0/top_interface.py`：1 个 def
+- `L1/model.py`：1 个 class
+- `RTL/top.v`：1 个 module
+- `RTL/alu.v`：1 个 module
+- `L3/`：空目录
+
+测试覆盖 resolve → collect 全链路（L0/L1/RTL/L3）以及只读验证（文件内容不变）。不依赖任何外部固定路径。
+
+### 3.2 桌面验收样例路径（手工验证用）
 
 **样例目录**：`/tmp/fpga-flow-mind-phase2-acceptance-Utcnmb`
+
+此目录为手工桌面验收时创建的临时样例，仅供记录验收操作路径，自动化测试不依赖它。
 
 **样例结构**：
 ```
@@ -130,7 +147,7 @@ Phase 2 **不解决**：LLM 调用、结构图/Q&A、持久化回放、AST 深�
 | 检查项 | 命令 | 结果 |
 |--------|------|------|
 | Rust 全量测试 | `cd src-tauri && cargo test` | ✅ 160 passed (含 Phase 1 原有 + Phase 2 新增 95 个) |
-| E2E 临时项目测试 | `cargo test ev_08_e2e` | ✅ 通过 — open→select→collect 完整链路验证 |
+| E2E 临时项目测试 | `cargo test ev_08_e2e` | ✅ 通过 — 测试内自建临时项目（tempfile），resolve→collect 全链路 + 只读验证 |
 | 前端构建 | `npm run build` | ✅ `tsc && vite build` 通过 |
 | Rust 检查 | `cd src-tauri && cargo check` | ✅ 通过 |
 | rg 越界检查 | `rg "confidence\|items_by_confidence\|ImplementationUnderstanding\|GraphView\|Dataflow\|Q&A\|LLM" src src-tauri/src` | ✅ 无匹配 |
@@ -194,7 +211,7 @@ Batch D（commit `683e0df`）经过正式审核，结论为"审核通过，可�
 
 1. **功能链路完整**：`open_workspace` → `select_stage` → `collect_evidence` → `EvidenceCollection` → 前端展示统计/分组/卡片，代码链路完整。
 2. **真实 Tauri 桌面验收通过**：10 步手工验证全部通过（打开项目、阶段选择、证据收集、面板展示、强度标签、阶段切换状态清理、空阶段处理、安全验证）。
-3. **测试覆盖充分**：Rust 测试 160 passed（含 Phase 1 原有 65 + Phase 2 新增 95），覆盖 models/id_generator/excerpt/extractors/index_builder/collector/commands 全链路。含 1 个 E2E 临时项目测试。
+3. **测试覆盖充分**：Rust 测试 160 passed（含 Phase 1 原有 65 + Phase 2 新增 95），覆盖 models/id_generator/excerpt/extractors/index_builder/collector/commands 全链路。含 1 个自包含 E2E 测试（tempfile 自建临时项目，无外部依赖）。
 4. **安全约束满足**：目标目录只读（checksum 比对一致）、不运行脚本、不运行 Vivado、无写入 API。
 5. **文档同步**：Phase 2 所有文档 status=active，跨文档一致性已确认。
 6. **Phase 1 功能无回归**：原有 65 个测试仍通过，UI 正常。

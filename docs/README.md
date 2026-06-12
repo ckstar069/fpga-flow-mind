@@ -85,9 +85,10 @@ docs/
 2. `docs/testing/phase-1-workspace-scanning-validation.md`（Phase 1 验证设计与验收标准）
 3. `docs/testing/phase-2-evidence-validation.md`（Phase 2 验证设计与验收标准）
 4. `docs/planning/phase-1-completion-review.md`（Phase 1 收尾验收与完成审查）
-5. `docs/requirements/README.md`（验收标准来源）
-6. `docs/planning/README.md`（当前阶段验收要求）
-7. 相关 story 文件中的验收标准
+5. `docs/planning/phase-2-completion-review.md`（Phase 2 收尾验收与完成审查）
+6. `docs/requirements/README.md`（验收标准来源）
+7. `docs/planning/README.md`（当前阶段验收要求）
+8. 相关 story 文件中的验收标准
 
 ### 审核任务
 

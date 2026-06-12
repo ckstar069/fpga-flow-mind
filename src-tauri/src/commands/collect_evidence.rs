@@ -173,49 +173,75 @@ mod tests {
 
     // ─── warning 不阻断 ───────────────────────────────────────────
 
-    /// E2E: 使用 /tmp 临时项目验证 open → select → collect 完整链路
+    /// E2E: 测试内自建临时项目验证 resolve → collect 完整链路
     #[test]
     fn ev_08_e2e_temp_project_pipeline() {
-        let test_root = "/tmp/fpga-flow-mind-phase2-acceptance-Utcnmb";
-        if !std::path::Path::new(test_root).exists() {
-            eprintln!("跳过 E2E 测试：临时项目不存在");
-            return;
-        }
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        let root_str = root.to_str().unwrap();
 
-        // select_stage L0
-        let l0_ctx = super::super::select_stage::resolve_stage_context(test_root, "L0");
+        // ─── 构建夹具 ────────────────────────────────────────
+        // L0/top.py: 2 个 def + 1 个 class
+        touch(root, "L0/top.py", br#"""Top-level signal processing module."""
+def process_signal(data, sample_rate):
+    normalized = normalize(data)
+    return normalized
+
+def normalize(data):
+    max_val = max(abs(data))
+    return [x / max_val for x in data]
+
+class SignalProcessor:
+    def __init__(self, config):
+        self.config = config
+"#);
+        // L0/top_interface.py: 1 个 def
+        touch(root, "L0/top_interface.py", b"def interface_handler(cmd):\n    return True\n");
+        // L1/model.py: 1 个 class
+        touch(root, "L1/model.py", b"class DataModel:\n    def __init__(self):\n        self.data = []\n");
+        // RTL/top.v: 1 个 module
+        touch(root, "RTL/top.v", b"module top(\n    input wire clk\n);\nendmodule\n");
+        // RTL/alu.v: 1 个 module
+        touch(root, "RTL/alu.v", b"module alu(\n    input wire [7:0] a\n);\nendmodule\n");
+        // L3/ 空目录
+        std::fs::create_dir_all(root.join("L3")).unwrap();
+
+        // ─── 收集前快照（用于只读验证） ──────────────────────
+        let l0_py_before = std::fs::read_to_string(root.join("L0/top.py")).unwrap();
+
+        // ─── resolve + collect L0 ────────────────────────────
+        let l0_ctx = super::super::select_stage::resolve_stage_context(root_str, "L0");
         assert!(l0_ctx.success, "resolve L0 应成功");
         assert_eq!(l0_ctx.data.as_ref().unwrap().files.len(), 2);
 
-        // collect_evidence L0 — 应找到 process_signal, normalize, SignalProcessor, interface_handler
-        let ev_l0 = collect_evidence(test_root.to_string(), "L0".to_string());
-        assert!(ev_l0.success);
+        let ev_l0 = collect_evidence(root_str.to_string(), "L0".to_string());
+        assert!(ev_l0.success, "collect L0 应成功");
         let col = ev_l0.data.unwrap();
         assert!(col.evidence_items.len() >= 3, "L0 应至少 3 项，实际 {}", col.evidence_items.len());
         assert!(col.evidence_items[0].evidence_id.starts_with("EV-L0-"));
         assert!(!col.index_by_path.is_empty());
         assert!(!col.index_by_kind.is_empty());
 
-        // collect_evidence RTL — 应找到 top + alu
-        let ev_rtl = collect_evidence(test_root.to_string(), "RTL".to_string());
-        assert!(ev_rtl.success);
+        // ─── collect RTL — 应找到 top + alu ──────────────────
+        let ev_rtl = collect_evidence(root_str.to_string(), "RTL".to_string());
+        assert!(ev_rtl.success, "collect RTL 应成功");
         let rtl_col = ev_rtl.data.unwrap();
         assert!(rtl_col.evidence_items.len() >= 2, "RTL 应至少 2 项");
 
-        // collect_evidence L1 — 应找到 DataModel
-        let ev_l1 = collect_evidence(test_root.to_string(), "L1".to_string());
-        assert!(ev_l1.success);
-        assert!(ev_l1.data.unwrap().evidence_items.len() >= 1);
+        // ─── collect L1 — 应找到 DataModel ──────────────────
+        let ev_l1 = collect_evidence(root_str.to_string(), "L1".to_string());
+        assert!(ev_l1.success, "collect L1 应成功");
+        assert!(ev_l1.data.unwrap().evidence_items.len() >= 1, "L1 应至少 1 项");
 
-        // 空阶段 L3
-        let ev_l3 = collect_evidence(test_root.to_string(), "L3".to_string());
+        // ─── 空阶段 L3 ──────────────────────────────────────
+        let ev_l3 = collect_evidence(root_str.to_string(), "L3".to_string());
         assert!(ev_l3.success, "空阶段应 success=true");
         assert!(ev_l3.data.is_none(), "空阶段无 data");
         assert!(ev_l3.error.is_some(), "空阶段有 error");
 
-        // 只读验证：文件内容不变
-        let content = std::fs::read_to_string(format!("{}/L0/top.py", test_root)).unwrap();
-        assert!(content.contains("process_signal"));
+        // ─── 只读验证：文件内容不变 ─────────────────────────
+        let l0_py_after = std::fs::read_to_string(root.join("L0/top.py")).unwrap();
+        assert_eq!(l0_py_before, l0_py_after, "目标文件不应被修改");
     }
 
     #[test]

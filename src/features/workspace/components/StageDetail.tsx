@@ -142,7 +142,30 @@ export default function StageDetail({
           }}
         >
           <h4 style={{ margin: '0 0 8px', fontSize: 14 }}>证据收集失败</h4>
-          <p style={{ margin: 0, fontSize: 13 }}>{evidenceError.message}</p>
+          <div style={{ fontSize: 13 }}>
+            {'error_code' in evidenceError && (
+              <div style={{ marginBottom: 4 }}>
+                <span style={{ color: '#666' }}>错误码：</span>
+                <code>{evidenceError.error_code}</code>
+              </div>
+            )}
+            <div style={{ marginBottom: 4 }}>
+              <span style={{ color: '#666' }}>信息：</span>
+              {evidenceError.message}
+            </div>
+            {'source_path' in evidenceError && evidenceError.source_path && (
+              <div style={{ marginBottom: 4 }}>
+                <span style={{ color: '#666' }}>路径：</span>
+                <code style={{ fontSize: 12 }}>{evidenceError.source_path}</code>
+              </div>
+            )}
+            {'details' in evidenceError && evidenceError.details && (
+              <div>
+                <span style={{ color: '#666' }}>详情：</span>
+                {evidenceError.details}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
