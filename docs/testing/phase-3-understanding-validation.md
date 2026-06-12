@@ -244,7 +244,8 @@ rg "GraphView|Dataflow|Q&A|QA|LLM" src src-tauri/src/understanding/
 |--------|------|------|
 | 生成理解后重新收集证据 | understanding_loaded → 点击"收集证据" | 进入 collecting_evidence → evidence_loaded，旧 understanding 被清除 |
 | 生成失败后重新收集 | understanding_error → 点击"收集证据" | 进入 collecting_evidence → evidence_loaded/evidence_error |
-| 生成中取消（当前不支持取消） | 无需验证 | 生成中按钮 disabled |
+| 生成中禁止收集证据 | understanding_loading → 点击"收集证据"按钮 | 按钮 disabled（文案"生成中，请稍候"），避免 collect/generate 并发覆盖 |
+| 生成完成或失败后允许重新收集 | understanding_loaded / understanding_error → 点击"收集证据" | 正常触发 collecting_evidence |
 | 生成失败不清空 stage context | understanding_error 状态 | profile / stageId / context 仍在，左侧阶段列表不变 |
 | 阶段切换清空旧 understanding | understanding_loaded → 选择其他 stage | 进入 selecting_stage → stage_loaded，无残存 understanding |
 | 空阶段无生成按钮 | 选择 stage_empty 阶段 | 不显示"生成理解"按钮 |

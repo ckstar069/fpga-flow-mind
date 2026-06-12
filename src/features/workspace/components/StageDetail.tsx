@@ -115,28 +115,30 @@ export default function StageDetail({
           <h3 style={{ fontSize: 15, margin: '0 0 12px' }}>证据收集</h3>
           <button
             onClick={onCollectEvidence}
-            disabled={isCollecting}
+            disabled={isCollecting || understandingLoading}
             style={{
               padding: '8px 20px',
               borderRadius: 6,
               border: evidence
                 ? '1px solid #4caf50'
                 : '1px solid #1976d2',
-              background: isCollecting
+              background: (isCollecting || understandingLoading)
                 ? '#e0e0e0'
                 : evidence
                   ? '#4caf50'
                   : '#1976d2',
-              color: isCollecting ? '#999' : '#fff',
-              cursor: isCollecting ? 'not-allowed' : 'pointer',
+              color: (isCollecting || understandingLoading) ? '#999' : '#fff',
+              cursor: (isCollecting || understandingLoading) ? 'not-allowed' : 'pointer',
               fontSize: 14,
             }}
           >
             {isCollecting
               ? '收集中...'
-              : evidence
-                ? `重新收集 (${evidence.evidence_items.length} 项)`
-                : '收集证据'}
+              : understandingLoading
+                ? '生成中，请稍候'
+                : evidence
+                  ? `重新收集 (${evidence.evidence_items.length} 项)`
+                  : '收集证据'}
           </button>
         </div>
       )}
