@@ -81,7 +81,7 @@ impl ViewGraphGenerator {
 
 ## 4. build_structure_view 转换规则
 
-### 4.1 节点生成（node_id 唯一性保证：类型前缀 + 全局递增序号）
+### 4.1 节点生成（node_id 唯一性保证：view_type 前缀 + ViewGraph 内全局递增序号）
 
 | IU 字段 | → NodeType | node_id 格式 | layout hint |
 |---------|-----------|-------------|-------------|
@@ -90,10 +90,12 @@ impl ViewGraphGenerator {
 | `interface_summaries[i]` | Interface | `N-structure-{:04}` | column=2, row=i, depth=0 |
 | `processing_steps[i]` | ProcessingStep | `N-structure-{:04}` | column=0, row=i+N, depth=1 |
 
+> 上表四行的 `{:04}` 只是格式模板。同一个 structure builder 内使用**单一计数器**连续分配，例如：module=0001、signal=0002、interface=0003、processing_step=0004…。不允许每种类型各自从 0001 开始。
+
 **node_id 规则**：
-- 三个 builder 使用独立的全局计数器，各 ViewGraph 内节点从 0001 起递增
+- 三个 builder（structure / dataflow / timing）各自维护独立的全局计数器，各 ViewGraph 内节点从 0001 起递增
 - 格式：`N-<view_type>-<4位递增序号>`
-- view_type 分别取 `structure` / `dataflow` / `timing`
+- `view_type` 分别取 `structure` / `dataflow` / `timing`
 - 同一 ViewGraph 内所有 `node_id` 必须唯一
 - `edge.source_node_id` 和 `edge.target_node_id` 必须引用当前 ViewGraph.nodes 中已存在的 node_id
 
