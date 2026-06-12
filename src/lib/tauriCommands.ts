@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { CommandResult, WorkspaceProfile, StageContext, EvidenceCollection } from '../types/workspace';
+import type { CommandResult, WorkspaceProfile, StageContext, EvidenceCollection, ImplementationUnderstanding } from '../types/workspace';
 
 export class CommandError extends Error {
   error_code: string;
@@ -37,6 +37,14 @@ export async function selectStage(rootPath: string, stageId: string): Promise<St
 
 export async function collectEvidence(rootPath: string, stageId: string): Promise<EvidenceCollection> {
   const result = await invoke<CommandResult<EvidenceCollection>>('collect_evidence', {
+    rootPath: rootPath,
+    stageId: stageId,
+  });
+  return handleResult(result);
+}
+
+export async function generateUnderstanding(rootPath: string, stageId: string): Promise<ImplementationUnderstanding> {
+  const result = await invoke<CommandResult<ImplementationUnderstanding>>('generate_understanding', {
     rootPath: rootPath,
     stageId: stageId,
   });

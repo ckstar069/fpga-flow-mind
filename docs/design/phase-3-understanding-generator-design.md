@@ -339,8 +339,17 @@ impl UnderstandingGenerator {
         let generator_input = ContextBuilder::build(collection);
 
         // 2. 调用 provider
-        let raw_output = self.provider.generate(&generator_input)
-            .map_err(GeneratorError::ProviderError)?;
+        let raw_output = match self.provider.generate(&generator_input) {
+            Ok(v) => v,
+            Err(ProviderError::NotConfigured) => {
+                // degraded mode — 直接构建，跳过验证
+                return Ok(Self::build_degraded_understanding(
+                    collection,
+                    elapsed_ms,
+                ));
+            }
+            Err(e) => return Err(GeneratorError::ProviderError(e)),
+        };
 
         // 3. Schema 验证
         let validation = SchemaValidator::validate(
@@ -464,6 +473,7 @@ Phase 3 后端代码遵循与 Phase 2 相同的安全约束：
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-06-12 | Phase 3 Batch B：实现 Generator 主流程（MockProvider + ManualProvider + degraded mode）；generate_understanding Tauri command；ErrorCode 新增 UnderstandingGenerationFailed | Claude |
 | 2026-06-12 | 审核收口：GeneratorOutput 新增 4 字段；ValidationError 删除 UnknownWithFakeEvidence，新增 DuplicateClaimId；version/claim_id/description 加强验证 | Claude |
 | 2026-06-12 | 收口修复：prompt confidence 描述补齐 supported；status draft → active | Claude |
 | 2026-06-12 | 初始创建（draft） | Claude |

@@ -20,7 +20,9 @@ export type ErrorCode =
   | 'evidence_collection_failed'
   | 'source_excerpt_truncated'
   | 'binary_file_skipped'
-  | 'non_utf8_file_skipped';
+  | 'non_utf8_file_skipped'
+  // Phase 3 新增
+  | 'understanding_generation_failed';
 
 export interface WorkspaceProfile {
   workspace_name: string;

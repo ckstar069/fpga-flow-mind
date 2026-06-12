@@ -62,8 +62,9 @@ updated: 2026-06-12
 | **目标** | 定义 provider 抽象和 mock 实现 |
 | **文件** | `src-tauri/src/understanding/generator.rs`（新增） |
 | **内容** | UnderstandingProvider trait、ProviderError、MockProvider、ManualProvider、UnderstandingGenerator 主流程 |
-| **测试** | generator pipeline mock 测试（4 个） |
+| **测试** | generator pipeline mock 测试（7 个） ✅ |
 | **依赖** | P3-T01、P3-T02、P3-T03 |
+| **状态** | ✅ 已完成（Batch B） |
 
 ### P3-T05 实现 generate_understanding Tauri command
 
@@ -72,8 +73,9 @@ updated: 2026-06-12
 | **目标** | 暴露理解生成为 Tauri command |
 | **文件** | `src-tauri/src/commands/generate_understanding.rs`（新增）、`src-tauri/src/commands/mod.rs`（修改）、`src-tauri/src/lib.rs`（修改） |
 | **内容** | generate_understanding command、参数校验、集成 EvidenceCollector + UnderstandingGenerator、CommandResult 返回 |
-| **测试** | command 层测试（5 个） |
+| **测试** | command 层测试（8 个） ✅ |
 | **依赖** | P3-T04 |
+| **状态** | ✅ 已完成（Batch B） |
 
 ### P3-T06 实现前端 TypeScript 类型定义
 
@@ -159,14 +161,14 @@ P3-T06 (TS types) ──▶ P3-T07 (tauri command call) ──▶ P3-T08 (Unders
 
 **预估测试**：17 个
 
-### 4.3 Batch B: Generator + Tauri Command + Provider（后端完整）
+### 4.3 Batch B: Generator + Tauri Command + Provider（后端完整） ✅
 
 | 任务 | 内容 |
 |------|------|
-| P3-T04 | Provider trait + MockProvider + Generator |
-| P3-T05 | generate_understanding Tauri command |
+| P3-T04 | Provider trait + MockProvider + Generator ✅ |
+| P3-T05 | generate_understanding Tauri command ✅ |
 
-**预估测试**：9 个
+**实际测试**：15 个（generator 7 + command 8）
 
 ### 4.4 Batch C: 前端类型 + Command + UnderstandingPanel（前端）
 
@@ -217,5 +219,6 @@ Phase 3 编码阶段与 Phase 2 保持相同的安全约束：
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-06-12 | Phase 3 Batch B 完成：P3-T04（generator 7 测试）、P3-T05（command 8 测试）；合计 15 测试 | Claude |
 | 2026-06-12 | 收口修复：status draft → active；文档审核通过，允许进入 Phase 3 编码实施 | Claude |
 | 2026-06-12 | 初始创建（draft） | Claude |

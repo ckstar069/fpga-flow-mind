@@ -41,6 +41,8 @@ pub enum ErrorCode {
     SourceExcerptTruncated,
     BinaryFileSkipped,
     NonUtf8FileSkipped,
+    // Phase 3 新增
+    UnderstandingGenerationFailed,
 }
 
 /// 源码文件的语义分类
@@ -113,6 +115,7 @@ mod tests {
             ErrorCode::SourceExcerptTruncated,
             ErrorCode::BinaryFileSkipped,
             ErrorCode::NonUtf8FileSkipped,
+            ErrorCode::UnderstandingGenerationFailed,
         ] {
             let json = serde_json::to_string(&code).unwrap();
             let back: ErrorCode = serde_json::from_str(&json).unwrap();

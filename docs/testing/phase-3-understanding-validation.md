@@ -33,9 +33,9 @@ Phase 3 编码完成后，以下维度应通过验证：
 | `understanding/models.rs` | 数据结构 serde（序列化/反序列化） | 4 |
 | `understanding/context_builder.rs` | ContextBuilder 输出正确性 + schema 覆盖 | 8 |
 | `understanding/schema_validator.rs` | Schema 验证 + evidence_id check + confidence/claim_id/description | 28 |
-| `understanding/generator.rs` | Generator pipeline（mock provider） | 4 |
-| `commands/generate_understanding.rs` | Tauri command 层 | 5 |
-| **合计** | | **~49** |
+| `understanding/generator.rs` | Generator pipeline + MockProvider + ManualProvider + degraded + validation | 7 |
+| `commands/generate_understanding.rs` | Tauri command E2E（含 readonly、multi-stage） | 8 |
+| **合计** | | **~55** |
 
 ### 2.2 前端测试
 
@@ -137,31 +137,43 @@ Phase 3 编码完成后，以下维度应通过验证：
 
 ## 6. Generator Pipeline 测试（Mock Provider）
 
-### 6.1 完整 pipeline
+### 6.1 Generator pipeline 测试
 
-| 用例 | 输入 | 预期 |
-|------|------|------|
-| Mock 正常返回 | 预设合法 ImplementationUnderstanding JSON | 成功返回 |
-| Mock 返回非法 JSON | 预设缺少字段的 JSON | GeneratorError::ValidationFailed |
-| Mock 返回含假 ID | 预设引用不存在 evidence_id | GeneratorError::ValidationFailed |
-| Mock provider 错误 | ProviderError::NotConfigured | GeneratorError::ProviderError |
+| 用例 ID | 输入 | 预期 |
+|---------|------|------|
+| gen_01 | MockProvider + 含 evidence_items 的 EvidenceCollection | 成功返回 ImplementationUnderstanding，claims 非空 |
+| gen_02 | MockProvider 输出 | 所有 evidence_refs 中的 evidence_id 均在 known_evidence_ids 中（无伪造 ID） |
+| gen_03 | ManualProvider | 返回 degraded 结果，is_degraded=true，provider="manual"，claims 为空 |
+| gen_04 | MockProvider + 空 EvidenceCollection | 成功返回，无 panic |
+| gen_05 | ManualProvider + 空 EvidenceCollection | 返回 degraded 结果，无 panic |
+| gen_06 | BadProvider（返回无效 JSON） | GeneratorError::ValidationFailed |
+| gen_07 | FakeIdProvider（返回含伪造 evidence_id 的 JSON） | GeneratorError::ValidationFailed |
 
-### 6.2 degraded mode
+### 6.2 degraded mode 语义
 
-| 用例 | 输入 | 预期 |
-|------|------|------|
-| 无 LLM provider | ManualProvider | 返回降级结果，is_degraded = true |
+| 字段 | 值 | 说明 |
+|------|-----|------|
+| version | "3.0.0" | 固定版本 |
+| claims | [] | 无语义推断 |
+| summary | "语义生成 Provider 未配置，无法生成阶段理解" | 明确说明原因 |
+| unknowns | [{reason: "语义生成 Provider 未配置"}] | 标注无法推断的原因 |
+| gaps | [{reason: "当前为 degraded mode"}] | 标注缺失原因 |
+| is_degraded | true | degraded 标志 |
+| provider | "manual" | 标识 provider 类型 |
+| evidence_refs | 仅引用 known_evidence_ids | 不伪造任何 ID |
 
 ## 7. Tauri Command 测试
 
-| 用例 | 输入 | 预期 |
-|------|------|------|
-| 正常生成 | 有效 EvidenceCollection | success=true，ImplementationUnderstanding 结构完整 |
-| 空 evidence | evidence_items=[] | success=true，返回仅含 stats 的空理解 |
-| 阶段不存在 | 无效 stage_id | success=false |
-| 无效路径 | root_path 不存在 | success=false，PathNotFound |
-| 空 stage_id | stage_id="" | success=false |
-| 生成超时 | mock provider 模拟超时 | success=false，timeout error |
+| 用例 ID | 输入 | 预期 |
+|---------|------|------|
+| und_01 | Python 项目有效阶段 | success=true，claims 非空，evidence_refs 有效 |
+| und_02 | Verilog 项目有效阶段 | success=true，module/signal claims 正确 |
+| und_03 | 空 stage（无源文件） | success=true，MockProvider 返回有效理解 |
+| und_04 | root_path 不存在 | success=false，PathNotFound |
+| und_05 | stage_id 不存在 | success=false，StageNotFound |
+| und_06 | readonly 验证 | 目标项目目录无变化 |
+| und_07 | stage_id="" | success=false |
+| und_08 | 多阶段 pipeline（先 select → collect → generate） | success=true，全流程串联 |
 
 ## 8. 前端渲染测试
 
@@ -240,9 +252,7 @@ rg "GraphView|Dataflow|Q&A|QA|LLM" src src-tauri/src/understanding/
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
-| 2026-06-12 | 收口修复：ClaimConfidence 测试矩阵补齐 supported（4→5 种值）；前端渲染测试同步；status draft → active | Claude |
-| 日期 | 变更 | 作者 |
-|------|------|------|
+| 2026-06-12 | Phase 3 Batch B：更新 generator 测试矩阵（7 用例）、command 测试矩阵（8 用例）、degraded mode 语义表、测试合计 49→55 | Claude |
 | 2026-06-12 | 审核收口：删除 UnknownWithFakeEvidence（统一用 UnknownEvidenceId）；测试数量更新（schema_validator 8→28，context_builder 5→8，合计 26→49）；新增 version/claim_id/description 非空 + claim_id 格式验证用例 | Claude |
 | 2026-06-12 | 收口修复：ClaimConfidence 测试矩阵补齐 supported（4→5 种值）；前端渲染测试同步；status draft → active | Claude |
 | 2026-06-12 | 初始创建（draft） | Claude |
