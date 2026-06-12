@@ -41,23 +41,18 @@ pub struct MockProvider;
 
 impl UnderstandingProvider for MockProvider {
     fn generate(&self, input: &GeneratorOutput) -> Result<serde_json::Value, ProviderError> {
-        let stage_id = input
-            .prompt
-            .lines()
-            .find(|l| l.starts_with("阶段 ID: "))
-            .map(|l| l.trim_start_matches("阶段 ID: ").to_string())
-            .unwrap_or_else(|| "L0".to_string());
+        // 直接从 input.stage_id 获取，不解析 prompt 文案
+        let stage_id = &input.stage_id;
+        let evidence_count = input.evidence_context_items.len();
 
-        let evidence_count = input.known_evidence_ids.len();
-        let ids: Vec<&String> = input.known_evidence_ids.iter().collect();
-
+        // 使用 ordered_evidence_ids（确定性顺序，来自 evidence_items Vec）
         // 构建确定性 mock ImplementationUnderstanding JSON
         let mut claims = Vec::new();
         let mut module_summaries = Vec::new();
 
-        if !ids.is_empty() {
+        if !input.evidence_context_items.is_empty() {
             // 为前 3 个 evidence（或全部）生成 claims
-            let claim_count = ids.len().min(3);
+            let claim_count = evidence_count.min(3);
             let categories = [
                 "module_structure",
                 "signal_definition",
@@ -66,12 +61,18 @@ impl UnderstandingProvider for MockProvider {
             let confidences = ["confirmed", "supported", "inferred"];
 
             for i in 0..claim_count {
+                let ctx = &input.evidence_context_items[i];
+                let ev_id = &ctx.evidence_id;
                 let claim_id = format!("CL-{}-{:06}", stage_id, i + 1);
-                let ev_id = ids[i].as_str();
+                let desc = if let Some(sym) = &ctx.symbol {
+                    format!("基于证据 {} [{}] 的声明 {}", ev_id, sym, i + 1)
+                } else {
+                    format!("基于证据 {} 的声明 {}", ev_id, i + 1)
+                };
                 claims.push(serde_json::json!({
                     "claim_id": claim_id,
                     "category": categories[i % categories.len()],
-                    "description": format!("基于证据 {} 的声明 {}", ev_id, i + 1),
+                    "description": desc,
                     "confidence": confidences[i % confidences.len()],
                     "evidence_refs": [{"evidence_id": ev_id}],
                     "has_evidence_gap": false
@@ -79,8 +80,9 @@ impl UnderstandingProvider for MockProvider {
 
                 // 为第一个 claim 生成模块摘要
                 if i == 0 {
+                    let module_name = ctx.symbol.as_deref().unwrap_or("unknown");
                     module_summaries.push(serde_json::json!({
-                        "name": format!("module_{}", stage_id.to_lowercase()),
+                        "name": format!("module_{}", module_name),
                         "description": format!("基于证据 {} 的模块", ev_id),
                         "evidence_refs": [{"evidence_id": ev_id}],
                         "confidence": "supported"
@@ -90,6 +92,7 @@ impl UnderstandingProvider for MockProvider {
         }
 
         // 如果 evidence 不足，添加 unknowns 和 gaps
+        let first_ev_id = input.ordered_evidence_ids.first();
         let mut unknowns = Vec::new();
         let mut evidence_gaps = Vec::new();
 
@@ -97,10 +100,9 @@ impl UnderstandingProvider for MockProvider {
             unknowns.push(serde_json::json!({
                 "unknown_id": format!("UNK-{}-000001", stage_id),
                 "description": "实现细节无法从现有证据推断",
-                "related_evidence_refs": if !ids.is_empty() {
-                    vec![serde_json::json!({"evidence_id": ids[0]})]
-                } else {
-                    vec![]
+                "related_evidence_refs": match first_ev_id {
+                    Some(id) => vec![serde_json::json!({"evidence_id": id})],
+                    None => vec![],
                 },
                 "reason": "证据数量不足以推断完整实现逻辑"
             }));
@@ -111,15 +113,14 @@ impl UnderstandingProvider for MockProvider {
                 "gap_id": format!("GAP-{}-000001", stage_id),
                 "expected_evidence": "更多模块/信号/接口定义证据",
                 "reason": "需要更完整的源码覆盖",
-                "related_evidence_refs": if !ids.is_empty() {
-                    vec![serde_json::json!({"evidence_id": ids[0]})]
-                } else {
-                    vec![]
+                "related_evidence_refs": match first_ev_id {
+                    Some(id) => vec![serde_json::json!({"evidence_id": id})],
+                    None => vec![],
                 }
             }));
         }
 
-        let short_summary = if ids.is_empty() {
+        let short_summary = if evidence_count == 0 {
             format!("阶段 {} 暂无充分证据生成完整理解", stage_id)
         } else {
             format!(
@@ -130,7 +131,7 @@ impl UnderstandingProvider for MockProvider {
             )
         };
 
-        let detailed_summary = if ids.is_empty() {
+        let detailed_summary = if evidence_count == 0 {
             format!(
                 "阶段 {} 当前无可用证据。建议补充源文件后重新收集。",
                 stage_id
@@ -188,7 +189,7 @@ impl UnderstandingProvider for MockProvider {
             "evidence_gaps": evidence_gaps,
             "generation_meta": {
                 "provider": "mock",
-                "generated_at": "2026-06-12T10:00:00Z",
+                "generated_at": chrono::Utc::now().to_rfc3339(),
                 "input_evidence_count": evidence_count as u32,
                 "generation_time_ms": 10u64,
                 "is_degraded": false
@@ -340,7 +341,7 @@ impl UnderstandingGenerator {
             }],
             generation_meta: GenerationMeta {
                 provider: "manual".to_string(),
-                generated_at: chrono_dummy_timestamp(),
+                generated_at: chrono::Utc::now().to_rfc3339(),
                 input_evidence_count: evidence_count,
                 generation_time_ms,
                 is_degraded: true,
@@ -360,15 +361,10 @@ impl UnderstandingGenerator {
     }
 }
 
-/// 生成确定性时间戳（避免 chrono 依赖）
-fn chrono_dummy_timestamp() -> String {
-    "2026-06-12T00:00:00Z".to_string()
-}
-
 // ─── GeneratorOutput 重导出 ─────────────────────────────────────────
 
-// GeneratorOutput 定义在 context_builder.rs，这里重新导出以便 provider 使用
-pub use crate::understanding::context_builder::GeneratorOutput;
+// GeneratorOutput, EvidenceContextItem 等定义在 context_builder.rs，这里重新导出
+pub use crate::understanding::context_builder::{EvidenceContextItem, GeneratorOutput, IndexSummary, StatsSummary};
 
 #[cfg(test)]
 mod tests {
@@ -647,5 +643,192 @@ mod tests {
             }
             other => panic!("预期 ValidationFailed，实际: {:?}", other),
         }
+    }
+
+    // ─── gen_08: MockProvider 输出确定性 ──────────────────────────
+
+    /// 同一 EvidenceCollection 连续两次 generate，claims/evidence_refs 顺序完全一致
+    #[test]
+    fn gen_08_mock_provider_deterministic() {
+        let items = vec![
+            make_item("EV-L0-000001", Some("mod_a"), "模块 A"),
+            make_item("EV-L0-000002", Some("mod_b"), "模块 B"),
+            make_item("EV-L0-000003", Some("mod_c"), "模块 C"),
+        ];
+        let collection = make_collection("L0", items);
+
+        let generator = UnderstandingGenerator::new(Box::new(MockProvider));
+
+        let result1 = generator.generate(&collection).unwrap();
+        let result2 = generator.generate(&collection).unwrap();
+
+        // Stage/structure equality
+        assert_eq!(result1.stage_id, result2.stage_id);
+        assert_eq!(result1.version, result2.version);
+        assert_eq!(result1.claims.len(), result2.claims.len());
+
+        // claims 顺序一致性
+        for (i, (c1, c2)) in result1
+            .claims
+            .iter()
+            .zip(result2.claims.iter())
+            .enumerate()
+        {
+            assert_eq!(
+                c1.claim_id, c2.claim_id,
+                "claim {} id 应一致: {} vs {}",
+                i, c1.claim_id, c2.claim_id
+            );
+            assert_eq!(
+                c1.evidence_refs.len(),
+                c2.evidence_refs.len(),
+                "claim {} evidence_refs 数量应一致",
+                i
+            );
+            for (j, (r1, r2)) in c1
+                .evidence_refs
+                .iter()
+                .zip(c2.evidence_refs.iter())
+                .enumerate()
+            {
+                assert_eq!(
+                    r1.evidence_id, r2.evidence_id,
+                    "claim {} ref {} 应一致: {} vs {}",
+                    i, j, r1.evidence_id, r2.evidence_id
+                );
+            }
+        }
+
+        // 序列化后 JSON 字符串一致（忽略 generated_at，因为使用实时 chrono）
+        // 我们将 generated_at 字段归一化后再比较
+        let json1 = serde_json::to_value(&result1).unwrap();
+        let json2 = serde_json::to_value(&result2).unwrap();
+
+        // 检查 claims 数组完全相同
+        let claims1 = json1.get("claims").unwrap();
+        let claims2 = json2.get("claims").unwrap();
+        assert_eq!(claims1, claims2, "claims JSON 应完全一致");
+
+        // 检查 module_summaries 完全相同
+        let mods1 = json1.get("module_summaries").unwrap();
+        let mods2 = json2.get("module_summaries").unwrap();
+        assert_eq!(mods1, mods2, "module_summaries JSON 应完全一致");
+
+        // 检查 unknowns / evidence_gaps 完全相同
+        assert_eq!(
+            json1.get("unknowns").unwrap(),
+            json2.get("unknowns").unwrap(),
+            "unknowns 应一致"
+        );
+        assert_eq!(
+            json1.get("evidence_gaps").unwrap(),
+            json2.get("evidence_gaps").unwrap(),
+            "evidence_gaps 应一致"
+        );
+    }
+
+    // ─── gen_09: MockProvider 使用 input.stage_id，不解析 prompt ──
+
+    /// 自定义 GeneratorOutput（prompt 不含 "阶段 ID:"）
+    fn make_generator_output(stage_id: &str, ids: Vec<String>, items: Vec<EvidenceContextItem>) -> GeneratorOutput {
+        GeneratorOutput {
+            stage_id: stage_id.to_string(),
+            prompt: "这是一个不含阶段 ID: 前缀的 prompt 文案".to_string(),
+            output_schema: serde_json::json!({}),
+            known_evidence_ids: ids.iter().cloned().collect(),
+            ordered_evidence_ids: ids,
+            evidence_context_items: items,
+            index_summary: IndexSummary {
+                path_count: 0,
+                kind_count: 0,
+                symbol_count: 0,
+            },
+            stats_summary: StatsSummary {
+                files_processed: 0,
+                files_skipped: 0,
+                total_items: 0,
+            },
+            warnings_summary: vec![],
+        }
+    }
+
+    #[test]
+    fn gen_09_mock_provider_uses_input_stage_id() {
+        let items = vec![EvidenceContextItem {
+            evidence_id: "EV-Z9-000001".to_string(),
+            summary: "测试证据".to_string(),
+            symbol: Some("test_mod".to_string()),
+            language: "verilog".to_string(),
+            source_kind: "rtl".to_string(),
+            strength: "direct".to_string(),
+        }];
+
+        // prompt 不含 "阶段 ID:" 且 stage_id 是 "Z9"（非默认 "L0"）
+        let output = make_generator_output(
+            "Z9",
+            vec!["EV-Z9-000001".to_string()],
+            items,
+        );
+
+        let provider = MockProvider;
+        let result = provider.generate(&output).unwrap();
+
+        assert_eq!(
+            result.get("stage_id").and_then(|v| v.as_str()).unwrap(),
+            "Z9",
+            "stage_id 应从 input.stage_id 获取，不是解析 prompt"
+        );
+
+        // claims 的 claim_id 前缀应基于 stage_id
+        let claims = result.get("claims").unwrap().as_array().unwrap();
+        assert!(
+            claims[0].get("claim_id").unwrap().as_str().unwrap().starts_with("CL-Z9-"),
+            "claim_id 应包含 Z9 前缀"
+        );
+    }
+
+    // ─── gen_10: generated_at 使用 chrono 真实时间 ──────────────────
+
+    #[test]
+    fn gen_10_generated_at_uses_chrono() {
+        let items = vec![make_item("EV-L0-000001", Some("mod_a"), "模块 A")];
+        let collection = make_collection("L0", items);
+
+        let generator = UnderstandingGenerator::new(Box::new(MockProvider));
+        let understanding = generator.generate(&collection).unwrap();
+
+        let ts = &understanding.generation_meta.generated_at;
+        assert!(!ts.is_empty(), "generated_at 不应为空");
+        assert!(
+            ts.contains('T'),
+            "generated_at 应为 ISO 8601 格式含 'T': {}",
+            ts
+        );
+        // 不应是 hardcoded 值
+        assert_ne!(
+            ts, "2026-06-12T10:00:00Z",
+            "generated_at 不应是 hardcoded 值"
+        );
+        assert_ne!(
+            ts, "2026-06-12T00:00:00Z",
+            "generated_at 不应是旧 dummy 值"
+        );
+    }
+
+    // ─── gen_11: degraded mode 也使用 chrono ───────────────────────
+
+    #[test]
+    fn gen_11_degraded_uses_chrono() {
+        let items = vec![make_item("EV-L0-000001", Some("mod_a"), "模块 A")];
+        let collection = make_collection("L0", items);
+
+        let generator = UnderstandingGenerator::new(Box::new(ManualProvider));
+        let understanding = generator.generate(&collection).unwrap();
+
+        assert!(understanding.generation_meta.is_degraded);
+        let ts = &understanding.generation_meta.generated_at;
+        assert!(!ts.is_empty());
+        assert!(ts.contains('T'), "degraded generated_at 应为 ISO 8601: {}", ts);
+        assert_ne!(ts, "2026-06-12T00:00:00Z", "degraded 不应使用旧 dummy 值");
     }
 }

@@ -54,13 +54,17 @@ pub struct GeneratorInput {
 
 /// ContextBuilder 输出（传给 Provider 和 Validator 的结构）
 pub struct GeneratorOutput {
+    /// 阶段 ID（直接从 collection.stage_id 传递，Provider 不应再从 prompt 解析）
+    pub stage_id: String,
     /// Prompt（含 system prompt + user prompt）
     pub prompt: String,
     /// JSON schema（约束 LLM 输出格式）
     pub output_schema: serde_json::Value,
     /// 已知的 evidence_id 集合（传给 validator 用于 hallucination guard）
     pub known_evidence_ids: HashSet<String>,
-    /// 结构化证据上下文条目
+    /// 有序的 evidence_id 列表（按 evidence_items 输入顺序，Provider 用于确定性遍历）
+    pub ordered_evidence_ids: Vec<String>,
+    /// 结构化证据上下文条目（按输入顺序，Provider 用于确定性遍历）
     pub evidence_context_items: Vec<EvidenceContextItem>,
     /// 索引摘要
     pub index_summary: IndexSummary,
@@ -91,6 +95,12 @@ impl ContextBuilder {
     /// 从 EvidenceCollection 构建 LLM 输入
     pub fn build(collection: &EvidenceCollection) -> GeneratorOutput {
         let known_ids: HashSet<String> = collection
+            .evidence_items
+            .iter()
+            .map(|item| item.evidence_id.clone())
+            .collect();
+
+        let ordered_evidence_ids: Vec<String> = collection
             .evidence_items
             .iter()
             .map(|item| item.evidence_id.clone())
@@ -127,13 +137,16 @@ impl ContextBuilder {
             .map(|w| format!("{:?}: {}", w.error_code, w.message))
             .collect();
 
+        let stage_id = collection.stage_id.clone();
         let prompt = Self::build_prompt(collection, &evidence_context_items);
         let schema = Self::build_output_schema();
 
         GeneratorOutput {
+            stage_id,
             prompt,
             output_schema: schema,
             known_evidence_ids: known_ids,
+            ordered_evidence_ids,
             evidence_context_items,
             index_summary,
             stats_summary,

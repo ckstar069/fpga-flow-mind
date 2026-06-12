@@ -85,13 +85,17 @@ pub struct GeneratorInput {
 
 ```rust
 pub struct GeneratorOutput {
+    /// 阶段 ID（直接从 collection.stage_id 传递）
+    pub stage_id: String,
     /// Prompt（含 system prompt + user prompt）
     pub prompt: String,
     /// JSON schema（约束 LLM 输出格式）
     pub output_schema: serde_json::Value,
     /// 已知的 evidence_id 集合（传给 validator）
     pub known_evidence_ids: HashSet<String>,
-    /// 结构化证据上下文条目
+    /// 有序的 evidence_id 列表（Provider 用于确定性遍历）
+    pub ordered_evidence_ids: Vec<String>,
+    /// 结构化证据上下文条目（按输入顺序）
     pub evidence_context_items: Vec<EvidenceContextItem>,
     /// 索引摘要
     pub index_summary: IndexSummary,
@@ -116,26 +120,40 @@ impl ContextBuilder {
             .map(|item| item.evidence_id.clone())
             .collect();
 
-        let prompt = Self::build_prompt(collection);
+        let ordered_evidence_ids: Vec<String> = collection
+            .evidence_items
+            .iter()
+            .map(|item| item.evidence_id.clone())
+            .collect();
+
+        let evidence_context_items: Vec<EvidenceContextItem> = collection
+            .evidence_items
+            .iter()
+            .map(|item| EvidenceContextItem {
+                evidence_id: item.evidence_id.clone(),
+                summary: item.summary.clone(),
+                symbol: item.symbol.clone(),
+                language: enum_to_str(&item.language),
+                source_kind: enum_to_str(&item.source_kind),
+                strength: enum_to_str(&item.strength),
+            })
+            .collect();
+
+        let stage_id = collection.stage_id.clone();
+        let prompt = Self::build_prompt(collection, &evidence_context_items);
         let schema = Self::build_output_schema();
 
         GeneratorOutput {
+            stage_id,
             prompt,
             output_schema: schema,
             known_evidence_ids: known_ids,
+            ordered_evidence_ids,
+            evidence_context_items,
+            index_summary: IndexSummary { ... },
+            stats_summary: StatsSummary { ... },
+            warnings_summary: vec![],
         }
-    }
-
-    fn build_prompt(collection: &EvidenceCollection) -> String {
-        // 1. system prompt：角色定义、输出格式要求、约束规则
-        // 2. user prompt：evidence items 结构化列表
-        // 3. 输出 JSON schema 约束
-        todo!() // 编码时实现
-    }
-
-    fn build_output_schema() -> serde_json::Value {
-        // 返回 ImplementationUnderstanding 的 JSON schema
-        todo!() // 编码时实现
     }
 }
 ```
@@ -188,18 +206,28 @@ pub enum ProviderError {
 }
 ```
 
-### 4.2 Mock Provider
+### 4.2 Mock Provider（确定性生成）
+
+MockProvider 基于 `input.stage_id` 和 `input.evidence_context_items`（有序）生成确定性输出，不依赖 prompt 文案解析或 HashSet 迭代顺序。
 
 ```rust
-/// Mock provider — 用于测试和开发
-pub struct MockProvider {
-    /// 预设的返回值
-    response: serde_json::Value,
-}
+/// Mock provider — 基于已知 evidence 生成确定性 mock 输出
+pub struct MockProvider;
 
 impl UnderstandingProvider for MockProvider {
-    fn generate(&self, _input: &GeneratorOutput) -> Result<serde_json::Value, ProviderError> {
-        Ok(self.response.clone())
+    fn generate(&self, input: &GeneratorOutput) -> Result<serde_json::Value, ProviderError> {
+        let stage_id = &input.stage_id;  // 不解析 prompt
+
+        // 使用 evidence_context_items 顺序（非 HashSet）确保确定性
+        for ctx in input.evidence_context_items.iter().take(3) {
+            // claim_id: format!("CL-{}-{:06}", stage_id, i+1)
+            // evidence_refs: [{"evidence_id": &ctx.evidence_id}]
+            // 按索引为每个 claim 分配固定 category/confidence
+        }
+
+        // generated_at 使用 chrono::Utc::now().to_rfc3339()
+        // evidence_refs 仅引用 known_evidence_ids 中的 ID
+        Ok(serde_json::json!({ ... }))
     }
 }
 ```
@@ -387,7 +415,11 @@ pub enum GeneratorError {
 
 ## 7. Tauri Command
 
-### 7.1 generate_understanding
+### 7.1 generate_understanding（当前实现）
+
+当前采用**方案 A**：command 内部完成全链路 `resolve_stage_context → EvidenceCollector → UnderstandingGenerator`。
+默认使用 MockProvider 生成确定性 mock 理解，ManualProvider/degraded mode 在 generator 层可测，
+command 的 provider 选择机制留待后续 Phase。
 
 ```rust
 #[tauri::command]
@@ -395,18 +427,20 @@ pub fn generate_understanding(
     root_path: String,
     stage_id: String,
 ) -> CommandResult<ImplementationUnderstanding> {
-    // 1. 获取 EvidenceCollection（调用 Phase 2 collect 逻辑）
-    // 2. 构造 provider（根据配置选择 mock/LLM）
-    // 3. 调用 generator
-    // 4. 返回 CommandResult
+    // 1. resolve_stage_context（复用 Phase 1 校验）
+    // 2. EvidenceCollector::collect_from_stage_context（复用 Phase 2 收集）
+    // 3. UnderstandingGenerator::new(Box::new(MockProvider))
+    // 4. generator.generate(&collection)
+    // 5. 映射 GeneratorError → ErrorCode::UnderstandingGenerationFailed
+    // 6. 返回 CommandResult<ImplementationUnderstanding>
 }
 ```
 
 ### 7.2 与 Phase 2 的集成方式
 
-两种方案（编码时决定）：
+当前采用方案 A（服务端全链路），方案 B 作为未来优化方向保留：
 
-**方案 A**：command 内部先调用 collect 再 generate
+**方案 A**（当前）：command 内部先调用 collect 再 generate
 ```text
 generate_understanding(root_path, stage_id)
   → resolve_stage_context
@@ -414,16 +448,13 @@ generate_understanding(root_path, stage_id)
   → UnderstandingGenerator::generate
 ```
 
-**方案 B**：前端先 collect，再 generate
+**方案 B**（未来）：前端先 collect，再 generate
 ```text
 前端: collectEvidence(root_path, stage_id) → EvidenceCollection
 前端: generateUnderstanding(evidenceCollection) → ImplementationUnderstanding
 ```
 
-**推荐方案 B**：
-- 前端控制粒度更细
-- EvidenceCollection 可以缓存和复用
-- 前端可以在 generate 前展示 evidence 给用户确认
+方案 B 优势：前端控制粒度更细，EvidenceCollection 可缓存复用，前端可在 generate 前展示 evidence 给用户确认。
 
 ## 8. 失败处理策略
 
@@ -473,6 +504,7 @@ Phase 3 后端代码遵循与 Phase 2 相同的安全约束：
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-06-12 | Batch B 收口修复：GeneratorOutput 新增 stage_id + ordered_evidence_ids；MockProvider 使用结构化输入而非 prompt 解析/HashSet 迭代；generated_at 使用 chrono::Utc::now()；设计文档代码示例同步实现 | Claude |
 | 2026-06-12 | Phase 3 Batch B：实现 Generator 主流程（MockProvider + ManualProvider + degraded mode）；generate_understanding Tauri command；ErrorCode 新增 UnderstandingGenerationFailed | Claude |
 | 2026-06-12 | 审核收口：GeneratorOutput 新增 4 字段；ValidationError 删除 UnknownWithFakeEvidence，新增 DuplicateClaimId；version/claim_id/description 加强验证 | Claude |
 | 2026-06-12 | 收口修复：prompt confidence 描述补齐 supported；status draft → active | Claude |

@@ -306,23 +306,28 @@ updated: 2026-06-11
 
 ### error_code（MVP 最小集）
 
-| 值 | 场景 | 来源 story |
-|----|------|-----------|
-| `path_not_found` | 路径不存在 | story-open-workspace |
-| `not_directory` | 路径不是目录 | story-open-workspace |
-| `permission_denied` | 无读权限 | story-open-workspace, story-collect-evidence |
-| `no_stage_found` | 未识别到阶段目录 | story-open-workspace |
-| `stage_empty` | 阶段目录为空 | story-select-stage |
-| `stage_unreadable` | 阶段目录不可读 | story-select-stage |
-| `file_unreadable` | 单个文件不可读 | story-collect-evidence |
-| `file_too_large` | 文件超过大小上限 | story-collect-evidence |
-| `evidence_missing` | 无 evidence 可分析 | story-collect-evidence |
-| `model_output_invalid` | 模型返回格式错误 | story-generate-understanding |
-| `grounding_failed` | grounding 检查失败 | story-generate-understanding |
-| `persist_failed` | 持久化保存失败 | story-persist-and-reopen |
-| `load_failed` | 产物加载失败 | story-persist-and-reopen |
-| `source_changed` | 源文件已变更 | story-persist-and-reopen |
-| `scan_timeout` | 扫描超时 | story-open-workspace, story-collect-evidence |
+| 值 | 场景 | 来源 story | 状态 |
+|----|------|-----------|------|
+| `path_not_found` | 路径不存在 | story-open-workspace | 已实现 |
+| `not_directory` | 路径不是目录 | story-open-workspace | 已实现 |
+| `permission_denied` | 无读权限 | story-open-workspace, story-collect-evidence | 已实现 |
+| `no_stage_found` | 未识别到阶段目录 | story-open-workspace | 已实现 |
+| `stage_empty` | 阶段目录为空 | story-select-stage | 已实现 |
+| `stage_unreadable` | 阶段目录不可读 | story-select-stage | 已实现 |
+| `file_unreadable` | 单个文件不可读 | story-collect-evidence | 已实现 |
+| `file_too_large` | 文件超过大小上限 | story-collect-evidence | 已实现 |
+| `evidence_collection_failed` | 证据收集失败 | story-collect-evidence | 已实现 |
+| `source_excerpt_truncated` | 源代码摘录截断 | story-collect-evidence | 已实现 |
+| `binary_file_skipped` | 跳过二进制文件 | story-collect-evidence | 已实现 |
+| `non_utf8_file_skipped` | 跳过非 UTF-8 文件 | story-collect-evidence | 已实现 |
+| `understanding_generation_failed` | Phase 3 生成器/Provider/验证/反序列化失败的统一错误 | story-generate-understanding | 已实现 |
+| `model_output_invalid` | 模型返回格式错误（预留，将来可能从 understanding_generation_failed 细分） | story-generate-understanding | 预留 |
+| `grounding_failed` | grounding 检查失败（预留，将来可能从 understanding_generation_failed 细分） | story-generate-understanding | 预留 |
+| `evidence_missing` | 无 evidence 可分析 | story-collect-evidence | 预留 |
+| `persist_failed` | 持久化保存失败 | story-persist-and-reopen | 预留 |
+| `load_failed` | 产物加载失败 | story-persist-and-reopen | 预留 |
+| `source_changed` | 源文件已变更 | story-persist-and-reopen | 预留 |
+| `scan_timeout` | 扫描超时 | story-open-workspace, story-collect-evidence | 已实现 |
 
 ---
 
