@@ -37,14 +37,15 @@ Phase 3 编码完成后，以下维度应通过验证：
 | `commands/generate_understanding.rs` | Tauri command E2E（含 readonly、multi-stage） | 8 |
 | **合计** | | **~55** |
 
-### 2.2 前端测试
+### 2.2 前端验证
 
-| 测试位置 | 覆盖内容 | 预估数量 |
-|----------|----------|----------|
-| `src/features/workspace/components/UnderstandingPanel.test.tsx` | 组件渲染、状态展示 | 5 |
-| **合计** | | **~5** |
+| 验证方式 | 覆盖内容 | 结果 |
+|----------|----------|------|
+| `npm run build` | TypeScript 编译 + Vite 构建 | ✅ Batch C 通过 |
+| 代码路径检查 | WorkspacePage 状态机 + StageDetail 集成 + UnderstandingPanel | ✅ Batch C |
+| 手工桌面验收 | 完整用户流程 | 见 §10 |
 
-> 前端组件测试为可选项，Phase 3 优先保证后端测试。
+> 前端组件单元测试为可选项，Phase 3 优先保证后端测试。Batch C 以构建 + 代码路径验证为主。
 
 ### 2.3 手工验收
 
@@ -175,16 +176,20 @@ Phase 3 编码完成后，以下维度应通过验证：
 | und_07 | stage_id="" | success=false |
 | und_08 | 多阶段 pipeline（先 select → collect → generate） | success=true，全流程串联 |
 
-## 8. 前端渲染测试
+## 8. 前端渲染验证
 
-| 用例 | 输入 | 预期 |
-|------|------|------|
-| 正常渲染 | 含 5 claims + 2 modules + 1 unknown | 各区域正确展示 |
-| confidence 标签颜色 | confirmed / supported / inferred / unknown / conflicting | 对应颜色正确 |
-| evidence 回链 | 点击 evidence_id chip | 触发高亮事件 |
-| unknown-heavy 警告 | unknown_count > claim_count | 显示警告 |
-| 空理解 | 0 claims | 显示空状态 |
-| 生成失败 | error 状态 | 显示错误面板 |
+| 用例 | 输入 | 预期 | 状态 |
+|------|------|------|------|
+| 正常渲染 | 含 5 claims + 2 modules + 1 unknown | 各区域正确展示 | Batch C 实现 |
+| confidence 标签颜色 | confirmed / supported / inferred / unknown / conflicting | 对应颜色正确 | Batch C 实现 |
+| evidence_id 可见 | 所有 evidence_refs | evidence_id 蓝色 chip 可见 | Batch C 实现 |
+| degraded 提示 | is_degraded=true | 显示"降级生成 · Provider 未配置" | Batch C 实现 |
+| 空理解 | 0 claims | 显示轻量空状态 | Batch C 实现 |
+| 生成失败 | error 状态 | 显示错误面板（error_code/message/recoverable） | Batch C 实现 |
+| 生成中 | understandingLoading=true | 按钮 disabled + "生成中..." | Batch C 实现 |
+| 阶段切换清空 | 切换到其他 stage | 旧 understanding 清空 | 状态机自动清理 |
+
+> evidence 回链交互（点击 evidence_id → 高亮 EvidencePanel）为 Phase 3 后续优化或 Phase 4 实现。
 
 ## 9. 安全回归测试
 
@@ -252,6 +257,7 @@ rg "GraphView|Dataflow|Q&A|QA|LLM" src src-tauri/src/understanding/
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-06-12 | Phase 3 Batch C：前端验证更新（构建 + 代码路径检查 + UnderstandingPanel 渲染矩阵 8 项）；移除可选的组件单元测试预估 | Claude |
 | 2026-06-12 | Phase 3 Batch B：更新 generator 测试矩阵（7 用例）、command 测试矩阵（8 用例）、degraded mode 语义表、测试合计 49→55 | Claude |
 | 2026-06-12 | 审核收口：删除 UnknownWithFakeEvidence（统一用 UnknownEvidenceId）；测试数量更新（schema_validator 8→28，context_builder 5→8，合计 26→49）；新增 version/claim_id/description 非空 + claim_id 格式验证用例 | Claude |
 | 2026-06-12 | 收口修复：ClaimConfidence 测试矩阵补齐 supported（4→5 种值）；前端渲染测试同步；status draft → active | Claude |

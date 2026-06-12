@@ -4,8 +4,9 @@ import type {
   StageContext,
   WorkspaceWarning,
   EvidenceCollection,
+  ImplementationUnderstanding,
 } from '../../types/workspace';
-import { openWorkspace, selectStage, collectEvidence, CommandError } from '../../lib/tauriCommands';
+import { openWorkspace, selectStage, collectEvidence, generateUnderstanding, CommandError } from '../../lib/tauriCommands';
 import type { CommandError as CommandErrorType } from '../../types/workspace';
 import type { UiError } from './workspaceUiTypes';
 
@@ -25,7 +26,10 @@ type AppState =
   | { phase: 'stage_error'; profile: WorkspaceProfile; stageId: string; error: UiError }
   | { phase: 'collecting_evidence'; profile: WorkspaceProfile; stageId: string; context: StageContext }
   | { phase: 'evidence_loaded'; profile: WorkspaceProfile; stageId: string; context: StageContext; evidence: EvidenceCollection }
-  | { phase: 'evidence_error'; profile: WorkspaceProfile; stageId: string; context: StageContext; error: UiError };
+  | { phase: 'evidence_error'; profile: WorkspaceProfile; stageId: string; context: StageContext; error: UiError }
+  | { phase: 'understanding_loading'; profile: WorkspaceProfile; stageId: string; context: StageContext; evidence?: EvidenceCollection }
+  | { phase: 'understanding_loaded'; profile: WorkspaceProfile; stageId: string; context: StageContext; evidence?: EvidenceCollection; understanding: ImplementationUnderstanding }
+  | { phase: 'understanding_error'; profile: WorkspaceProfile; stageId: string; context: StageContext; evidence?: EvidenceCollection; understandingError: UiError };
 
 function makeUiError(err: unknown): UiError {
   return err instanceof CommandError
@@ -58,7 +62,9 @@ export default function WorkspacePage() {
         state.phase === 'stage_loaded' ||
         state.phase === 'stage_error' ||
         state.phase === 'evidence_loaded' ||
-        state.phase === 'evidence_error'
+        state.phase === 'evidence_error' ||
+        state.phase === 'understanding_loaded' ||
+        state.phase === 'understanding_error'
           ? (state as { profile: WorkspaceProfile }).profile
           : null;
       if (!profile) return;
@@ -94,6 +100,38 @@ export default function WorkspacePage() {
     }
   }, [state]);
 
+  // ─── 生成理解 ───
+  const handleGenerateUnderstanding = useCallback(async () => {
+    if (
+      state.phase !== 'stage_loaded' &&
+      state.phase !== 'evidence_loaded' &&
+      state.phase !== 'evidence_error' &&
+      state.phase !== 'understanding_loaded' &&
+      state.phase !== 'understanding_error'
+    ) return;
+    const { profile, stageId, context } = state as {
+      profile: WorkspaceProfile;
+      stageId: string;
+      context: StageContext;
+    };
+    const evidence =
+      'evidence' in state ? (state as { evidence?: EvidenceCollection }).evidence : undefined;
+    setState({ phase: 'understanding_loading', profile, stageId, context, evidence });
+    try {
+      const understanding = await generateUnderstanding(profile.root_path, stageId);
+      setState({ phase: 'understanding_loaded', profile, stageId, context, evidence, understanding });
+    } catch (err) {
+      setState({
+        phase: 'understanding_error',
+        profile,
+        stageId,
+        context,
+        evidence,
+        understandingError: makeUiError(err),
+      });
+    }
+  }, [state]);
+
   // ─── 当前 profile 提取 ───
   const currentProfile = useMemo<WorkspaceProfile | null>(() => {
     if (state.phase === 'loaded') return state.profile;
@@ -103,6 +141,9 @@ export default function WorkspacePage() {
     if (state.phase === 'collecting_evidence') return state.profile;
     if (state.phase === 'evidence_loaded') return state.profile;
     if (state.phase === 'evidence_error') return state.profile;
+    if (state.phase === 'understanding_loading') return state.profile;
+    if (state.phase === 'understanding_loaded') return state.profile;
+    if (state.phase === 'understanding_error') return state.profile;
     return null;
   }, [state]);
 
@@ -117,12 +158,15 @@ export default function WorkspacePage() {
     if (state.phase === 'collecting_evidence') return state.stageId;
     if (state.phase === 'evidence_loaded') return state.stageId;
     if (state.phase === 'evidence_error') return state.stageId;
+    if (state.phase === 'understanding_loading') return state.stageId;
+    if (state.phase === 'understanding_loaded') return state.stageId;
+    if (state.phase === 'understanding_error') return state.stageId;
     return null;
   }, [state]);
 
   const isLoadingStage = state.phase === 'selecting_stage';
 
-  // ─── 右栏 evidence 状态提取 ───
+  // ─── 右栏 evidence + understanding 状态提取 ───
   const evidenceState = useMemo(() => {
     if (state.phase === 'collecting_evidence') {
       return { context: state.context, isCollecting: true };
@@ -135,6 +179,27 @@ export default function WorkspacePage() {
     }
     if (state.phase === 'stage_loaded') {
       return { context: state.context };
+    }
+    if (state.phase === 'understanding_loading') {
+      return {
+        context: state.context,
+        evidence: state.evidence,
+        understandingLoading: true,
+      };
+    }
+    if (state.phase === 'understanding_loaded') {
+      return {
+        context: state.context,
+        evidence: state.evidence,
+        understanding: state.understanding,
+      };
+    }
+    if (state.phase === 'understanding_error') {
+      return {
+        context: state.context,
+        evidence: state.evidence,
+        understandingError: state.understandingError,
+      };
     }
     return null;
   }, [state]);
@@ -272,6 +337,10 @@ export default function WorkspacePage() {
               evidenceError={'evidenceError' in evidenceState ? evidenceState.evidenceError : undefined}
               isCollecting={'isCollecting' in evidenceState ? evidenceState.isCollecting : undefined}
               onCollectEvidence={handleCollectEvidence}
+              understanding={'understanding' in evidenceState ? evidenceState.understanding : undefined}
+              understandingLoading={'understandingLoading' in evidenceState ? evidenceState.understandingLoading : undefined}
+              understandingError={'understandingError' in evidenceState ? evidenceState.understandingError : undefined}
+              onGenerateUnderstanding={handleGenerateUnderstanding}
             />
           )}
 
@@ -282,7 +351,7 @@ export default function WorkspacePage() {
             </div>
           )}
 
-          {!['selecting_stage', 'stage_loaded', 'stage_error', 'collecting_evidence', 'evidence_loaded', 'evidence_error'].includes(state.phase) &&
+          {!['selecting_stage', 'stage_loaded', 'stage_error', 'collecting_evidence', 'evidence_loaded', 'evidence_error', 'understanding_loading', 'understanding_loaded', 'understanding_error'].includes(state.phase) &&
             !currentProfile && (
               <div
                 style={{

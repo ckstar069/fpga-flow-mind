@@ -36,9 +36,9 @@ StageDetail
 
 ```typescript
 // 新增的 phase 状态
-| { phase: 'generating_understanding'; profile; stageId; context; evidence }
-| { phase: 'understanding_loaded'; profile; stageId; context; evidence; understanding: ImplementationUnderstanding }
-| { phase: 'understanding_error'; profile; stageId; context; evidence; error: UiError }
+| { phase: 'understanding_loading'; profile; stageId; context; evidence? }
+| { phase: 'understanding_loaded'; profile; stageId; context; evidence?; understanding: ImplementationUnderstanding }
+| { phase: 'understanding_error'; profile; stageId; context; evidence?; understandingError: UiError }
 ```
 
 ### 2.2 UnderstandingPanel 显示状态
@@ -382,5 +382,6 @@ Phase 3 前端**不做**：
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-06-12 | Batch C 实现：UnderstandingPanel 组件完成（全字段展示 + confidence 颜色映射）；AppState phase 名改为 understanding_loading/loaded/error；阶段切换清空旧 understanding | Claude |
 | 2026-06-12 | 收口修复：ClaimConfidence 补齐 supported + 琥珀色；summary 改为 StageSummary { short, detailed } 两层展示；TypeScript 类型同步；status draft → active | Claude |
 | 2026-06-12 | 初始创建（draft） | Claude |

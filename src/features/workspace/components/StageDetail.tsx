@@ -1,7 +1,8 @@
-import type { StageContext, StageFile, UpstreamRef, EvidenceCollection } from '../../../types/workspace';
+import type { StageContext, StageFile, UpstreamRef, EvidenceCollection, ImplementationUnderstanding } from '../../../types/workspace';
 import type { UiError } from '../workspaceUiTypes';
 import { formatBytes } from '../workspaceUiUtils';
 import EvidencePanel from './EvidencePanel';
+import UnderstandingPanel from './UnderstandingPanel';
 
 interface StageDetailProps {
   context: StageContext;
@@ -9,6 +10,10 @@ interface StageDetailProps {
   evidenceError?: UiError;
   isCollecting?: boolean;
   onCollectEvidence?: () => void;
+  understanding?: ImplementationUnderstanding;
+  understandingLoading?: boolean;
+  understandingError?: UiError;
+  onGenerateUnderstanding?: () => void;
 }
 
 export default function StageDetail({
@@ -17,6 +22,10 @@ export default function StageDetail({
   evidenceError,
   isCollecting,
   onCollectEvidence,
+  understanding,
+  understandingLoading,
+  understandingError,
+  onGenerateUnderstanding,
 }: StageDetailProps) {
   const canCollect =
     !context.error_code && context.files.length > 0 && !!onCollectEvidence;
@@ -166,6 +175,121 @@ export default function StageDetail({
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* 理解生成按钮 */}
+      {onGenerateUnderstanding && !context.error_code && (
+        <div style={{ marginBottom: 24 }}>
+          <h3 style={{ fontSize: 15, margin: '0 0 12px' }}>理解生成</h3>
+          {context.error_code === 'stage_empty' ? (
+            <p style={{ fontSize: 13, color: '#999', margin: 0 }}>
+              空阶段无法生成理解
+            </p>
+          ) : (
+            <>
+              <button
+                onClick={onGenerateUnderstanding}
+                disabled={understandingLoading}
+                style={{
+                  padding: '8px 20px',
+                  borderRadius: 6,
+                  border: understanding
+                    ? '1px solid #2e7d32'
+                    : '1px solid #7b1fa2',
+                  background: understandingLoading
+                    ? '#e0e0e0'
+                    : understanding
+                      ? '#2e7d32'
+                      : '#7b1fa2',
+                  color: understandingLoading ? '#999' : '#fff',
+                  cursor: understandingLoading ? 'not-allowed' : 'pointer',
+                  fontSize: 14,
+                }}
+              >
+                {understandingLoading
+                  ? '生成中...'
+                  : understanding
+                    ? '重新生成'
+                    : '生成理解'}
+              </button>
+              {!understanding && !understandingLoading && (
+                <span style={{ fontSize: 12, color: '#999', marginLeft: 12 }}>
+                  基于已收集的证据生成结构化理解
+                </span>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* 理解生成错误 */}
+      {understandingError && (
+        <div
+          style={{
+            padding: 16,
+            background: '#fce4ec',
+            borderRadius: 8,
+            marginBottom: 16,
+            border: '1px solid #ef9a9a',
+          }}
+        >
+          <h4 style={{ margin: '0 0 8px', fontSize: 14, color: '#c62828' }}>理解生成失败</h4>
+          <div style={{ fontSize: 13 }}>
+            {'error_code' in understandingError && (
+              <div style={{ marginBottom: 4 }}>
+                <span style={{ color: '#666' }}>错误码：</span>
+                <code>{understandingError.error_code}</code>
+              </div>
+            )}
+            <div style={{ marginBottom: 4 }}>
+              <span style={{ color: '#666' }}>信息：</span>
+              {understandingError.message}
+            </div>
+            {'source_path' in understandingError && understandingError.source_path && (
+              <div style={{ marginBottom: 4 }}>
+                <span style={{ color: '#666' }}>路径：</span>
+                <code style={{ fontSize: 12 }}>{understandingError.source_path}</code>
+              </div>
+            )}
+            {'details' in understandingError && understandingError.details && (
+              <div>
+                <span style={{ color: '#666' }}>详情：</span>
+                {understandingError.details}
+              </div>
+            )}
+            {'recoverable' in understandingError && (
+              <div style={{ marginTop: 4 }}>
+                <span style={{ fontSize: 12, color: understandingError.recoverable ? '#f57c00' : '#c62828' }}>
+                  {understandingError.recoverable ? '可重试' : '不可恢复'}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 理解生成 loading */}
+      {understandingLoading && (
+        <div
+          style={{
+            padding: 24,
+            background: '#f3e5f5',
+            borderRadius: 8,
+            textAlign: 'center',
+            marginBottom: 16,
+            border: '1px solid #ce93d8',
+          }}
+        >
+          <p style={{ margin: 0, color: '#7b1fa2', fontSize: 14 }}>正在生成理解...</p>
+          <p style={{ margin: '8px 0 0', color: '#999', fontSize: 12 }}>正在调用后端处理，请稍候</p>
+        </div>
+      )}
+
+      {/* 理解面板 */}
+      {understanding && (
+        <div style={{ marginBottom: 24 }}>
+          <UnderstandingPanel understanding={understanding} />
         </div>
       )}
 
