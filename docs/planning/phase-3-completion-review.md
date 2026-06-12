@@ -1,13 +1,13 @@
 # Phase 3 收尾验收与完成审查
 
 ---
-status: draft
+status: active
 updated: 2026-06-12
 ---
 
 > 本文档是 Phase 3（单阶段结构化理解产物）的收尾验收报告，记录 P3-T01~P3-T10 的完成状态、后端/前端验收结果，以及是否允许进入 Phase 4 的结论。
 >
-> **验收结论**：Phase 3 代码完成（后端 219 测试 + 前端构建通过），**真实 Tauri 桌面验收未完成**。暂不允许进入 Phase 4，需完成 10 步桌面验收后方可进入。
+> **验收结论**：Phase 3 **全部完成**（后端 219 测试 + 前端构建通过 + 真实 Tauri 桌面验收 11/11 通过）。**允许进入 Phase 4。**
 
 ---
 
@@ -103,26 +103,29 @@ Phase 3 **不解决**：structure_view / dataflow_view / timing_view 图视图�
 
 ## 5. 真实 Tauri 桌面验收结果
 
-**状态：❌ 未完成**
+**状态：✅ 已完成（11/11 通过）**
 
-当前环境无法启动 Tauri 桌面应用（无 macOS GUI 上下文），10 步验收未执行。
+**样例项目路径**：`/tmp/fpga-flow-mind-phase3-acceptance-20260612-144026`
+
+**checksum 验证**：全部 6 个文件前后 SHA256 一致，确认目标项目只读。
 
 | 步骤 | 操作 | 预期 | 状态 |
 |------|------|------|------|
-| 1 | 打开项目 | WorkspaceSummary + StageList 展示 | 待验收 |
-| 2 | 选择 L0 | StageDetail 展示 | 待验收 |
-| 3 | 点击"生成理解" | 按钮 "生成中..." → UnderstandingPanel 展示 | 待验收 |
-| 4 | 查看 summary / claims / evidence_id / stats | 各区域正确展示 | 待验收 |
-| 5 | 点击重新收集证据 | 进入 collecting_evidence → evidence_loaded | 待验收 |
-| 6 | 再次生成理解 | UnderstandingPanel 正常展示 | 待验收 |
-| 7 | 切换 RTL | L0 understanding 清空 | 待验收 |
-| 8 | 选择空阶段 | 无"生成理解"按钮 | 待验收 |
-| 9 | 查看 warnings 底栏 | 仍正常 | 待验收 |
-| 10 | 验证目标项目只读 | 文件未被修改 | 待验收 |
+| 1 | 打开项目 | WorkspaceSummary + StageList 展示 | ✅ 通过 |
+| 2 | 选择 L0 | StageDetail 展示（文件列表 + 按钮） | ✅ 通过 |
+| 3 | 点击"生成理解" | 按钮 "生成中..." → UnderstandingPanel 展示 | ✅ 通过 |
+| 4 | 查看 summary / claims / evidence_id / stats | 各区域正确展示，confidence 颜色标签正确 | ✅ 通过 |
+| 5 | L0 重新收集 (5 项) 后再次生成理解 | UnderstandingPanel 再次正常出现 | ✅ 通过 |
+| 6 | 生成中收集按钮 disabled | 按钮灰色 + "生成中，请稍候"，无法点击 | ✅ 通过 |
+| 7 | 切换 L1 | L0 understanding 清空，显示 L1 StageDetail | ✅ 通过 |
+| 8 | 选择 rtl_final | 命名异常阶段可正常生成理解 | ✅ 通过 |
+| 9 | 选择 L2 (空阶段) | "该阶段无文件"，无收集/生成按钮 | ✅ 通过 |
+| 10 | 查看底部 warnings | 底栏正常 | ✅ 通过 |
+| 11 | checksum 只读验证 | 全部 6 个文件 SHA256 前后一致 | ✅ 通过 |
 
 ---
 
-## 6. 已有自动验证结果
+## 6. 自动验证结果（桌面验收后回归）
 
 | 命令 | 结果 |
 |------|------|
@@ -134,6 +137,7 @@ Phase 3 **不解决**：structure_view / dataflow_view / timing_view 图视图�
 | `rg` Phase 4 视图在 Phase 3 文档中作为必验项 | ✅ 无 |
 | `rg` "PASS/HOLD/审计"在前端 | ✅ 仅出现在 prompt 禁止语境 |
 | `rg` understanding_* 在 handleCollectEvidence | ✅ 3 个状态均在守卫中 |
+| checksum 只读验证（6 文件） | ✅ 前后 SHA256 完全一致 |
 
 ---
 
@@ -163,17 +167,16 @@ Phase 3 **不解决**：structure_view / dataflow_view / timing_view 图视图�
 
 ## 9. 是否允许进入 Phase 4
 
-**结论：暂不允许进入 Phase 4。**
+**结论：✅ 允许进入 Phase 4。**
 
-原因：
-- 真实 Tauri 桌面验收未完成（当前环境无 GUI）
-- completion review status = draft
-
-进入 Phase 4 的解除阻断条件：
-1. 在有 GUI 的环境中启动 `cargo tauri dev`
-2. 完成 10 步桌面验收
-3. 验收通过后将本文档 status 改为 active，结论改为"允许进入 Phase 4"
-4. 更新 `docs/planning/README.md` Phase 3 状态
+全部验收条件已满足：
+- P3-T01 ~ P3-T10 全部完成
+- 后端 219 测试通过
+- 前端构建通过
+- 真实 Tauri 桌面验收 11/11 通过
+- checksum 验证目标项目只读
+- completion review status = active
+- 安全约束全部满足
 
 ---
 
@@ -181,4 +184,5 @@ Phase 3 **不解决**：structure_view / dataflow_view / timing_view 图视图�
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-06-12 | 真实 Tauri 桌面验收完成：11/11 通过；checksum 只读验证通过；样例项目 `/tmp/fpga-flow-mind-phase3-acceptance-20260612-144026`；status draft → active；允许进入 Phase 4 | Claude |
 | 2026-06-12 | Phase 3 Batch D 完成：P3-T10 验收审查文档创建；代码完成（219 测试 + 前端构建通过）；真实桌面验收标记为未完成；暂不允许进入 Phase 4 | Claude |
