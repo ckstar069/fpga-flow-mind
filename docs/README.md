@@ -86,7 +86,8 @@ docs/
 3. `docs/testing/phase-2-evidence-validation.md`（Phase 2 验证设计与验收标准）
 4. `docs/planning/phase-1-completion-review.md`（Phase 1 收尾验收与完成审查）
 5. `docs/planning/phase-2-completion-review.md`（Phase 2 收尾验收与完成审查）
-6. `docs/testing/phase-3-understanding-validation.md`（Phase 3 验证设计与验收标准）
+6. `docs/planning/phase-3-completion-review.md`（Phase 3 收尾验收与完成审查）
+7. `docs/testing/phase-3-understanding-validation.md`（Phase 3 验证设计与验收标准）
 7. `docs/requirements/README.md`（验收标准来源）
 7. `docs/planning/README.md`（当前阶段验收要求）
 8. 相关 story 文件中的验收标准

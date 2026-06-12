@@ -2,7 +2,7 @@
 
 ---
 status: active
-updated: 2026-06-11
+updated: 2026-06-12
 ---
 
 ## Planning 目录用途
@@ -82,23 +82,15 @@ updated: YYYY-MM-DD
 | [`phase-2-implementation-plan.md`](phase-2-implementation-plan.md) | `active` | Phase 2 实施计划：入口条件、P2-T01~P2-T10 任务拆解、编码顺序、验证顺序、退出标准、风险与回滚 | Phase 2 编码实施依据 |
 | [`phase-2-completion-review.md`](phase-2-completion-review.md) | `active` | Phase 2 收尾验收与完成审查：P2-T01~P2-T10 完成状态、真实 Tauri 桌面验收结果、允许进入 Phase 3 | Phase 2 编码完成后必读 |
 | [`phase-3-implementation-plan.md`](phase-3-implementation-plan.md) | `active` | Phase 3 编码实施计划：进入条件、P3-T01~P3-T10 任务拆解、依赖关系、4 个 Batch 划分、退出条件、安全边界 | Phase 3 编码实施依据 |
+| [`phase-3-completion-review.md`](phase-3-completion-review.md) | `draft` | Phase 3 收尾验收与完成审查：P3-T01~P3-T10 完成状态、后端/前端验收结果、真实桌面验收待完成、暂不允许进入 Phase 4 | Phase 3 编码完成后必读 |
 
-> **Phase 3 文档已收口（active），允许进入 Phase 3 编码实施。Phase 3 尚未完成。**
+> **Phase 3 代码完成，真实 Tauri 桌面验收待完成。**
+>
+> 代码完成确认：
+> - ✅ P3-T01~P3-T10 全部完成
+> - ✅ `npm run build` 通过，`cargo test` 219 passed，`cargo check` 通过
+> - ✅ 安全约束满足（目标目录只读、无 LLM API、无 Phase 4 图视图）
+> - ❌ 真实 Tauri 桌面验收未完成（当前环境无 GUI）
+> - ❌ **暂不允许进入 Phase 4**，需完成桌面验收后方可进入
 >
 > Phase 3 编码依据文档已收口（status=active）：`phase-3-understanding-requirements.md` + `phase-3-understanding-model.md` + `phase-3-understanding-generator-design.md` + `phase-3-understanding-view.md` + `phase-3-understanding-validation.md` + `phase-3-implementation-plan.md`。
->
-> **Phase 2 已完成，允许进入 Phase 3。**
->
-> Phase 2 验收结果：
-> - ✅ P2-T01~P2-T10 全部完成
-> - ✅ `npm run build` 通过，`cargo test` 160 passed，`cargo check` 通过
-> - ✅ 真实 Tauri 桌面验收 10 步全部通过
-> - ✅ 安全约束满足（目标目录只读、无写入 API、无 Vivado）
-> - ✅ 允许进入 Phase 3
->
-> Phase 1 已完成：
-> - ✅ P1-T01~P1-T12 编码完成（`npm run build` ✅，`cargo test` 65 passed ✅，`cargo check` ✅）
-> - ✅ P1-T13 验收完成：文档同步完成、真实 Tauri 桌面验收通过
-> - ✅ 允许进入 Phase 2（已完成）
->
-> Phase 3 将基于 Phase 2 的 `EvidenceCollection`（含 evidence_items、索引、warnings、stats）进行结构化理解。
