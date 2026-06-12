@@ -76,6 +76,8 @@ Phase 1 技术设计由以下文档组成，按阅读顺序排列：
 | [`phase-1-scanner-detail-design.md`](phase-1-scanner-detail-design.md) | `active` | Phase 1 扫描与阶段识别详细设计：功能点映射、算法流程、边界条件、测试映射 | 编码扫描模块前必读 |
 | [`phase-2-evidence-model.md`](phase-2-evidence-model.md) | `active` | Phase 2 evidence model 数据结构设计：EvidenceItem / EvidenceCollection / EvidenceStrength、ID 生成规则、line_range 规则、summary 规则、strength 语义、错误结构 | Phase 2 编码前必读 |
 | [`phase-2-evidence-collector-design.md`](phase-2-evidence-collector-design.md) | `active` | Phase 2 evidence collector 后端设计：模块布局、collect_evidence command、文件读取策略、代码分块策略、提取器 trait、错误处理、单元测试设计 | Phase 2 后端编码前必读 |
+| [`phase-3-understanding-model.md`](phase-3-understanding-model.md) | `draft` | Phase 3 ImplementationUnderstanding 数据结构设计：Rust/TypeScript 字段定义、ImplementationClaim、ClaimConfidence、ClaimCategory、EvidenceRef、UnknownItem、EvidenceGap、摘要对象、GenerationMeta、UnderstandingStats | Phase 3 编码前必读 |
+| [`phase-3-understanding-generator-design.md`](phase-3-understanding-generator-design.md) | `draft` | Phase 3 理解生成器后端设计：ContextBuilder、Provider trait、SchemaValidator、hallucination guard、Generator 主流程、generate_understanding command、degraded mode | Phase 3 后端编码前必读 |
 
 > Phase 1 编码依据文档已收口。Phase 1 的 4 份设计文档与 `mvp-functional-contract.md` 共同构成 Phase 1 编码的权威依据。
 > Phase 2 编码依据文档已收口（status=active）：`phase-2-evidence-model.md` + `phase-2-evidence-collector-design.md` + `phase-2-evidence-requirements.md`。

@@ -81,6 +81,7 @@ updated: YYYY-MM-DD
 | [`phase-1-completion-review.md`](phase-1-completion-review.md) | `active` | Phase 1 收尾验收与完成审查：P1-T01~P1-T13 完成状态、真实 Tauri 桌面验收结果、允许进入 Phase 2 | Phase 1 编码完成后必读 |
 | [`phase-2-implementation-plan.md`](phase-2-implementation-plan.md) | `active` | Phase 2 实施计划：入口条件、P2-T01~P2-T10 任务拆解、编码顺序、验证顺序、退出标准、风险与回滚 | Phase 2 编码实施依据 |
 | [`phase-2-completion-review.md`](phase-2-completion-review.md) | `active` | Phase 2 收尾验收与完成审查：P2-T01~P2-T10 完成状态、真实 Tauri 桌面验收结果、允许进入 Phase 3 | Phase 2 编码完成后必读 |
+| [`phase-3-implementation-plan.md`](phase-3-implementation-plan.md) | `draft` | Phase 3 编码实施计划：进入条件、P3-T01~P3-T10 任务拆解、依赖关系、4 个 Batch 划分、退出条件、安全边界 | Phase 3 编码实施依据 |
 
 > **Phase 2 已完成，允许进入 Phase 3。**
 >
