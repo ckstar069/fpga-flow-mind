@@ -15,7 +15,12 @@ export type ErrorCode =
   | 'stage_unreadable'
   | 'file_unreadable'
   | 'file_too_large'
-  | 'scan_timeout';
+  | 'scan_timeout'
+  // Phase 2 新增
+  | 'evidence_collection_failed'
+  | 'source_excerpt_truncated'
+  | 'binary_file_skipped'
+  | 'non_utf8_file_skipped';
 
 export interface WorkspaceProfile {
   workspace_name: string;
@@ -81,4 +86,55 @@ export interface CommandResult<T> {
   data?: T;
   error?: CommandError;
   warnings: WorkspaceWarning[];
+}
+
+// ─── Phase 2: Evidence Model Types ──────────────────────────────────
+
+/** 证据强度枚举（完整定义，Phase 2 只生成 direct / indirect） */
+export type EvidenceStrength = 'direct' | 'indirect' | 'weak' | 'conflicting' | 'missing';
+
+/** 行号范围（1-based，闭区间） */
+export interface LineRange {
+  start: number;
+  end: number;
+}
+
+/** 单条证据项 */
+export interface EvidenceItem {
+  evidence_id: string;
+  source_path: string;
+  language: Language;
+  source_kind: SourceKind;
+  line_range: LineRange;
+  symbol?: string;
+  summary: string;
+  strength: EvidenceStrength;
+}
+
+/** 证据收集警告（Phase 2 专用） */
+export interface EvidenceWarning {
+  error_code: ErrorCode;
+  message: string;
+  source_path?: string;
+}
+
+/** 证据收集统计 */
+export interface EvidenceStats {
+  files_processed: number;
+  files_skipped: number;
+  total_items: number;
+  items_by_kind: Record<string, number>;
+  items_by_strength: Record<string, number>;
+}
+
+/** 证据集合（单阶段） */
+export interface EvidenceCollection {
+  stage_id: string;
+  evidence_items: EvidenceItem[];
+  index_by_path: Record<string, string[]>;
+  index_by_kind: Record<string, string[]>;
+  index_by_symbol: Record<string, string[]>;
+  warnings: EvidenceWarning[];
+  stats: EvidenceStats;
+  version: string;
 }

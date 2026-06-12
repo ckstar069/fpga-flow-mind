@@ -20,10 +20,13 @@ pub enum StageStatus {
     Unreadable,
 }
 
-/// Phase 1 使用的错误码子集
+/// 错误码枚举
+///
+/// Phase 1 + Phase 2 错误码。Phase 2 新增标记在注释中。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ErrorCode {
+    // Phase 1
     PathNotFound,
     NotDirectory,
     PermissionDenied,
@@ -33,6 +36,11 @@ pub enum ErrorCode {
     FileUnreadable,
     FileTooLarge,
     ScanTimeout,
+    // Phase 2 新增
+    EvidenceCollectionFailed,
+    SourceExcerptTruncated,
+    BinaryFileSkipped,
+    NonUtf8FileSkipped,
 }
 
 /// 源码文件的语义分类
@@ -101,10 +109,34 @@ mod tests {
             ErrorCode::FileUnreadable,
             ErrorCode::FileTooLarge,
             ErrorCode::ScanTimeout,
+            ErrorCode::EvidenceCollectionFailed,
+            ErrorCode::SourceExcerptTruncated,
+            ErrorCode::BinaryFileSkipped,
+            ErrorCode::NonUtf8FileSkipped,
         ] {
             let json = serde_json::to_string(&code).unwrap();
             let back: ErrorCode = serde_json::from_str(&json).unwrap();
             assert_eq!(code, back, "roundtrip failed for {}", json);
         }
+    }
+
+    #[test]
+    fn phase2_error_code_snake_case() {
+        assert_eq!(
+            serde_json::to_string(&ErrorCode::EvidenceCollectionFailed).unwrap(),
+            "\"evidence_collection_failed\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ErrorCode::SourceExcerptTruncated).unwrap(),
+            "\"source_excerpt_truncated\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ErrorCode::BinaryFileSkipped).unwrap(),
+            "\"binary_file_skipped\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ErrorCode::NonUtf8FileSkipped).unwrap(),
+            "\"non_utf8_file_skipped\""
+        );
     }
 }

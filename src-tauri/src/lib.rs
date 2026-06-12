@@ -1,4 +1,5 @@
 pub mod commands;
+pub mod evidence;
 pub mod models;
 pub mod workspace;
 
