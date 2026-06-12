@@ -90,7 +90,7 @@ updated: YYYY-MM-DD
 > - ✅ P3-T01~P3-T10 全部完成
 > - ✅ `npm run build` 通过，`cargo test` 219 passed，`cargo check` 通过
 > - ✅ 真实 Tauri 桌面验收 11/11 通过（样例项目：`/tmp/fpga-flow-mind-phase3-acceptance-20260612-144026`）
-> - ✅ checksum 只读验证通过（6 文件前後一致）
+> - ✅ checksum 只读验证通过（6 文件前后一致）
 > - ✅ 安全约束满足（目标目录只读、无 LLM API、无 Phase 4 图视图）
 > - ✅ **允许进入 Phase 4**
 >

@@ -157,7 +157,6 @@ Phase 3 **不解决**：structure_view / dataflow_view / timing_view 图视图�
 
 | 限制 | 说明 | 解除条件 |
 |------|------|----------|
-| 真实 Tauri 桌面验收未完成 | 当前环境无 GUI 上下文 | 在有 GUI 的环境执行 10 步验收 |
 | evidence_id 回链交互未实现 | chip 为静态展示，不可点击 | Phase 4 或 Phase 5 实现 |
 | MockProvider 无语义推断 | 确定性 mock，不分析代码语义 | Phase 4+ 引入 LLM Provider |
 | 无串行/流式生成进度 | command 为同步返回，无中间状态 | Phase 4+ 优化 |
