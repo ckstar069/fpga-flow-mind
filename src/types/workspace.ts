@@ -138,3 +138,135 @@ export interface EvidenceCollection {
   stats: EvidenceStats;
   version: string;
 }
+
+// ─── Phase 3: Understanding Model Types ─────────────────────────────
+
+/** 声明置信度 — Phase 3 语义判定，与 Phase 2 的 EvidenceStrength 是不同层级 */
+export type ClaimConfidence =
+  | 'confirmed'
+  | 'supported'
+  | 'inferred'
+  | 'unknown'
+  | 'conflicting';
+
+/** 声明类别 */
+export type ClaimCategory =
+  | 'module_structure'
+  | 'signal_definition'
+  | 'interface_description'
+  | 'data_processing'
+  | 'configuration'
+  | 'documentation'
+  | 'test_coverage'
+  | 'other';
+
+/** 阶段摘要（Phase 3） — 与 Phase 1 的 StageSummary 字段完全不同，TS 结构类型自然区分 */
+export interface UnderstandingStageSummary {
+  short: string;   // 一句话摘要，≤ 80 字
+  detailed: string; // 详细摘要，≤ 500 字
+}
+
+/** 证据引用 — 通过 evidence_id 回链到 Phase 2 EvidenceCollection */
+export interface EvidenceRef {
+  evidence_id: string;
+  relevance?: string;
+}
+
+/** 实现声明 — 描述阶段实现的某个方面 */
+export interface ImplementationClaim {
+  claim_id: string;
+  category: ClaimCategory;
+  description: string;
+  confidence: ClaimConfidence;
+  evidence_refs: EvidenceRef[];
+  has_evidence_gap: boolean;
+}
+
+/** 无法从现有 evidence 推断的信息项 */
+export interface UnknownItem {
+  unknown_id: string;
+  description: string;
+  related_evidence_refs: EvidenceRef[];
+  reason: string;
+}
+
+/** 期望存在但缺失的证据 */
+export interface EvidenceGap {
+  gap_id: string;
+  expected_evidence: string;
+  reason: string;
+  related_evidence_refs: EvidenceRef[];
+}
+
+/** 模块摘要 */
+export interface ModuleSummary {
+  name: string;
+  description: string;
+  evidence_refs: EvidenceRef[];
+  confidence: ClaimConfidence;
+}
+
+/** 信号摘要 */
+export interface SignalSummary {
+  name: string;
+  description: string;
+  direction?: string;
+  evidence_refs: EvidenceRef[];
+  confidence: ClaimConfidence;
+}
+
+/** 接口摘要 */
+export interface InterfaceSummary {
+  name: string;
+  description: string;
+  interface_type?: string;
+  evidence_refs: EvidenceRef[];
+  confidence: ClaimConfidence;
+}
+
+/** 处理步骤摘要 */
+export interface ProcessingStepSummary {
+  name: string;
+  description: string;
+  order: number;
+  evidence_refs: EvidenceRef[];
+  confidence: ClaimConfidence;
+}
+
+/** 生成元信息 */
+export interface GenerationMeta {
+  provider: string;
+  generated_at: string;
+  input_evidence_count: number;
+  generation_time_ms: number;
+  is_degraded: boolean;
+}
+
+/** 统计信息 */
+export interface UnderstandingStats {
+  total_claims: number;
+  claims_by_confidence: Record<string, number>;
+  claims_by_category: Record<string, number>;
+  module_count: number;
+  signal_count: number;
+  interface_count: number;
+  processing_step_count: number;
+  unknown_count: number;
+  evidence_gap_count: number;
+}
+
+/** 单阶段结构化理解产物（Phase 3 中间产物） */
+export interface ImplementationUnderstanding {
+  stage_id: string;
+  version: string;
+  summary: UnderstandingStageSummary;
+  claims: ImplementationClaim[];
+  module_summaries: ModuleSummary[];
+  signal_summaries: SignalSummary[];
+  interface_summaries: InterfaceSummary[];
+  processing_steps: ProcessingStepSummary[];
+  unknowns: UnknownItem[];
+  evidence_gaps: EvidenceGap[];
+  generation_meta: GenerationMeta;
+  stats: UnderstandingStats;
+}
