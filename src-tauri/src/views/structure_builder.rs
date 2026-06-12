@@ -1,6 +1,5 @@
 use crate::understanding::models::{
-    ClaimConfidence, EvidenceRef, ImplementationUnderstanding, ModuleSummary,
-    ProcessingStepSummary, SignalSummary, InterfaceSummary,
+    ClaimConfidence, EvidenceRef, ImplementationUnderstanding,
 };
 use crate::views::models::{
     EdgeType, NodeType, ViewEdge, ViewGraph, ViewLayoutHint, ViewMeta, ViewNode, ViewTraceRef,
@@ -13,8 +12,6 @@ pub fn build_structure_view(iu: &ImplementationUnderstanding) -> ViewGraph {
     let mut edge_counter: u32 = 0;
     let mut nodes: Vec<ViewNode> = Vec::new();
     let mut edges: Vec<ViewEdge> = Vec::new();
-
-    let module_count = iu.module_summaries.len() as u32;
 
     // ── 模块节点 ──
     for (i, m) in iu.module_summaries.iter().enumerate() {
@@ -238,7 +235,7 @@ fn build_trace_refs(
 mod tests {
     use super::*;
     use crate::understanding::models::{
-        ClaimCategory, EvidenceRef, GenerationMeta, ImplementationClaim,
+        ClaimCategory, GenerationMeta, ImplementationClaim,
         ImplementationUnderstanding, ModuleSummary, ProcessingStepSummary, SignalSummary,
         InterfaceSummary, StageSummary, UnderstandingStats,
     };

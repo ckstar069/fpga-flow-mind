@@ -59,8 +59,10 @@ pub enum EdgeType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ViewTraceRef {
     /// 关联的 claim_id
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub claim_id: Option<String>,
     /// 关联的 evidence_id
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub evidence_id: Option<String>,
     /// 置信度
     pub confidence: ClaimConfidence,
@@ -315,5 +317,45 @@ mod tests {
         let json_without = r#"{"stage_id":"L0","view_type":"structure","source_provider":"mock","is_degraded_source":false,"generated_at":"2026-06-12T10:00:00Z"}"#;
         let meta2: super::ViewMeta = serde_json::from_str(json_without).unwrap();
         assert_eq!(meta2.empty_reason, None);
+    }
+
+    // ─── mod_06: ViewTraceRef skip_serializing_if ─────────────────────
+    #[test]
+    fn mod_06_trace_ref_skip_null_fields() {
+        use crate::understanding::models::ClaimConfidence;
+
+        // 只有 evidence_id
+        let tr = super::ViewTraceRef {
+            claim_id: None,
+            evidence_id: Some("EV-001".to_string()),
+            confidence: ClaimConfidence::Confirmed,
+            relevance: None,
+        };
+        let json = serde_json::to_string(&tr).unwrap();
+        assert!(!json.contains("claim_id"), "不应输出 claim_id:null");
+        assert!(json.contains("evidence_id"), "应包含 evidence_id");
+        assert!(!json.contains("relevance"), "不应输出 relevance:null");
+
+        // 只有 claim_id
+        let tr2 = super::ViewTraceRef {
+            claim_id: Some("CL-001".to_string()),
+            evidence_id: None,
+            confidence: ClaimConfidence::Supported,
+            relevance: None,
+        };
+        let json2 = serde_json::to_string(&tr2).unwrap();
+        assert!(!json2.contains("evidence_id"), "不应输出 evidence_id:null");
+        assert!(json2.contains("claim_id"), "应包含 claim_id");
+
+        // 有 relevance
+        let tr3 = super::ViewTraceRef {
+            claim_id: None,
+            evidence_id: Some("EV-002".to_string()),
+            confidence: ClaimConfidence::Unknown,
+            relevance: Some("定义了模块".to_string()),
+        };
+        let json3 = serde_json::to_string(&tr3).unwrap();
+        assert!(json3.contains("relevance"), "应输出 relevance 当有值时");
+        assert!(!json3.contains("claim_id"), "不应输出 claim_id:null");
     }
 }
