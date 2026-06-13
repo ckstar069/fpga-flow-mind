@@ -84,20 +84,18 @@ updated: YYYY-MM-DD
 | [`phase-3-implementation-plan.md`](phase-3-implementation-plan.md) | `active` | Phase 3 编码实施计划：进入条件、P3-T01~P3-T10 任务拆解、依赖关系、4 个 Batch 划分、退出条件、安全边界 | Phase 3 编码实施依据 |
 | [`phase-3-completion-review.md`](phase-3-completion-review.md) | `active` | Phase 3 收尾验收与完成审查：P3-T01~P3-T10 全部完成、后端/前端/桌面验收 11/11 通过、**允许进入 Phase 4** | Phase 3 完成后必读 |
 | [`phase-4-implementation-plan.md`](phase-4-implementation-plan.md) | `active` | Phase 4 编码实施计划：进入条件、P4-T01~P4-T09 任务拆解、依赖关系、4 个 Batch 划分、退出条件、安全边界 | Phase 4 编码实施依据 |
+| [`phase-4-completion-review.md`](phase-4-completion-review.md) | `active` | Phase 4 收尾验收与完成审查：P4-T01~P4-T09 完成状态、后端/前端/桌面验收结果、**允许进入 Phase 5** | Phase 4 完成后必读 |
 
-> **Phase 3 已完成，允许进入 Phase 4。**
+> **Phase 4 已完成，允许进入 Phase 5。**
 >
 > 验收确认：
-> - ✅ P3-T01~P3-T10 全部完成
-> - ✅ `npm run build` 通过，`cargo test` 219 passed，`cargo check` 通过
-> - ✅ 真实 Tauri 桌面验收 11/11 通过（样例项目：`/tmp/fpga-flow-mind-phase3-acceptance-20260612-144026`）
+> - ✅ P4-T01~P4-T09 全部完成
+> - ✅ `npm run build` 通过，`cargo test` 260 passed，`cargo check` 通过
+> - ✅ 真实 Tauri 桌面验收 12/12 通过（样例项目：`/tmp/fpga-flow-mind-phase4-acceptance-20260612-194151`）
 > - ✅ checksum 只读验证通过（6 文件前后一致）
-> - ✅ 安全约束满足（目标目录只读、无 LLM API、无 Phase 4 图视图）
-> - ✅ **允许进入 Phase 4**
+> - ✅ 安全约束满足（目标目录只读、无 LLM API、无 Phase 5 越界功能）
+> - ✅ **允许进入 Phase 5**
 >
-> Phase 3 编码依据文档已收口（status=active）：`phase-3-understanding-requirements.md` + `phase-3-understanding-model.md` + `phase-3-understanding-generator-design.md` + `phase-3-understanding-view.md` + `phase-3-understanding-validation.md` + `phase-3-implementation-plan.md`。
+> Phase 4 编码依据文档已收口（status=active）：`phase-4-view-requirements.md` + `phase-4-view-model.md` + `phase-4-view-generator-design.md` + `phase-4-multi-view-panel.md` + `phase-4-view-validation.md` + `phase-4-implementation-plan.md` + `phase-4-completion-review.md`。
 >
-> **Phase 4 文档已收口（status=active），允许进入 Phase 4 Batch A 编码。**
->
-> Batch A 范围限定为 P4-T01~P4-T04：ViewGraph 数据模型 + structure/dataflow/timing builder。
-> 不允许在 Batch A 中实现前端 UI、Tauri command、Phase 5 回链、真实 LLM、目标项目文件访问。
+> **Phase 5 尚未开始；进入 Phase 5 前需先完成 Phase 5 需求/设计/计划文档收口。**

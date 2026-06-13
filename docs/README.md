@@ -80,7 +80,8 @@ docs/
 5. `docs/planning/phase-0-exit-criteria.md`（确认当前阶段退出标准）
 6. `docs/planning/phase-3-completion-review.md`（Phase 3 完成状态）
 7. `docs/planning/phase-4-implementation-plan.md`（Phase 4 编码实施计划，active）
-8. `docs/design/README.md`（设计文档索引）
+8. `docs/planning/phase-4-completion-review.md`（Phase 4 完成状态，active）
+9. `docs/design/README.md`（设计文档索引）
 9. `docs/requirements/README.md`
 10. 当前阶段应完成的 story 列表
 
@@ -94,7 +95,8 @@ docs/
 6. `docs/planning/phase-3-completion-review.md`（Phase 3 收尾验收与完成审查）
 7. `docs/testing/phase-3-understanding-validation.md`（Phase 3 验证设计与验收标准）
 8. `docs/testing/phase-4-view-validation.md`（Phase 4 视图验证设计与验收标准，active）
-9. `docs/requirements/README.md`（验收标准来源）
+9. `docs/planning/phase-4-completion-review.md`（Phase 4 收尾验收与完成审查，active）
+10. `docs/requirements/README.md`（验收标准来源）
 10. `docs/planning/README.md`（当前阶段验收要求）
 11. 相关 story 文件中的验收标准
 
