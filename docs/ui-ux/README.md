@@ -74,3 +74,4 @@ Phase 1 UI/UX 设计由以下文档组成：
 | [`phase-2-evidence-view.md`](phase-2-evidence-view.md) | `active` | Phase 2 evidence view 前端设计：EvidencePanel 组件、CollectEvidenceButton、统计概要、筛选栏、证据项卡片、警告列表、状态管理、前后端边界 | Phase 2 前端编码前必读 |
 | [`phase-3-understanding-view.md`](phase-3-understanding-view.md) | `active` | Phase 3 UnderstandingPanel 前端设计：状态展示、claim 列表、confidence 颜色映射（5 值含 supported 琥珀色）、StageSummary 两层展示、evidence 回链、unknown/gap 区域、生成按钮、禁止用语、TypeScript 类型 | Phase 3 前端编码前必读 |
 | [`phase-4-multi-view-panel.md`](phase-4-multi-view-panel.md) | `active` | Phase 4 三视图面板前端设计：MultiViewPanel 布局、Tab bar（结构图/数据流/时序流水）、SVG 渲染方案、节点/边颜色形状置信度编码、hover tooltip、空状态、交互规范 | Phase 4 前端编码前必读 |
+| [`phase-5-trace-and-qa-view.md`](phase-5-trace-and-qa-view.md) | `draft` | Phase 5 证据回链与 Grounded Q&A 前端设计：MultiViewPanel 选中态、TracePanel、SourceExcerptPanel、EvidencePanel 高亮、GroundedQAPanel、视觉语义 | Phase 5 前端编码前必读 |

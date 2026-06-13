@@ -85,6 +85,7 @@ updated: YYYY-MM-DD
 | [`phase-3-completion-review.md`](phase-3-completion-review.md) | `active` | Phase 3 收尾验收与完成审查：P3-T01~P3-T10 全部完成、后端/前端/桌面验收 11/11 通过、**允许进入 Phase 4** | Phase 3 完成后必读 |
 | [`phase-4-implementation-plan.md`](phase-4-implementation-plan.md) | `active` | Phase 4 编码实施计划：进入条件、P4-T01~P4-T09 任务拆解、依赖关系、4 个 Batch 划分、退出条件、安全边界 | Phase 4 编码实施依据 |
 | [`phase-4-completion-review.md`](phase-4-completion-review.md) | `active` | Phase 4 收尾验收与完成审查：P4-T01~P4-T09 完成状态、后端/前端/桌面验收结果、**允许进入 Phase 5** | Phase 4 完成后必读 |
+| [`phase-5-implementation-plan.md`](phase-5-implementation-plan.md) | `draft` | Phase 5 编码实施计划：进入条件、P5-T01~P5-T11 任务拆解、5 个 Batch 划分、退出条件、安全边界、进入 Phase 6 条件 | Phase 5 编码实施依据（需等文档 active） |
 
 > **Phase 4 已完成，允许进入 Phase 5。**
 >
@@ -96,6 +97,6 @@ updated: YYYY-MM-DD
 > - ✅ 安全约束满足（目标目录只读、无 LLM API、无 Phase 5 越界功能）
 > - ✅ **允许进入 Phase 5**
 >
-> Phase 4 编码依据文档已收口（status=active）：`phase-4-view-requirements.md` + `phase-4-view-model.md` + `phase-4-view-generator-design.md` + `phase-4-multi-view-panel.md` + `phase-4-view-validation.md` + `phase-4-implementation-plan.md` + `phase-4-completion-review.md`。
->
-> **Phase 5 尚未开始；进入 Phase 5 前需先完成 Phase 5 需求/设计/计划文档收口。**
+> **Phase 5 规划文档 draft 中，尚未进入编码。**
+> 当前 draft 文档：`phase-5-trace-and-qa-requirements.md`、`phase-5-trace-model.md`、`phase-5-trace-and-qa-design.md`、`phase-5-trace-and-qa-view.md`、`phase-5-trace-and-qa-validation.md`、`phase-5-implementation-plan.md`。
+> 进入 Phase 5 编码前需将上述文档全部转为 active。

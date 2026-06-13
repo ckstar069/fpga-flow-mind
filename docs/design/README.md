@@ -80,10 +80,13 @@ Phase 1 技术设计由以下文档组成，按阅读顺序排列：
 | [`phase-3-understanding-generator-design.md`](phase-3-understanding-generator-design.md) | `active` | Phase 3 理解生成器后端设计：ContextBuilder、Provider trait、SchemaValidator、hallucination guard、Generator 主流程、generate_understanding command、degraded mode | Phase 3 后端编码前必读 |
 | [`phase-4-view-model.md`](phase-4-view-model.md) | `active` | Phase 4 视图数据模型：ViewGraph/ViewNode/ViewEdge/ViewTraceRef/ViewLayoutHint/ViewMeta + NodeType/EdgeType/ViewType 枚举 + Rust/TypeScript 完整定义 | Phase 4 编码前必读 |
 | [`phase-4-view-generator-design.md`](phase-4-view-generator-design.md) | `active` | Phase 4 视图生成器后端设计：ViewGraphGenerator + structure/dataflow/timing builder 转换规则 + generate_views command + 错误处理 | Phase 4 后端编码前必读 |
+| [`phase-5-trace-model.md`](phase-5-trace-model.md) | `draft` | Phase 5 证据回链与 Grounded Q&A 数据模型：SelectedTraceTarget、TraceRefResolved、SourceExcerpt、GroundedQuestion/Answer 等 Rust/TypeScript 定义 | Phase 5 编码前必读 |
+| [`phase-5-trace-and-qa-design.md`](phase-5-trace-and-qa-design.md) | `draft` | Phase 5 证据回链与 Grounded Q&A 后端设计：TraceResolver、SourceExcerptResolver、Provider trait、Tauri commands、安全边界 | Phase 5 后端编码前必读 |
 
 > Phase 1 编码依据文档已收口。Phase 1 的 4 份设计文档与 `mvp-functional-contract.md` 共同构成 Phase 1 编码的权威依据。
 > Phase 2 编码依据文档已收口（status=active）：`phase-2-evidence-model.md` + `phase-2-evidence-collector-design.md` + `phase-2-evidence-requirements.md`。
 > Phase 3 编码依据文档已收口（status=active）：`phase-3-understanding-model.md` + `phase-3-understanding-generator-design.md`。
 > Phase 4 设计文档已收口（status=active）：`phase-4-view-model.md` + `phase-4-view-generator-design.md`。
+> **Phase 5 设计文档为 draft，尚未收口，不允许进入 Phase 5 编码。**
 
 > 注：当前设计应优先依据 active 的 `../requirements/` 需求文档和 `../requirements/mvp-functional-contract.md`；`../initial-requirements-draft/` 仅作为历史草案参考，当与正式文档冲突时以 active 文档为准。

@@ -61,6 +61,7 @@ docs/
 3. 相关 story 文件（了解用户目标）
 4. `docs/design/README.md`（了解技术约束和数据契约）
 5. `docs/ui-ux/phase-4-multi-view-panel.md`（Phase 4 三视图面板设计，active）
+6. `docs/ui-ux/phase-5-trace-and-qa-view.md`（Phase 5 证据回链与 Grounded Q&A 视图设计，draft）
 
 ### 架构 / 技术设计任务
 
@@ -70,6 +71,8 @@ docs/
 4. 相关 story 文件
 5. `docs/design/phase-4-view-model.md`（Phase 4 视图数据模型，active）
 6. `docs/design/phase-4-view-generator-design.md`（Phase 4 视图生成器设计，active）
+7. `docs/design/phase-5-trace-model.md`（Phase 5 证据回链与 Grounded Q&A 数据模型，draft）
+8. `docs/design/phase-5-trace-and-qa-design.md`（Phase 5 证据回链与 Grounded Q&A 后端设计，draft）
 
 ### 实施计划任务
 
@@ -81,9 +84,10 @@ docs/
 6. `docs/planning/phase-3-completion-review.md`（Phase 3 完成状态）
 7. `docs/planning/phase-4-implementation-plan.md`（Phase 4 编码实施计划，active）
 8. `docs/planning/phase-4-completion-review.md`（Phase 4 完成状态，active）
-9. `docs/design/README.md`（设计文档索引）
-10. `docs/requirements/README.md`
-11. 当前阶段应完成的 story 列表
+9. `docs/planning/phase-5-implementation-plan.md`（Phase 5 编码实施计划，draft）
+10. `docs/design/README.md`（设计文档索引）
+11. `docs/requirements/README.md`
+12. 当前阶段应完成的 story 列表
 
 ### 测试 / 验收任务
 
@@ -96,9 +100,10 @@ docs/
 7. `docs/testing/phase-3-understanding-validation.md`（Phase 3 验证设计与验收标准）
 8. `docs/testing/phase-4-view-validation.md`（Phase 4 视图验证设计与验收标准，active）
 9. `docs/planning/phase-4-completion-review.md`（Phase 4 收尾验收与完成审查，active）
-10. `docs/requirements/README.md`（验收标准来源）
-11. `docs/planning/README.md`（当前阶段验收要求）
-12. 相关 story 文件中的验收标准
+10. `docs/testing/phase-5-trace-and-qa-validation.md`（Phase 5 证据回链与 Grounded Q&A 验证设计，draft）
+11. `docs/requirements/README.md`（验收标准来源）
+12. `docs/planning/README.md`（当前阶段验收要求）
+13. 相关 story 文件中的验收标准
 
 ### 审核任务
 
