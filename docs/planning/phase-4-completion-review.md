@@ -78,9 +78,9 @@ Phase 4 **不解决**：evidence_id 点击跳转源码、EvidencePanel 高亮回
 
 ---
 
-## 4. 前端代码路径验收结果
+## 4. 前端代码路径与桌面验收关注点
 
-本环境无法启动 Tauri 桌面应用（无 macOS GUI 上下文），以下为代码路径自查：
+以下场景已在真实 Tauri 桌面验收中覆盖，并在代码路径层面交叉验证：
 
 | 场景 | 代码路径 | 预期行为 |
 |------|----------|----------|
@@ -94,6 +94,8 @@ Phase 4 **不解决**：evidence_id 点击跳转源码、EvidencePanel 高亮回
 | 并发防护 | views_loading | 收集证据/生成理解/切换阶段按钮禁用 |
 | 视图阶段切换阶段 | views_loaded → handleSelectStage | 旧 views 清空，进入 selecting_stage |
 | 错误状态 | views_error | 保留 understanding，左侧阶段列表不变 |
+
+上述关注点与第 5 节桌面验收结果一致，均已通过 12/12 验证。
 
 ---
 
@@ -181,4 +183,4 @@ Phase 4 **不解决**：evidence_id 点击跳转源码、EvidencePanel 高亮回
 | 日期 | 变更 | 作者 |
 |------|------|------|
 | 2026-06-13 | 真实 Tauri 桌面验收完成：12/12 通过；checksum 只读验证通过；样例项目 `/tmp/fpga-flow-mind-phase4-acceptance-20260612-194151`；status draft → active；允许进入 Phase 5 | Claude |
-| 2026-06-12 | Phase 4 Batch A~D 编码完成：P4-T01~P4-T09 全部实现；后端 260 测试通过；前端构建通过；真实桌面验收标记为未完成；暂不允许进入 Phase 5 | Claude |
+| 2026-06-12 | 历史状态：Phase 4 Batch A~D 编码完成（P4-T01~P4-T09 全部实现；后端 260 测试通过；前端构建通过），但真实桌面验收尚未执行，因此当时暂不允许进入 Phase 5 | Claude |
