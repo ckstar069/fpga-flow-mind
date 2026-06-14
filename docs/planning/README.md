@@ -88,10 +88,11 @@ updated: YYYY-MM-DD
 | [`phase-5-implementation-plan.md`](phase-5-implementation-plan.md) | `active` | Phase 5 编码实施计划：进入条件、P5-T01~P5-T11 任务拆解、5 个 Batch 划分、退出条件、安全边界、进入 Phase 6 条件、Batch A 仅允许 P5-T01~P5-T03 | Phase 5 编码实施依据 |
 | [`phase-5-completion-review.md`](phase-5-completion-review.md) | `active` | Phase 5 完成审查：P5-T01~P5-T11 完成状态、真实 Tauri 桌面验收结果、测试/安全回归结果、进入 Phase 6 条件 | Phase 5 完成后必读 |
 | [`phase-6-implementation-plan.md`](phase-6-implementation-plan.md) | `active` | Phase 6 编码实施计划：进入条件、P6-T01~P6-T10 任务拆解、5 个 Batch 划分、退出条件、安全边界、进入 Phase 7 条件 | Phase 6 编码实施依据 |
+| [`phase-6-completion-review.md`](phase-6-completion-review.md) | `active` | Phase 6 收尾验收与完成审查：P6-T01~P6-T11 完成状态、测试结果、桌面验收结果、checksum 只读结论、已知限制、MVP completion 结论 | Phase 6 完成后必读 |
 
-> **Phase 6 规划文档已收口（status=active），允许进入 Phase 6 Batch A 编码。**
+> **Phase 6 已完成编码与 completion review（status=active），建议在真实桌面环境补做 15 步验收清单后允许 MVP completion。**
 >
-> 当前 active 文档：`phase-6-persistence-and-mvp-requirements.md`、`phase-6-persistence-model.md`、`phase-6-persistence-and-replay-design.md`、`phase-6-session-and-mvp-view.md`、`phase-6-mvp-validation.md`、`phase-6-implementation-plan.md`。
+> 当前 active 文档：`phase-6-persistence-and-mvp-requirements.md`、`phase-6-persistence-model.md`、`phase-6-persistence-and-replay-design.md`、`phase-6-session-and-mvp-view.md`、`phase-6-mvp-validation.md`、`phase-6-implementation-plan.md`、`phase-6-completion-review.md`。
 >
 > Batch A 范围限制：
 > - ✅ 允许：P6-T01（Phase 6 Rust/TS 持久化数据模型）、P6-T02（StorageVersionService）、P6-T03（WorkspaceFingerprintService）

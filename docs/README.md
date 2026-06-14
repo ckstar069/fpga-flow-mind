@@ -107,9 +107,10 @@ docs/
 9. `docs/planning/phase-4-completion-review.md`（Phase 4 收尾验收与完成审查，active）
 10. `docs/testing/phase-5-trace-and-qa-validation.md`（Phase 5 证据回链与 Grounded Q&A 验证设计，active）
 11. `docs/testing/phase-6-mvp-validation.md`（Phase 6 持久化与 MVP 总体验收验证设计，active）
-12. `docs/requirements/README.md`（验收标准来源）
-13. `docs/planning/README.md`（当前阶段验收要求）
-14. 相关 story 文件中的验收标准
+12. `docs/planning/phase-6-completion-review.md`（Phase 6 收尾验收与完成审查，active）
+13. `docs/requirements/README.md`（验收标准来源）
+14. `docs/planning/README.md`（当前阶段验收要求）
+15. 相关 story 文件中的验收标准
 
 ### 审核任务
 
