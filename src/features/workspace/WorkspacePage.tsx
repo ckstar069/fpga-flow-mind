@@ -9,6 +9,8 @@ import type {
   SelectedTraceTarget,
   TraceRefResolved,
   SourceExcerpt,
+  GroundedAnswer,
+  GroundedAnswerCitation,
 } from '../../types/workspace';
 import {
   openWorkspace,
@@ -18,6 +20,7 @@ import {
   generateViews,
   resolveTraceTarget,
   getSourceExcerpt,
+  askGroundedQuestion,
   CommandError,
 } from '../../lib/tauriCommands';
 import type { CommandError as CommandErrorType } from '../../types/workspace';
@@ -67,16 +70,23 @@ export default function WorkspacePage() {
   const [highlightedEvidenceId, setHighlightedEvidenceId] = useState<string | null>(null);
   const [currentSourceEvidenceId, setCurrentSourceEvidenceId] = useState<string | null>(null);
 
-  // 用于取消旧 trace/excerpt 请求的守卫
+  // Phase 5 Grounded Q&A 状态
+  const [groundedAnswer, setGroundedAnswer] = useState<GroundedAnswer | null>(null);
+  const [groundedAnswerLoading, setGroundedAnswerLoading] = useState(false);
+  const [groundedAnswerError, setGroundedAnswerError] = useState<UiError | null>(null);
+
+  // 用于取消旧 trace/excerpt/qa 请求的守卫
   const traceGuardRef = useRef<number>(0);
   const excerptGuardRef = useRef<number>(0);
+  const qaGuardRef = useRef<number>(0);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ─── 清空 trace 相关状态 ───
   const clearTraceState = useCallback(() => {
-    // 递增守卫，使所有旧 trace/excerpt 请求失效
+    // 递增守卫，使所有旧 trace/excerpt/qa 请求失效
     traceGuardRef.current += 1;
     excerptGuardRef.current += 1;
+    qaGuardRef.current += 1;
     setSelectedTraceTarget(null);
     setResolvedTraces([]);
     setTraceLoading(false);
@@ -85,6 +95,9 @@ export default function WorkspacePage() {
     setExcerptError(null);
     setHighlightedEvidenceId(null);
     setCurrentSourceEvidenceId(null);
+    setGroundedAnswer(null);
+    setGroundedAnswerLoading(false);
+    setGroundedAnswerError(null);
     if (highlightTimerRef.current) {
       clearTimeout(highlightTimerRef.current);
       highlightTimerRef.current = null;
@@ -465,6 +478,81 @@ export default function WorkspacePage() {
     }, 3000);
   }, []);
 
+  // ─── Grounded Q&A 提问 ───
+  const handleAskGroundedQuestion = useCallback(
+    async (questionText: string) => {
+      const stageId = selectedStageId;
+      const profile = currentProfile;
+      const evidence =
+        'evidence' in state
+          ? (state as { evidence?: EvidenceCollection }).evidence
+          : undefined;
+      const understanding =
+        'understanding' in state
+          ? (state as { understanding?: ImplementationUnderstanding }).understanding
+          : undefined;
+
+      if (!profile || !stageId || !evidence || !understanding) return;
+
+      qaGuardRef.current += 1;
+      setGroundedAnswer(null);
+      setGroundedAnswerError(null);
+      setGroundedAnswerLoading(true);
+
+      const guard = qaGuardRef.current;
+      try {
+        const views = 'views' in state ? (state as { views?: ViewGraph[] }).views : undefined;
+        const answer = await askGroundedQuestion(
+          {
+            question: questionText,
+            stage_id: stageId,
+            selected_target: selectedTraceTarget ?? undefined,
+            understanding,
+            evidence_collection: evidence,
+          },
+          views,
+          resolvedTraces
+        );
+        if (guard === qaGuardRef.current) {
+          setGroundedAnswer(answer);
+          setGroundedAnswerLoading(false);
+        }
+      } catch (err) {
+        if (guard === qaGuardRef.current) {
+          setGroundedAnswerError(makeUiError(err));
+          setGroundedAnswerLoading(false);
+        }
+      }
+    },
+    [currentProfile, selectedStageId, state, selectedTraceTarget, resolvedTraces]
+  );
+
+  // ─── Grounded Q&A citation 点击 ───
+  const handleGroundedCitationClick = useCallback(
+    (citation: GroundedAnswerCitation) => {
+      if (citation.evidence_id) {
+        setHighlightedEvidenceId(citation.evidence_id);
+        setCurrentSourceEvidenceId(citation.evidence_id);
+        if (highlightTimerRef.current) {
+          clearTimeout(highlightTimerRef.current);
+        }
+        highlightTimerRef.current = setTimeout(() => {
+          setHighlightedEvidenceId((current) =>
+            current === citation.evidence_id ? null : current
+          );
+        }, 3000);
+      }
+      if (citation.source_location) {
+        handleViewSource({
+          source_path: citation.source_location.source_path,
+          line_range: citation.source_location.line_range,
+          evidence_id: citation.evidence_id,
+        });
+      }
+    },
+    [handleViewSource]
+  );
+
   // ─── 渲染 ───
   return (
     <div
@@ -614,12 +702,17 @@ export default function WorkspacePage() {
               excerptError={excerptError}
               highlightedEvidenceId={highlightedEvidenceId}
               currentSourceEvidenceId={currentSourceEvidenceId}
+              groundedAnswer={groundedAnswer}
+              groundedAnswerLoading={groundedAnswerLoading}
+              groundedAnswerError={groundedAnswerError}
               onSelectTraceTarget={handleSelectTraceTarget}
               onClearTraceTarget={handleClearTraceTarget}
               onViewSource={handleViewSource}
               onCloseSourceExcerpt={handleCloseSourceExcerpt}
               onLocateEvidence={handleLocateEvidence}
               onEvidenceSelect={handleEvidenceSelect}
+              onAskGroundedQuestion={handleAskGroundedQuestion}
+              onGroundedCitationClick={handleGroundedCitationClick}
             />
           )}
 

@@ -81,9 +81,15 @@ export async function getSourceExcerpt(location: SourceLocation, rootPath: strin
   return handleResult(result);
 }
 
-export async function askGroundedQuestion(question: GroundedQuestion): Promise<GroundedAnswer> {
+export async function askGroundedQuestion(
+  question: GroundedQuestion,
+  views?: ViewGraph[],
+  resolvedTraces?: TraceRefResolved[]
+): Promise<GroundedAnswer> {
   const result = await invoke<CommandResult<GroundedAnswer>>('ask_grounded_question', {
     question,
+    views: views ?? null,
+    resolvedTraces: resolvedTraces ?? null,
   });
   return handleResult(result);
 }

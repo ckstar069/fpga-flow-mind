@@ -8,6 +8,8 @@ import type {
   SelectedTraceTarget,
   TraceRefResolved,
   SourceExcerpt,
+  GroundedAnswer,
+  GroundedAnswerCitation,
 } from '../../../types/workspace';
 import type { UiError } from '../workspaceUiTypes';
 import { formatBytes } from '../workspaceUiUtils';
@@ -16,6 +18,7 @@ import UnderstandingPanel from './UnderstandingPanel';
 import MultiViewPanel from './MultiViewPanel';
 import TracePanel from './TracePanel';
 import SourceExcerptPanel from './SourceExcerptPanel';
+import GroundedQAPanel from './GroundedQAPanel';
 
 interface StageDetailProps {
   context: StageContext;
@@ -40,6 +43,9 @@ interface StageDetailProps {
   excerptError?: UiError | null;
   highlightedEvidenceId?: string | null;
   currentSourceEvidenceId?: string | null;
+  groundedAnswer?: GroundedAnswer | null;
+  groundedAnswerLoading?: boolean;
+  groundedAnswerError?: UiError | null;
   onSelectTraceTarget?: (target: SelectedTraceTarget) => void;
   onClearTraceTarget?: () => void;
   onViewSource?: (location: {
@@ -50,6 +56,8 @@ interface StageDetailProps {
   onCloseSourceExcerpt?: () => void;
   onLocateEvidence?: (evidenceId: string) => void;
   onEvidenceSelect?: (evidenceId: string) => void;
+  onAskGroundedQuestion?: (question: string) => void;
+  onGroundedCitationClick?: (citation: GroundedAnswerCitation) => void;
 }
 
 export default function StageDetail({
@@ -74,15 +82,21 @@ export default function StageDetail({
   excerptError,
   highlightedEvidenceId,
   currentSourceEvidenceId,
+  groundedAnswer,
+  groundedAnswerLoading,
+  groundedAnswerError,
   onSelectTraceTarget,
   onClearTraceTarget,
   onViewSource,
   onCloseSourceExcerpt,
   onLocateEvidence,
   onEvidenceSelect,
+  onAskGroundedQuestion,
+  onGroundedCitationClick,
 }: StageDetailProps) {
   const canCollect =
     !context.error_code && context.files.length > 0 && !!onCollectEvidence;
+  const canAskGrounded = !!evidence && !!understanding && evidence.evidence_items.length > 0;
 
   return (
     <div>
@@ -468,6 +482,27 @@ export default function StageDetail({
           excerpt={sourceExcerpt}
           onClose={onCloseSourceExcerpt ?? (() => {})}
           error={excerptError}
+        />
+      )}
+
+      {/* Grounded Q&A */}
+      {onAskGroundedQuestion && (
+        <GroundedQAPanel
+          canAsk={canAskGrounded}
+          disabledReason={
+            !evidence
+              ? '请先收集证据'
+              : !understanding
+                ? '请先生成理解'
+                : evidence.evidence_items.length === 0
+                  ? '当前阶段无 evidence，无法提问'
+                  : undefined
+          }
+          answer={groundedAnswer}
+          loading={groundedAnswerLoading}
+          error={groundedAnswerError}
+          onAsk={onAskGroundedQuestion}
+          onCitationClick={onGroundedCitationClick}
         />
       )}
 

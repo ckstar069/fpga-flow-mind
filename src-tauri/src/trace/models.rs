@@ -3,9 +3,12 @@ use serde::{Deserialize, Serialize};
 use crate::evidence::models::{EvidenceCollection, EvidenceItem, LineRange};
 use crate::models::enums::Language;
 use crate::understanding::models::{
-    ClaimCategory, ClaimConfidence, ImplementationClaim, ImplementationUnderstanding,
+    ImplementationClaim, ImplementationUnderstanding,
 };
 use crate::views::models::ViewType;
+
+// 为了模块内代码能统一引用，重导出常用枚举
+pub use crate::understanding::models::{ClaimCategory, ClaimConfidence};
 
 // ─── 选择模型 ────────────────────────────────────────────────────────
 
@@ -244,6 +247,10 @@ pub struct GroundedQaContext {
     pub understanding_summary: String,
     pub claims: Vec<ImplementationClaim>,
     pub evidence_collection: EvidenceCollection,
+    pub available_citations: Vec<GroundedAnswerCitation>,
+    pub relevant_claims: Vec<ImplementationClaim>,
+    pub relevant_evidence: Vec<crate::evidence::models::EvidenceItem>,
+    pub warnings: Vec<GroundedQaWarning>,
 }
 
 #[cfg(test)]
