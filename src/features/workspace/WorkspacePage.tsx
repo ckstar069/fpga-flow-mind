@@ -133,6 +133,13 @@ export default function WorkspacePage() {
     clearAutoSaveTimer();
   }, [clearAutoSaveTimer]);
 
+  // 使所有 pending 保存请求失效（打开/加载/删除 session 时调用）
+  const invalidatePendingSessionSave = useCallback(() => {
+    clearAutoSaveTimer();
+    dirtyVersionRef.current += 1;
+    setSaveError(null);
+  }, [clearAutoSaveTimer]);
+
   // ─── 清空 trace 相关状态 ───
   const clearTraceState = useCallback(() => {
     // 递增守卫，使所有旧 trace/excerpt/qa 请求失效
@@ -160,7 +167,7 @@ export default function WorkspacePage() {
   const handleOpen = useCallback(async () => {
     const path = pathInput.trim();
     if (!path) return;
-    clearAutoSaveTimer();
+    invalidatePendingSessionSave();
     clearTraceState();
     setSessionId(null);
     setSaveStatus('unsaved');
@@ -181,7 +188,7 @@ export default function WorkspacePage() {
     } catch (err) {
       setState({ phase: 'error', error: makeUiError(err) });
     }
-  }, [pathInput, clearTraceState, clearAutoSaveTimer]);
+  }, [pathInput, clearTraceState, invalidatePendingSessionSave]);
 
   // ─── 选择阶段 ───
   const handleSelectStage = useCallback(
@@ -442,10 +449,9 @@ export default function WorkspacePage() {
     async (targetSessionId: string) => {
       try {
         if (targetSessionId === sessionId) {
-          clearAutoSaveTimer();
+          invalidatePendingSessionSave();
           setSessionId(null);
           setSaveStatus('unsaved');
-          dirtyVersionRef.current += 1;
           setLastSavedAt(null);
         }
         await deleteSession(targetSessionId);
@@ -455,7 +461,7 @@ export default function WorkspacePage() {
         setLoadError(makeUiError(err));
       }
     },
-    [sessionId, refreshSessions, clearAutoSaveTimer]
+    [sessionId, refreshSessions, invalidatePendingSessionSave]
   );
 
   // ─── Phase 6: 构造 SessionState ───
@@ -535,7 +541,7 @@ export default function WorkspacePage() {
   const handleLoadSession = useCallback(
     async (targetSessionId: string) => {
       if (isLoadingSession || isLoadingStage) return;
-      clearAutoSaveTimer();
+      invalidatePendingSessionSave();
       setLoadingSessionId(targetSessionId);
       setIsLoadingSession(true);
       setLoadStatus(null);
@@ -637,7 +643,7 @@ export default function WorkspacePage() {
         setLoadingSessionId(null);
       }
     },
-    [isLoadingSession, isLoadingStage, clearTraceState, clearAutoSaveTimer]
+    [isLoadingSession, isLoadingStage, clearTraceState, invalidatePendingSessionSave]
   );
 
   // ─── Phase 6: 初始加载最近项目列表与最后一次路径 ───
