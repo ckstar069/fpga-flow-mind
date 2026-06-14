@@ -7,7 +7,7 @@ updated: 2026-06-14
 
 > 本文档定义 Phase 6（持久化、回放与 MVP 验收）的编码实施计划，包含任务拆解、依赖关系、Batch 划分、进入/退出条件、验收标准和安全边界。
 >
-> 本文档为 draft，仅供评审与讨论，不得作为 Phase 6 编码唯一依据。
+> 本文档为 draft，仅供评审与讨论，不得作为 Phase 6 编码唯一依据。本轮修复后仍需审核并转为 active，方可进入 Phase 6 编码。
 
 ## 1. 进入条件
 
@@ -21,7 +21,7 @@ updated: 2026-06-14
 | Phase 6 UI/UX 文档已创建 | ✅ `phase-6-session-and-mvp-view.md`（draft） |
 | Phase 6 测试文档已创建 | ✅ `phase-6-mvp-validation.md`（draft） |
 | Phase 6 实施计划已创建 | ✅ 本文档（draft） |
-| **以上文档全部转为 active** | ⏳ 当前未满足，不允许进入 Phase 6 编码 |
+| **以上文档修复并审核后全部转为 active** | ⏳ 当前未满足，不允许进入 Phase 6 编码 |
 
 ## 2. 任务拆分
 
@@ -79,7 +79,7 @@ updated: 2026-06-14
 
 | 维度 | 说明 |
 |------|------|
-| **目标** | 整合 save_session / load_session / list_sessions / delete_session 高层逻辑 |
+| **目标** | 整合 save_session / load_session / list_sessions / delete_session 高层逻辑；`load_session` 对 fingerprint mismatch / 路径不存在 / 路径不安全返回 `success=true` 的可恢复加载状态（`status` + `session_state`） |
 | **输入文档** | `phase-6-persistence-and-replay-design.md` §2、§3 |
 | **预计修改文件** | `src-tauri/src/persistence/session_store.rs`（新增） |
 | **验收命令** | `cargo test --lib persistence::session_store` |
@@ -89,7 +89,7 @@ updated: 2026-06-14
 
 | 维度 | 说明 |
 |------|------|
-| **目标** | `save_session`、`load_session`、`list_sessions`、`delete_session`、`get_last_session` |
+| **目标** | `save_session`、`load_session`（返回 `LoadSessionResult` 含 `status` + `session_state`）、`list_sessions`、`delete_session`、`get_last_session` |
 | **输入文档** | `phase-6-persistence-and-replay-design.md` §3 |
 | **预计修改文件** | `src-tauri/src/commands/save_session.rs`、`load_session.rs`、`list_sessions.rs`、`delete_session.rs`、`get_last_session.rs` |
 | **验收命令** | `cargo test --lib commands` |
@@ -205,7 +205,7 @@ P6-T01 (models)
 | Rust 全量测试通过 | `cargo test --lib` |
 | 前端构建通过 | `npm run build` |
 | save_session 原子写入 | 单元测试 |
-| load_session 恢复状态 | 单元测试 + 桌面验收 |
+| load_session 恢复状态 | 单元测试 + 桌面验收；对 fingerprint mismatch / 路径缺失 / 路径不安全返回 `success=true` 的可恢复 `status`，仍携带 `session_state` |
 | list_sessions 正确排序过滤 | 单元测试 |
 | delete_session 不影响目标项目 | 单元测试 + checksum |
 | fingerprint 检测变更 | 单元测试 + 桌面验收 |

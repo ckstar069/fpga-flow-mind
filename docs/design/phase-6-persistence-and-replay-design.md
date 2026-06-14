@@ -7,7 +7,7 @@ updated: 2026-06-14
 
 > 本文档定义 Phase 6 持久化与回放的后端概要设计、核心流程、Tauri commands、安全边界和原子性策略。
 >
-> 本文档为 draft，仅供评审与讨论。
+> 本文档为 draft，仅供评审与讨论，不得作为 Phase 6 编码唯一依据。本轮修复后仍需审核并转为 active，方可进入 Phase 6 编码。
 
 ## 1. 概要设计
 
@@ -58,14 +58,17 @@ Tauri commands（save_session / load_session / list_sessions / delete_session / 
 
 1. 用户从最近列表选择 session，或应用启动时自动加载 `global_ui_state.last_session_id`。
 2. 后端读取 `manifest.json`，校验 `StorageVersion`。
-3. 校验目标项目路径存在、是目录、不是 symlink。
-4. 重新计算目标项目 fingerprint，与 `manifest.persisted_workspace.fingerprint` 比对。
-   - 未变更：继续加载。
-   - 已变更：返回 `LoadSessionResult { status: source_changed, ... }`，由前端提示用户。
-   - 路径不存在：返回 `source_path_not_found`。
+3. 校验目标项目路径是否存在、是否为目录、是否为 symlink 或越界路径。
+4. 重新计算目标项目 fingerprint，与 `manifest.persisted_workspace.fingerprint` 比对，确定 `LoadSessionStatus`：
+   - 未变更：`source_unchanged`。
+   - 已变更：`source_changed`，附带 `mismatch_reason` 说明变更。
+   - 路径不存在：`source_missing`。
+   - 目标路径变为 symlink 或超出允许范围：`source_path_not_allowed`。
+   
+   以上四种状态均视为命令执行成功，返回 `CommandResult<LoadSessionResult>`（`LoadSessionResult.success = true`），并携带 `session_state`。前端根据 `status` 决定：正常恢复、仅查看历史产物、重新选择路径、或删除记录。
 5. 按 `ArtifactIndex` 读取各 artifact 文件。
 6. 校验 artifact 版本号与内部 ID 一致性。
-7. 返回 `LoadSessionResult { status: loaded, session_state }`。
+7. 返回 `LoadSessionResult { success: true, status, session_state, mismatch_reason?, warnings }`。
 
 ### 2.3 列出 session
 
@@ -117,9 +120,9 @@ pub fn load_session(
 | 维度 | 说明 |
 |------|------|
 | 输入 | `session_id` |
-| 输出 | `LoadSessionResult { status, session_state?, mismatch_reason? }` |
-| 错误分支 | session 不存在、manifest 损坏、版本不兼容、目标路径不存在/不安全、fingerprint mismatch |
-| 访问目标项目 | 只读（校验路径与 fingerprint） |
+| 输出 | `LoadSessionResult { success: true, status: LoadSessionStatus, session_state: SessionState, mismatch_reason?: String, warnings: Vec<String> }` |
+| 错误分支 | session 不存在、manifest 损坏、版本不兼容、artifact 文件缺失/损坏、session 路径不在 app-owned storage 下 |
+| 可恢复加载状态 | `status = source_unchanged / source_changed / source_missing / source_path_not_allowed`，均返回 `success=true` 并携带 `session_state` |
 
 ### 3.3 list_sessions
 
@@ -165,6 +168,33 @@ pub fn get_last_session() -> CommandResult<Option<SessionSummary>> {
     // 返回 global_ui_state 中记录的最近 session
 }
 ```
+
+### 3.6 LoadSessionResult 数据契约
+
+```rust
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum LoadSessionStatus {
+    SourceUnchanged,
+    SourceChanged,
+    SourceMissing,
+    SourcePathNotAllowed,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LoadSessionResult {
+    pub success: bool,
+    pub status: LoadSessionStatus,
+    pub session_state: SessionState,
+    pub mismatch_reason: Option<String>,
+    pub warnings: Vec<String>,
+}
+```
+
+**语义约定**：
+
+- `CommandResult<LoadSessionResult>` 返回 `success=true` 时，`LoadSessionResult.success` 恒为 `true`，`session_state` 必须存在。
+- `status = source_changed / source_missing / source_path_not_allowed` 不表示命令失败，而是表示目标项目状态与保存时不一致；前端可据此展示“仅查看历史产物”“重新选择路径”“重新分析”等选项。
+- 真正的阻塞错误（session 不存在、manifest 损坏、版本不兼容、artifact 缺失等）通过 `CommandResult` 的 `Err` 返回，前端无法获取 `session_state`。
 
 ## 4. 原子写入策略
 
@@ -243,23 +273,32 @@ fingerprint 计算目标项目中以下文件：
 
 - fingerprint 一致 → `source_unchanged`。
 - fingerprint 不一致 → `source_changed`。
-- 目标路径不存在 → `source_path_not_found`。
-- 目标路径变为 symlink → `source_path_not_allowed`。
+- 目标路径不存在 → `source_missing`。
+- 目标路径变为 symlink 或越界 → `source_path_not_allowed`。
 
 ## 9. 错误码扩展
+
+以下错误码导致 `CommandResult` 返回 `success=false`，前端无法获取 `session_state`：
 
 | 错误码 | 场景 |
 |--------|------|
 | `persist_failed` | 保存时写入失败 |
-| `load_failed` | 加载时读取失败 |
+| `load_failed` | 加载时读取失败（IO 错误） |
 | `session_not_found` | session_id 不存在 |
 | `manifest_corrupted` | manifest.json 损坏或无法解析 |
 | `storage_version_incompatible` | 版本不兼容 |
 | `artifact_version_incompatible` | artifact 版本不兼容 |
-| `source_path_not_found` | 目标项目路径不存在 |
-| `source_path_not_allowed` | 目标路径为 symlink 或不在允许范围内 |
-| `source_changed` | 目标项目已变更 |
+| `artifact_missing_or_corrupted` | artifact 文件缺失或无法解析 |
 | `session_path_not_allowed` | session 路径不在 app-owned storage 下 |
+
+以下状态属于 `LoadSessionResult.status`（`CommandResult.success=true`），前端可获取 `session_state`：
+
+| 状态 | 场景 |
+|------|------|
+| `source_unchanged` | 目标项目未变更 |
+| `source_changed` | 目标项目已变更 |
+| `source_missing` | 目标项目路径不存在 |
+| `source_path_not_allowed` | 目标路径为 symlink 或不在允许范围内 |
 
 ## 10. 安全边界
 

@@ -7,7 +7,7 @@ updated: 2026-06-14
 
 > 本文档定义 Phase 6（持久化、回放与 MVP 总体验收）的产品需求。Phase 6 的目标是让 fpga-flow-mind 在 Phase 1~5 产生的所有系统内产物可持久化、可重新加载、可回放，并完成 MVP 级总体验收闭环。
 >
-> 本文档为 draft，仅供评审与讨论，不得作为 Phase 6 编码唯一依据。
+> 本文档为 draft，仅供评审与讨论，不得作为 Phase 6 编码唯一依据。本轮修复后仍需审核并转为 active，方可进入 Phase 6 编码。
 
 ## 1. 用户目标
 
@@ -51,9 +51,9 @@ Phase 1~5 已完成 workspace 扫描、evidence 收集、结构化理解、三�
 |------|------|
 | **输入** | 用户选择最近 session 或应用启动时自动检测 |
 | **输出** | 恢复 WorkspaceProfile、StageContext、EvidenceCollection、ImplementationUnderstanding、ViewGraph[]、选中阶段、Trace/Q&A 状态 |
-| **前端责任** | 加载成功后恢复页面状态；加载失败时展示错误与可操作建议 |
-| **后端责任** | 读取 manifest 与 artifact 文件；校验 schema 版本与 workspace fingerprint |
-| **验收标准** | 加载后用户可直接查看上次分析的视图、evidence、问答历史，无需重新生成 |
+| **前端责任** | 加载成功后恢复页面状态；加载失败时展示错误与可操作建议；目标项目变更/缺失/不安全时展示可恢复加载选项 |
+| **后端责任** | 读取 manifest 与 artifact 文件；校验 schema 版本；校验 workspace fingerprint；**对 fingerprint mismatch、目标路径不存在、目标路径不安全返回可恢复加载状态（`success=true`，`status` 字段），仍携带 `session_state`** |
+| **验收标准** | 加载后用户可直接查看上次分析的视图、evidence、问答历史，无需重新生成；**目标项目变更时仍允许“仅查看历史产物”** |
 | **非目标** | 不自动重新扫描目标项目；不自动重新调用 MockProvider |
 
 ### P6-004 目标项目变更检测
@@ -61,9 +61,9 @@ Phase 1~5 已完成 workspace 扫描、evidence 收集、结构化理解、三�
 | 维度 | 说明 |
 |------|------|
 | **输入** | session 中记录的 workspace_fingerprint / checksum 与当前目标项目实际状态 |
-| **输出** | 变更提示：未变更、部分文件变更、目标路径不存在 |
-| **前端责任** | 以非阻塞方式展示变更提示；提供“重新分析”“仅查看历史产物”选项 |
-| **后端责任** | 计算目标项目关键文件的 checksum；与 manifest 中记录比对 |
+| **输出** | 加载结果状态：`source_unchanged`（未变更，正常恢复）、`source_changed`（项目已变更，可查看历史产物或重新分析）、`source_missing`（目标路径不存在，可重新选择或删除）、`source_path_not_allowed`（目标路径不安全，可删除）|
+| **前端责任** | 以非阻塞方式展示变更提示；根据 `status` 提供“重新分析”“仅查看历史产物”“重新选择路径”“删除记录”选项 |
+| **后端责任** | 计算目标项目关键文件的 checksum；与 manifest 中记录比对；返回明确的 `status` 和可选的 `mismatch_reason` |
 | **验收标准** | 目标项目变更时用户收到明确提示；未变更时静默加载 |
 | **非目标** | 不做实时文件监控；不自动重新分析 |
 
@@ -117,10 +117,10 @@ Phase 1~5 已完成 workspace 扫描、evidence 收集、结构化理解、三�
 |------|------|
 | 首次启动无 session | 展示“打开项目”入口，不报错 |
 | session manifest 损坏 | 标记为损坏，允许删除，不允许加载 |
-| workspace root 路径不存在 | 提示目标项目已移动或删除；提供“重新选择路径”或“删除 session” |
-| workspace root 变为 symlink | 拒绝加载，提示安全风险 |
-| 目标项目 checksum mismatch | 提示项目已变更；提供“仅查看历史产物”或“重新分析” |
-| schema 版本不兼容 | 提示版本不兼容；建议删除旧 session 或升级应用 |
+| workspace root 路径不存在 | 返回可恢复加载状态 `status=source_missing`，提示目标项目已移动或删除；提供“重新选择路径”“仅查看历史产物”“删除 session” |
+| workspace root 变为 symlink | 返回可恢复加载状态 `status=source_path_not_allowed`，提示安全风险；提供“删除 session” |
+| 目标项目 checksum mismatch | 返回可恢复加载状态 `status=source_changed`，提示项目已变更；提供“仅查看历史产物”或“重新分析” |
+| schema 版本不兼容 | 阻塞错误：标记为不兼容，允许删除，不允许加载 |
 | 存储空间不足 | 保存失败；前端展示错误，不丢失内存中状态 |
 
 ## 5. 证据与追溯要求

@@ -7,7 +7,7 @@ updated: 2026-06-14
 
 > 本文档定义 Phase 6 持久化层的数据模型：SessionManifest、PersistedWorkspace、PersistedStageArtifacts、ArtifactIndex、StorageVersion 等 Rust/TypeScript 草案。
 >
-> 本文档为 draft，仅供评审与讨论。
+> 本文档为 draft，仅供评审与讨论，不得作为 Phase 6 编码唯一依据。本轮修复后仍需审核并转为 active，方可进入 Phase 6 编码。
 
 ## 1. 设计目标
 
@@ -199,6 +199,25 @@ pub struct GlobalUiState {
     /// 最后打开的路径（仅用于展示，加载前需重新校验）
     pub last_root_path: Option<String>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum LoadSessionStatus {
+    SourceUnchanged,
+    SourceChanged,
+    SourceMissing,
+    SourcePathNotAllowed,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LoadSessionResult {
+    /// 命令是否成功执行；阻塞错误通过 CommandResult::Err 返回，不会进入此结构
+    pub success: bool,
+    pub status: LoadSessionStatus,
+    /// 恢复后的完整会话状态；status 为 source_changed/source_missing/source_path_not_allowed 时仍存在
+    pub session_state: SessionState,
+    pub mismatch_reason: Option<String>,
+    pub warnings: Vec<String>,
+}
 ```
 
 ## 4. TypeScript 类型草案
@@ -284,6 +303,24 @@ interface GlobalUiState {
   last_session_id?: string;
   last_root_path?: string;
 }
+
+/**
+ * load_session 命令成功执行后的业务状态。
+ * 注意：阻塞错误（session 不存在、manifest 损坏、版本不兼容等）通过 CommandResult 的 Err 返回，不会进入此结构。
+ */
+interface LoadSessionResult {
+  success: boolean;
+  status: LoadSessionStatus;
+  session_state: SessionState;
+  mismatch_reason?: string;
+  warnings: string[];
+}
+
+type LoadSessionStatus =
+  | "source_unchanged"
+  | "source_changed"
+  | "source_missing"
+  | "source_path_not_allowed";
 ```
 
 ## 5. 字段稳定性说明

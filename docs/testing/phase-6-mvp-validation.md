@@ -7,7 +7,7 @@ updated: 2026-06-14
 
 > 本文档定义 Phase 6（持久化、回放与 MVP 总体验收）的验证策略、测试矩阵、安全回归清单和桌面验收步骤。
 >
-> 本文档为 draft，仅供评审与讨论。
+> 本文档为 draft，仅供评审与讨论，不得作为 Phase 6 编码唯一依据。本轮修复后仍需审核并转为 active，方可进入 Phase 6 编码。
 
 ## 1. 验证目标
 
@@ -93,8 +93,9 @@ Phase 6 编码完成后，以下维度应通过验证：
 | delete session | session_id | 目录删除，目标项目不变 |
 | load nonexistent | 不存在的 session_id | error |
 | load corrupted manifest | 损坏的 manifest.json | error |
-| load changed source | fingerprint mismatch | status=source_changed |
-| load missing source | root_path 不存在 | status=source_path_not_found |
+| load changed source | fingerprint mismatch | `success=true`，`status=source_changed`，`session_state` 可用 |
+| load missing source | root_path 不存在 | `success=true`，`status=source_missing`，`session_state` 可用 |
+| load unsafe source | root_path 变为 symlink | `success=true`，`status=source_path_not_allowed`，`session_state` 可用 |
 | load version incompatible | 旧 major version | error |
 
 ## 4. 前端验证矩阵
@@ -115,7 +116,7 @@ Phase 6 编码完成后，以下维度应通过验证：
 
 ### 5.1 样例项目
 
-复用 `/tmp/fpga-flow-mind-phase5-acceptance-20260614-113748` 或新建 `/tmp/fpga-flow-mind-phase6-acceptance-YYYYMMDD-HHMMSS`。
+新建 `/tmp/fpga-flow-mind-phase6-acceptance-YYYYMMDD-HHMMSS` 作为自包含 Phase 6 验收项目。
 
 ### 5.2 验收步骤
 
