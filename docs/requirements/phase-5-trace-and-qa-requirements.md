@@ -77,9 +77,9 @@ updated: 2026-06-13
 | **用户动作** | 在 GroundedQAPanel 中输入问题并提交 |
 | **前端输入** | `question: string` + 可选 `selected_trace_target: SelectedTraceTarget` + 当前 `ImplementationUnderstanding` + `EvidenceCollection` |
 | **后端输入** | `GroundedQuestion` 对象（见数据模型） |
-| **输出/状态变化** | `GroundedAnswer` 对象：回答文本 + `claims[]`（每条含 confidence + citations）+ `warnings[]` + `confidence` |
-| **验收标准** | 1. 回答必须包含至少一个 citation（evidence_id / claim_id / source_path+line_range）；2. citation 可点击跳转至 source excerpt；3. 无证据支撑时回答标注 unknown；4. 回答不超出当前阶段上下文 |
-| **非目标** | 不做自由聊天；不跨阶段回答；不默认调用真实云端 LLM（先使用 MockProvider 验证数据结构和 UI 闭环） |
+| **输出/状态变化** | `GroundedAnswer` 对象：回答文本 + `claims[]`（每条含 confidence + citations/reason）+ `warnings[]` + `confidence` |
+| **验收标准** | 1. 对 confirmed / supported / inferred / conflicting 的 answer claim，必须至少有一个有效 citation；2. 对 unknown answer / unknown claim，不允许伪造 citation，可以没有 citations，但必须包含 reason，并产生 `GroundedQaWarning`（如"当前阶段证据不足"）；3. citation 可点击跳转至 source excerpt；4. 无证据支撑时回答整体标注 unknown；5. 回答不超出当前阶段上下文 |
+| **非目标** | 不做自由聊天；不跨阶段回答；不默认调用真实云端 LLM（先使用 MockProvider 验证数据结构和 UI 闭环）；unknown 回答不为过校验而强行引用无关 evidence |
 
 ### F5-007 unknown / inferred / evidence_gap 表达
 
@@ -89,8 +89,8 @@ updated: 2026-06-13
 | **前端输入** | 来自 resolver 的 `TraceRefResolved` 或 `GroundedAnswerClaim` |
 | **后端输入** | `ImplementationUnderstanding` 中的 unknowns / evidence_gaps |
 | **输出/状态变化** | UI 明确显示 confidence 标签：confirmed / supported / inferred / unknown / conflicting；evidence_gap 单独列出 |
-| **验收标准** | 1. 每种 confidence 有固定颜色/线型语义；2. unknown 不可隐藏；3. evidence_gap 说明可见；4. Q&A 回答中的 unknown 必须说明原因 |
-| **非目标** | 不把 unknown 自动提升为 inferred；不做 PASS/HOLD 判断 |
+| **验收标准** | 1. 每种 confidence 有固定颜色/线型语义；2. unknown 不可隐藏；3. evidence_gap 说明可见；4. Q&A 回答中的 unknown 必须说明原因，且不得把 inspected evidence 伪装成支撑证据；5. unknown 回答/claim 不产生伪造 citation |
+| **非目标** | 不把 unknown 自动提升为 inferred；不做 PASS/HOLD 判断；unknown 回答不为过校验而强行引用无关 evidence |
 
 ### F5-008 问答安全边界：不修改目标项目、不运行脚本、不做 PASS/HOLD
 

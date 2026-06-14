@@ -53,6 +53,7 @@ updated: 2026-06-13
 | **输入文档** | `phase-5-trace-and-qa-design.md` §4 |
 | **预计修改文件** | `src-tauri/src/trace/source_resolver.rs`（新增） |
 | **验收命令** | `cargo test --lib trace::source_resolver` |
+| **验收点** | 1. 正常 source_path 返回 `SourceExcerpt`；2. root_path 本身为 symlink 时拒绝；3. source_path 或任意父目录为 symlink 时拒绝；4. 字符串前缀路径（如 `/tmp/root2/...` 针对 `/tmp/root`）被拒绝；5. canonicalize 后跳出 root_path 的路径（`..` 拼接等）被拒绝；6. 超大/二进制/非 UTF-8 文件返回可读错误；7. 越界 `line_range` 返回错误；8. 不写入目标项目 |
 | **不做什么** | 不写入文件；不读取 root_path 外文件 |
 
 ### P5-T04 实现 GroundedQaContextBuilder
@@ -173,7 +174,7 @@ P5-T08 (TS types/commands)      P5-T09 (selection + TracePanel)
 | P5-T02 | TraceResolver |
 | P5-T03 | SourceExcerptResolver |
 
-**预估测试**：22 个（model 4 + resolver 10 + source_resolver 8）。
+**预估测试**：26 个（model 4 + resolver 10 + source_resolver 12）。
 
 ### 4.2 Batch B：Tauri commands + Rust 测试
 

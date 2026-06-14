@@ -14,7 +14,7 @@ updated: 2026-06-13
 - 统一描述用户在视图中点击的节点/边、claim、evidence 等选择目标。
 - 通过已存在的 `evidence_id`、`claim_id`、`node_id`、`edge_id` 解析出可展示的追溯信息，不伪造 ID。
 - 源码片段只读读取，行号 1-based 闭区间，支持截断与异常边界。
-- Grounded Q&A 的回答必须绑定 citations，明确 confidence。
+- Grounded Q&A 的回答必须绑定 citations（非 unknown 时）或明确 reason + warning（unknown 时），明确 confidence。
 
 ## 2. 选择模型
 
@@ -332,11 +332,11 @@ pub struct GroundedAnswer {
     pub text: String,
     /// 回答拆分出的 claim 列表
     pub claims: Vec<GroundedAnswerClaim>,
-    /// 引用证据列表
+    /// 引用证据列表；当整体 confidence = unknown 时可为空，但 warnings 必须非空
     pub citations: Vec<GroundedAnswerCitation>,
     /// 整体 confidence
     pub confidence: ClaimConfidence,
-    /// 警告/提示
+    /// 警告/提示；unknown 回答必须包含说明 evidence 不足或问题越界的 warning
     pub warnings: Vec<GroundedQaWarning>,
     /// 使用的 provider 类型
     pub provider: String,
@@ -351,8 +351,10 @@ interface GroundedAnswer {
   generated_at: string;
   text: string;
   claims: GroundedAnswerClaim[];
+  /// 引用证据列表；当整体 confidence = unknown 时可为空，但 warnings 必须非空
   citations: GroundedAnswerCitation[];
   confidence: ClaimConfidence;
+  /// 警告/提示；unknown 回答必须包含说明 evidence 不足或问题越界的 warning
   warnings: GroundedQaWarning[];
   provider: string;
   is_degraded: boolean;
@@ -368,9 +370,9 @@ pub struct GroundedAnswerClaim {
     pub text: String,
     /// confidence
     pub confidence: ClaimConfidence,
-    /// 支撑该 claim 的 citation index 列表
+    /// 支撑该 claim 的 citation index 列表；非 unknown claim 必须非空
     pub citation_indices: Vec<usize>,
-    /// 若为 unknown，说明原因
+    /// 若为 unknown，说明原因，且 citation_indices 必须为空
     pub reason: Option<String>,
 }
 ```
@@ -379,7 +381,9 @@ pub struct GroundedAnswerClaim {
 interface GroundedAnswerClaim {
   text: string;
   confidence: ClaimConfidence;
+  /// 支撑该 claim 的 citation index 列表；非 unknown claim 必须非空
   citation_indices: number[];
+  /// 若为 unknown，说明原因，且 citation_indices 必须为空
   reason?: string;
 }
 ```
@@ -397,7 +401,7 @@ pub struct GroundedAnswerCitation {
     pub claim_id: Option<String>,
     /// 直接引用的源码位置
     pub source_location: Option<SourceLocation>,
-    /// 引用片段摘要
+    /// 引用片段摘要；unknown 回答中若引用 inspected evidence，摘要必须注明"已检查但不足以支撑结论"
     pub excerpt_summary: String,
 }
 ```
@@ -408,6 +412,7 @@ interface GroundedAnswerCitation {
   evidence_id?: string;
   claim_id?: string;
   source_location?: SourceLocation;
+  /// 引用片段摘要；unknown 回答中若引用 inspected evidence，摘要必须注明"已检查但不足以支撑结论"
   excerpt_summary: string;
 }
 ```
@@ -455,10 +460,16 @@ ViewGraph.nodes[].node_id / ViewGraph.edges[].edge_id
 | 场景 | 表达对象 | UI 展示 |
 |------|----------|---------|
 | claim 无 evidence 且 has_evidence_gap=false | `TraceResolution::MissingEvidence` | 红色错误提示" claim 未绑定证据" |
-| claim has_evidence_gap=true | `GroundedAnswerClaim.confidence = unknown` | "证据缺失：..." |
+| claim has_evidence_gap=true | `TraceResolution::ClaimOnly` | "证据缺失：..." |
 | 节点 trace_refs 为空 | `resolved_traces = []` | "无证据追溯" |
 | 节点 trace_refs 只有 inferred | `confidence = inferred` | 灰色/虚线样式 |
-| Q&A 无法回答 | `confidence = unknown` + warnings | "根据当前证据无法确定" |
+| Q&A 无法回答 | `GroundedAnswer.confidence = unknown` + `warnings` 非空 | "根据当前证据无法确定" |
+| Q&A unknown claim 引用 inspected evidence | `GroundedAnswerClaim.confidence = unknown`，`citation_indices` 为空，`reason` 非空 | "已检查以下证据，但不足以回答：..." |
+
+**Q&A citation 规则总结**：
+- confirmed / supported / inferred / conflicting claim：必须至少有一个有效 citation。
+- unknown claim：不允许伪造 citation；`citation_indices` 必须为空；`reason` 必须非空；`GroundedAnswer.warnings` 必须包含 evidence_gap 或 out_of_context 语义。
+- 整体 `GroundedAnswer.citations` 为空仅当整体 `confidence = unknown` 且 `warnings` 非空。
 
 ## 9. 版本与兼容性
 

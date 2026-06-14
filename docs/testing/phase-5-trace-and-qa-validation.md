@@ -30,13 +30,13 @@ Phase 5 编码完成后，以下维度应通过验证：
 |----------|----------|----------|
 | `trace/models.rs` | SelectedTraceTarget / TraceRefResolved serde | 4 |
 | `trace/resolver.rs` | TraceResolver | 10 |
-| `trace/source_resolver.rs` | SourceExcerptResolver | 8 |
-| `trace/qa/mock_provider.rs` | MockProvider | 4 |
-| `trace/qa/validator.rs` | GroundedQaValidator | 6 |
+| `trace/source_resolver.rs` | SourceExcerptResolver | 12 |
+| `trace/qa/mock_provider.rs` | MockProvider | 5 |
+| `trace/qa/validator.rs` | GroundedQaValidator | 8 |
 | `commands/resolve_trace_target.rs` | command 层 | 4 |
 | `commands/get_source_excerpt.rs` | command 层 | 6 |
 | `commands/ask_grounded_question.rs` | command 层 | 4 |
-| **合计** | | **~46** |
+| **合计** | | **~53** |
 
 ### 2.2 前端验证
 
@@ -70,6 +70,10 @@ Phase 5 编码完成后，以下维度应通过验证：
 | direct source_location | source_path + line_range | 同上 |
 | source_path outside root | source_path = `/etc/passwd` | 返回 `source_path_not_allowed` |
 | symlink | source_path 为 symlink | 返回 `source_path_not_allowed` |
+| root_path symlink | `root_path` 本身为 symlink | 拒绝并返回 `source_path_not_allowed` |
+| parent dir symlink | `source_path` 的某一级父目录为 symlink | 返回 `source_path_not_allowed` |
+| string-prefix trick | `root_path = /tmp/root`, `source_path = /tmp/root2/evil.v` | 返回 `source_path_not_allowed` |
+| canonical outside root | `source_path` 经 canonicalize 后跳出 `root_path`（如通过 `..` 拼接） | 返回 `source_path_not_allowed` |
 | binary file | source_path 指向二进制 | 返回 `source_file_unreadable` |
 | non-UTF8 file | source_path 指向非 UTF-8 | 返回 `source_file_unreadable` |
 | too-large file | 文件 > 5MB | 返回 `source_file_unreadable` |
@@ -80,9 +84,12 @@ Phase 5 编码完成后，以下维度应通过验证：
 
 | 用例 | 输入 | 预期 |
 |------|------|------|
-| answer cites evidence | question 匹配关键词 | `GroundedAnswer.citations` 非空 |
-| answer returns unknown | question 无法匹配 | `confidence = unknown`，`reason` 非空 |
-| validator rejects no citation | 构造无 citation 的 answer | `qa_validation_failed` |
+| answer cites evidence | question 匹配关键词 | `GroundedAnswer.citations` 非空，claim 非 unknown |
+| answer returns unknown | question 无法匹配 | `confidence = unknown`，`citations = []`，`reason` 非空，`warnings` 非空 |
+| unknown answer without citation passes | 构造 `confidence = unknown` 且 `citations = []`，但 `reason` 和 `warnings` 非空 | validator 通过 |
+| validator rejects no citation for non-unknown claim | 构造 supported/confirmed/inferred/conflicting claim 但无 citation | `qa_validation_failed` |
+| unknown answer with fake citation fails | 构造 `confidence = unknown` 但伪造 citation | `qa_validation_failed` |
+| MockProvider unanswerable returns unknown without fabricated citation | 提问无法匹配任何关键词 | 返回 `confidence = unknown`，`citations = []`，不伪造 citation |
 | validator rejects audit words | answer 含"PASS" | `qa_validation_failed` |
 | validator rejects fake evidence_id | citation 引用不存在 evidence | `qa_validation_failed` |
 | degraded flag | MockProvider 返回 | `is_degraded = true` |
@@ -144,7 +151,7 @@ rg "PASS|HOLD|正确|错误|审计" src/ src-tauri/src/trace/
 ## 7. Phase 5 完成标准
 
 - P5-T01~P5-T10 全部完成。
-- Rust 测试新增 ~46 个且全部通过，总测试数 ≥ 306。
+- Rust 测试新增 ~53 个且全部通过，总测试数 ≥ 313。
 - `npm run build` 通过。
 - `cargo check` 通过。
 - 桌面验收 10/10 通过。

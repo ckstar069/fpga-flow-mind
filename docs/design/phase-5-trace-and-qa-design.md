@@ -80,9 +80,13 @@ GroundedQaValidator ──────────→ GroundedAnswer (validated)
 1. 前端组装 `GroundedQuestion`：question + stage_id + selected_target + understanding + evidence_collection。
 2. 调用 `ask_grounded_question(...)`。
 3. 后端 `GroundedQaContextBuilder` 构建 prompt/context。
-4. `MockProvider` 基于关键词/模板生成 `GroundedAnswer`（确定性）。
+4. `MockProvider` 基于关键词/模板生成 `GroundedAnswer`（确定性）：
+   - 可回答时返回带 citations 的回答。
+   - 不可回答时返回 `confidence = unknown`，`citations = []`，`warnings` 包含"当前阶段证据不足"或"问题超出当前阶段上下文"，每个 claim 的 `citation_indices = []` 且 `reason` 非空。
 5. `GroundedQaValidator` 检查：
-   - 至少一个 citation；
+   - 非 unknown claim 必须有至少一个有效 citation；
+   - unknown claim 允许无 citation，但必须有 reason；
+   - 整体 confidence 非 unknown 时 `citations` 非空；
    - confidence 在合法枚举内；
    - 文本不含"PASS/HOLD""正确/错误"等审计用语。
 6. 返回 `GroundedAnswer`。
@@ -118,7 +122,7 @@ pub fn get_source_excerpt(
     location: SourceLocation,
     root_path: String,
 ) -> CommandResult<SourceExcerpt> {
-    // 只读访问目标项目文件
+    // 只读访问目标项目文件；root_path 与 source_path 均须经 safety_guard 等价校验
 }
 ```
 
@@ -126,7 +130,7 @@ pub fn get_source_excerpt(
 |------|------|
 | 输入 | `SourceLocation`（含 source_path + line_range）+ `root_path` |
 | 输出 | `SourceExcerpt` |
-| 错误分支 | source_path 不在 root_path 下；文件不存在；symlink；二进制；非 UTF-8；超大文件；line_range 越界 |
+| 错误分支 | root_path 校验失败；source_path 不在 root_path 下；source_path 或中间父目录为 symlink；路径不存在；不是普通文件；二进制；非 UTF-8；超大文件；line_range 越界 |
 | 访问目标项目 | ✅ 只读 |
 
 ### 3.3 ask_grounded_question
@@ -153,12 +157,29 @@ pub fn ask_grounded_question(
 
 读取目标项目文件前必须验证：
 
-1. `source_path` 是绝对路径。
-2. `source_path` 位于 `root_path` 之下（使用 `std::path::Path::starts_with` 解析真实路径）。
-3. `source_path` 不是 symlink（使用 `std::fs::symlink_metadata` 检查 `file_type().is_symlink()`）。
-4. `source_path` 存在且是文件。
-5. `source_path` 大小 ≤ 5 MB。
-6. `source_path` 内容可读且为 UTF-8。
+#### 4.1.1 root_path 校验（与 Phase 1 safety_guard 等价）
+
+1. `root_path` 非空。
+2. `root_path` 存在。
+3. `root_path` 是目录。
+4. `root_path` 本身不是 symlink。
+5. `canonicalize(root_path)` 得到 `canonical_root`，后续校验均基于 canonical 路径。
+
+#### 4.1.2 source_path 校验
+
+1. `source_path` 非空且是绝对路径。
+2. 使用 `symlink_metadata` 检查 `source_path` 本身不是 symlink。
+3. 检查 `source_path` 的每一级父路径直到 `canonical_root`，不允许任何中间组件是 symlink。
+4. `canonicalize(source_path)` 得到 `canonical_source`。
+5. `canonical_source.starts_with(canonical_root)` 必须为 true（注意：使用 canonical 路径的 prefix 判断，不得使用字符串前缀）。
+6. `canonical_source` 必须是普通文件（不是目录、symlink、设备文件等）。
+7. `canonical_source` 大小 ≤ 5 MB。
+8. `canonical_source` 内容可读且为 UTF-8。
+
+**禁止行为**：
+- 不得只用字符串前缀判断（例如 `/tmp/root2` 不能通过 `/tmp/root` 的检查）。
+- 不得在未检查 symlink 的情况下直接信任 `canonicalize` 结果。
+- 从 `evidence_id` 派生 `SourceLocation` 时也不得跳过上述任何校验。
 
 ### 4.2 line_range 校验
 
@@ -203,10 +224,11 @@ pub struct GroundedQaContext {
 
 - 目的：仅验证 `GroundedAnswer` 数据结构和 UI 闭环。
 - 行为：
-  - 若 question 包含"位宽""width"，返回一条关于位宽的 claim，引用某 signal evidence。
-  - 若 question 包含"做什么""功能"，返回基于 `summary.short` 的回答。
-  - 若 question 无法匹配任何关键词，返回 `confidence = unknown` 的回答。
-- 所有返回必须包含至少一个 `GroundedAnswerCitation`。
+  - 若 question 包含"位宽""width"，返回一条关于位宽的 claim（confidence = supported/inferred），引用某 signal evidence，citations 非空。
+  - 若 question 包含"做什么""功能"，返回基于 `summary.short` 的回答（confidence = supported），引用相关 evidence/claim，citations 非空。
+  - 若 question 无法匹配任何关键词，返回 `confidence = unknown` 的回答，`citations = []`，`warnings` 包含 `GroundedQaWarning { code: "evidence_gap", message: "当前阶段证据不足以回答该问题" }`，claim 的 `citation_indices = []` 且 `reason` 非空。
+- 所有非 unknown 返回必须包含至少一个 `GroundedAnswerCitation`。
+- unknown 返回不得伪造 citation。
 - `is_degraded = true`。
 
 ### 5.4 真实 LLM
@@ -221,10 +243,11 @@ pub struct GroundedQaContext {
 
 1. `claims` 非空或 `text` 非空。
 2. 每条 `claim` 的 `confidence` 在合法枚举内。
-3. `citations` 非空；每条 citation 至少包含 `evidence_id`、`claim_id`、`source_location` 之一。
-4. citation 引用的 `evidence_id` / `claim_id` 必须在输入 context 中存在。
-5. 回答文本不包含"PASS""HOLD""正确""错误""审计"等词汇。
-6. 若 `confidence = unknown`，必须提供 `reason`。
+3. **非 unknown claim**：`citation_indices` 必须非空；引用的 citation 必须存在且至少包含 `evidence_id`、`claim_id`、`source_location` 之一。
+4. **unknown claim**：`citation_indices` 必须为空；不允许伪造 citation；必须提供非空 `reason`；`GroundedAnswer.warnings` 必须包含 evidence_gap 或 out_of_context 语义。
+5. 整体 `GroundedAnswer.citations` 为空仅当整体 `confidence = unknown` 且 `warnings` 非空；否则必须至少有一个有效 citation。
+6. citation 引用的 `evidence_id` / `claim_id` 必须在输入 context 中存在。
+7. 回答文本不包含"PASS""HOLD""正确""错误""审计"等词汇。
 
 ## 7. 模块布局建议
 
