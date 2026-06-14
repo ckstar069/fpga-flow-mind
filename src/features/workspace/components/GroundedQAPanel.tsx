@@ -146,7 +146,7 @@ export default function GroundedQAPanel({
               <h4 style={{ fontSize: 13, margin: '0 0 8px', color: '#666' }}>claims</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {answer.claims.map((claim, i) => (
-                  <ClaimItem key={i} claim={claim} />
+                  <ClaimItem key={i} claim={claim} citations={answer.citations} />
                 ))}
               </div>
             </div>
@@ -207,7 +207,21 @@ export default function GroundedQAPanel({
   );
 }
 
-function ClaimItem({ claim }: { claim: GroundedAnswerClaim }) {
+function ClaimItem({
+  claim,
+  citations,
+}: {
+  claim: GroundedAnswerClaim;
+  citations: GroundedAnswerCitation[];
+}) {
+  const readableIndices = claim.citation_indices
+    .map((idx) => {
+      const citation = citations[idx];
+      if (!citation) return `无效索引 ${idx}`;
+      return String(citation.index);
+    })
+    .join(', ');
+
   return (
     <div
       style={{
@@ -221,7 +235,7 @@ function ClaimItem({ claim }: { claim: GroundedAnswerClaim }) {
         <ConfidenceTag confidence={claim.confidence} />
         {claim.citation_indices.length > 0 && (
           <span style={{ fontSize: 11, color: '#666' }}>
-            citation: {claim.citation_indices.join(', ')}
+            citation: {readableIndices}
           </span>
         )}
       </div>

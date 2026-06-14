@@ -1,7 +1,5 @@
-use crate::evidence::models::EvidenceCollection;
-use crate::trace::models::{
-    GroundedAnswer, GroundedAnswerClaim, GroundedQaContext,
-};
+use crate::evidence::models::{EvidenceCollection, EvidenceItem};
+use crate::trace::models::{GroundedAnswer, GroundedAnswerClaim, GroundedQaContext};
 use crate::understanding::models::{ClaimConfidence, ImplementationUnderstanding};
 
 /// 验证结果
@@ -45,8 +43,51 @@ impl GroundedQaValidator {
     }
 
     fn validate_claims(answer: &GroundedAnswer, errors: &mut Vec<String>) {
+        let has_unknown_claim = answer
+            .claims
+            .iter()
+            .any(|c| c.confidence == ClaimConfidence::Unknown);
+
         for (i, claim) in answer.claims.iter().enumerate() {
             Self::validate_single_claim(claim, answer, i, errors);
+        }
+
+        // 任一 claim 为 unknown 时，整体 warnings 必须满足 evidence_gap / out_of_context 规则
+        if has_unknown_claim {
+            Self::validate_unknown_warnings(answer, errors, "存在 unknown claim");
+        }
+    }
+
+    /// 校验 unknown 回答/claim 的 warnings 必须包含 evidence_gap 或 out_of_context 语义。
+    fn validate_unknown_warnings(
+        answer: &GroundedAnswer,
+        errors: &mut Vec<String>,
+        context: &str,
+    ) {
+        if answer.warnings.is_empty() {
+            errors.push(format!("{}: warnings 不能为空", context));
+            return;
+        }
+
+        let has_valid_warning = answer.warnings.iter().any(|w| {
+            let code = w.code.to_lowercase();
+            let message = w.message.to_lowercase();
+            code.contains("evidence_gap")
+                || code.contains("out_of_context")
+                || code.contains("evidence")
+                || code.contains("context")
+                || message.contains("证据不足")
+                || message.contains("证据不足以")
+                || message.contains("超出当前上下文")
+                || message.contains("越界")
+                || message.contains("无法回答")
+        });
+
+        if !has_valid_warning {
+            errors.push(format!(
+                "{}: warnings 必须包含 evidence_gap 或 out_of_context 语义",
+                context
+            ));
         }
     }
 
@@ -114,6 +155,8 @@ impl GroundedQaValidator {
             .iter()
             .map(|c| c.claim_id.clone())
             .collect();
+        let known_source_locations: Vec<&EvidenceItem> =
+            context.evidence_collection.evidence_items.iter().collect();
 
         // 整体 confidence 非 unknown 时，citations 必须非空
         if answer.confidence != ClaimConfidence::Unknown && answer.citations.is_empty() {
@@ -121,8 +164,11 @@ impl GroundedQaValidator {
         }
 
         // unknown 回答 citations 必须为空
-        if answer.confidence == ClaimConfidence::Unknown && !answer.citations.is_empty() {
-            errors.push("unknown 回答不得伪造 citation".to_string());
+        if answer.confidence == ClaimConfidence::Unknown {
+            if !answer.citations.is_empty() {
+                errors.push("unknown 回答不得伪造 citation".to_string());
+            }
+            Self::validate_unknown_warnings(answer, errors, "unknown 回答");
         }
 
         for (i, citation) in answer.citations.iter().enumerate() {
@@ -140,9 +186,13 @@ impl GroundedQaValidator {
                 .as_ref()
                 .map(|id| known_claim_ids.contains(id))
                 .unwrap_or(false);
-            let has_location = citation.source_location.is_some();
+            let has_valid_location = citation
+                .source_location
+                .as_ref()
+                .map(|loc| Self::source_location_matches_evidence(loc, &known_source_locations))
+                .unwrap_or(false);
 
-            if !has_evidence && !has_claim && !has_location {
+            if !has_evidence && !has_claim && !has_valid_location {
                 errors.push(format!(
                     "citation[{}] 未引用任何有效 evidence_id / claim_id / source_location",
                     i
@@ -163,7 +213,33 @@ impl GroundedQaValidator {
                     errors.push(format!("citation[{}] 引用不存在的 claim_id: {}", i, id));
                 }
             }
+
+            if let Some(loc) = &citation.source_location {
+                if !Self::source_location_matches_evidence(loc, &known_source_locations) {
+                    errors.push(format!(
+                        "citation[{}] source_location 不匹配任何输入 evidence: {} 行 {}–{}",
+                        i, loc.source_path, loc.line_range.start, loc.line_range.end
+                    ));
+                }
+            }
         }
+    }
+
+    fn source_location_matches_evidence(
+        loc: &crate::trace::models::SourceLocation,
+        evidence_items: &[&EvidenceItem],
+    ) -> bool {
+        evidence_items.iter().any(|e| {
+            let path_match = e.source_path == loc.source_path;
+            let range_match =
+                e.line_range.start == loc.line_range.start && e.line_range.end == loc.line_range.end;
+            let evidence_id_match = loc
+                .evidence_id
+                .as_ref()
+                .map(|id| id == &e.evidence_id)
+                .unwrap_or(true);
+            path_match && range_match && evidence_id_match
+        })
     }
 
     fn validate_content_safety(answer: &GroundedAnswer, errors: &mut Vec<String>) {
@@ -428,5 +504,111 @@ mod tests {
         let result = GroundedQaValidator::validate(&answer, &context);
         assert!(!result.is_valid);
         assert!(result.errors.iter().any(|e| e.contains("正确")));
+    }
+
+    #[test]
+    fn unknown_answer_without_warnings_fails() {
+        let context = make_context();
+        let mut answer = make_unknown_answer();
+        answer.warnings.clear();
+        let result = GroundedQaValidator::validate(&answer, &context);
+        assert!(!result.is_valid);
+        assert!(result.errors.iter().any(|e| e.contains("warnings")));
+    }
+
+    #[test]
+    fn unknown_answer_with_irrelevant_warning_fails() {
+        let context = make_context();
+        let mut answer = make_unknown_answer();
+        answer.warnings = vec![GroundedQaWarning {
+            code: "random".to_string(),
+            message: "随便一个提示".to_string(),
+        }];
+        let result = GroundedQaValidator::validate(&answer, &context);
+        assert!(!result.is_valid);
+        assert!(result
+            .errors
+            .iter()
+            .any(|e| e.contains("evidence_gap") || e.contains("out_of_context")));
+    }
+
+    #[test]
+    fn unknown_claim_without_answer_warning_fails() {
+        let context = make_context();
+        let mut answer = make_answer_with_citation();
+        answer.confidence = ClaimConfidence::Unknown;
+        answer.citations.clear();
+        answer.claims[0].confidence = ClaimConfidence::Unknown;
+        answer.claims[0].citation_indices.clear();
+        answer.claims[0].reason = Some("证据不足".to_string());
+        answer.warnings.clear();
+        let result = GroundedQaValidator::validate(&answer, &context);
+        assert!(!result.is_valid);
+        assert!(result.errors.iter().any(|e| e.contains("warnings")));
+    }
+
+    #[test]
+    fn unknown_answer_with_evidence_gap_warning_passes() {
+        let context = make_context();
+        let mut answer = make_unknown_answer();
+        answer.warnings = vec![GroundedQaWarning {
+            code: "out_of_context".to_string(),
+            message: "问题超出当前阶段上下文".to_string(),
+        }];
+        let result = GroundedQaValidator::validate(&answer, &context);
+        assert!(result.is_valid);
+    }
+
+    #[test]
+    fn citation_source_location_not_from_evidence_fails() {
+        let context = make_context();
+        let mut answer = make_answer_with_citation();
+        answer.citations[0].evidence_id = None;
+        answer.citations[0].claim_id = None;
+        answer.citations[0].source_location = Some(SourceLocation {
+            source_path: "/project/NotExist.v".to_string(),
+            line_range: LineRange { start: 1, end: 10 },
+            evidence_id: None,
+        });
+        let result = GroundedQaValidator::validate(&answer, &context);
+        assert!(!result.is_valid);
+        assert!(result
+            .errors
+            .iter()
+            .any(|e| e.contains("source_location")));
+    }
+
+    #[test]
+    fn citation_source_location_evidence_id_mismatch_fails() {
+        let context = make_context();
+        let mut answer = make_answer_with_citation();
+        answer.citations[0].evidence_id = None;
+        answer.citations[0].claim_id = None;
+        answer.citations[0].source_location = Some(SourceLocation {
+            source_path: "/project/L0.v".to_string(),
+            line_range: LineRange { start: 10, end: 20 },
+            evidence_id: Some("EV-WRONG".to_string()),
+        });
+        let result = GroundedQaValidator::validate(&answer, &context);
+        assert!(!result.is_valid);
+        assert!(result
+            .errors
+            .iter()
+            .any(|e| e.contains("source_location")));
+    }
+
+    #[test]
+    fn citation_source_location_matching_evidence_passes() {
+        let context = make_context();
+        let mut answer = make_answer_with_citation();
+        answer.citations[0].evidence_id = None;
+        answer.citations[0].claim_id = None;
+        answer.citations[0].source_location = Some(SourceLocation {
+            source_path: "/project/L0.v".to_string(),
+            line_range: LineRange { start: 10, end: 20 },
+            evidence_id: Some("EV-L0-0001".to_string()),
+        });
+        let result = GroundedQaValidator::validate(&answer, &context);
+        assert!(result.is_valid);
     }
 }
