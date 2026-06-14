@@ -85,7 +85,8 @@ docs/
 7. `docs/planning/phase-4-implementation-plan.md`（Phase 4 编码实施计划，active）
 8. `docs/planning/phase-4-completion-review.md`（Phase 4 完成状态，active）
 9. `docs/planning/phase-5-implementation-plan.md`（Phase 5 编码实施计划，active）
-10. `docs/design/README.md`（设计文档索引）
+10. `docs/planning/phase-5-completion-review.md`（Phase 5 完成状态，active）
+11. `docs/design/README.md`（设计文档索引）
 11. `docs/requirements/README.md`
 12. 当前阶段应完成的 story 列表
 

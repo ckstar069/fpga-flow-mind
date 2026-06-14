@@ -86,8 +86,9 @@ updated: YYYY-MM-DD
 | [`phase-4-implementation-plan.md`](phase-4-implementation-plan.md) | `active` | Phase 4 编码实施计划：进入条件、P4-T01~P4-T09 任务拆解、依赖关系、4 个 Batch 划分、退出条件、安全边界 | Phase 4 编码实施依据 |
 | [`phase-4-completion-review.md`](phase-4-completion-review.md) | `active` | Phase 4 收尾验收与完成审查：P4-T01~P4-T09 完成状态、后端/前端/桌面验收结果、**允许进入 Phase 5** | Phase 4 完成后必读 |
 | [`phase-5-implementation-plan.md`](phase-5-implementation-plan.md) | `active` | Phase 5 编码实施计划：进入条件、P5-T01~P5-T11 任务拆解、5 个 Batch 划分、退出条件、安全边界、进入 Phase 6 条件、Batch A 仅允许 P5-T01~P5-T03 | Phase 5 编码实施依据 |
+| [`phase-5-completion-review.md`](phase-5-completion-review.md) | `active` | Phase 5 完成审查：P5-T01~P5-T11 完成状态、真实 Tauri 桌面验收结果、测试/安全回归结果、进入 Phase 6 条件 | Phase 5 完成后必读 |
 
-> **Phase 4 已完成，允许进入 Phase 5。**
+> **Phase 5 已完成，允许进入 Phase 6 准备阶段。**
 >
 > 验收确认：
 > - ✅ P4-T01~P4-T09 全部完成
