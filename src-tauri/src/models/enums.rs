@@ -43,6 +43,13 @@ pub enum ErrorCode {
     NonUtf8FileSkipped,
     // Phase 3 新增
     UnderstandingGenerationFailed,
+    // Phase 5 新增（定义见 docs/design/phase-5-trace-and-qa-design.md §8）
+    TraceTargetNotFound,
+    SourcePathNotAllowed,
+    SourceFileUnreadable,
+    LineRangeInvalid,
+    QaGenerationFailed,
+    QaValidationFailed,
 }
 
 /// 源码文件的语义分类
@@ -116,6 +123,12 @@ mod tests {
             ErrorCode::BinaryFileSkipped,
             ErrorCode::NonUtf8FileSkipped,
             ErrorCode::UnderstandingGenerationFailed,
+            ErrorCode::TraceTargetNotFound,
+            ErrorCode::SourcePathNotAllowed,
+            ErrorCode::SourceFileUnreadable,
+            ErrorCode::LineRangeInvalid,
+            ErrorCode::QaGenerationFailed,
+            ErrorCode::QaValidationFailed,
         ] {
             let json = serde_json::to_string(&code).unwrap();
             let back: ErrorCode = serde_json::from_str(&json).unwrap();
@@ -140,6 +153,14 @@ mod tests {
         assert_eq!(
             serde_json::to_string(&ErrorCode::NonUtf8FileSkipped).unwrap(),
             "\"non_utf8_file_skipped\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ErrorCode::SourcePathNotAllowed).unwrap(),
+            "\"source_path_not_allowed\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ErrorCode::LineRangeInvalid).unwrap(),
+            "\"line_range_invalid\""
         );
     }
 }

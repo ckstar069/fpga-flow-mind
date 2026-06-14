@@ -1,6 +1,7 @@
 pub mod commands;
 pub mod evidence;
 pub mod models;
+pub mod trace;
 pub mod understanding;
 pub mod views;
 pub mod workspace;
