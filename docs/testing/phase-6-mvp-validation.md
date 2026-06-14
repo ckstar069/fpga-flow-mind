@@ -1,13 +1,13 @@
 # Phase 6 MVP 验证设计
 
 ---
-status: draft
+status: active
 updated: 2026-06-14
 ---
 
 > 本文档定义 Phase 6（持久化、回放与 MVP 总体验收）的验证策略、测试矩阵、安全回归清单和桌面验收步骤。
 >
-> 本文档为 draft，仅供评审与讨论，不得作为 Phase 6 编码唯一依据。本轮修复后仍需审核并转为 active，方可进入 Phase 6 编码。
+> 本文档 status 为 active，是 Phase 6 编码的实施依据之一。
 
 ## 1. 验证目标
 

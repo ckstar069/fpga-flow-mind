@@ -56,7 +56,7 @@ updated: 2026-06-11
 - **不要把产品做成 Markdown report viewer** — 用户看到的应是交互式视图，不是静态报告
 - **不要追求复杂可视化效果** — 清晰理解优先于视觉炫技
 
-| [`phase-6-session-and-mvp-view.md`](phase-6-session-and-mvp-view.md) | `draft` | Phase 6 Session 管理与 MVP 验收 UI/UX 设计：顶部标题栏保存状态、最近项目列表、加载失败状态、删除确认、MVP 验收 UI 流程、文案规范 | Phase 6 前端编码前必读 |
+| [`phase-6-session-and-mvp-view.md`](phase-6-session-and-mvp-view.md) | `active` | Phase 6 Session 管理与 MVP 验收 UI/UX 设计：顶部标题栏保存状态、最近项目列表、加载失败状态、删除确认、MVP 验收 UI 流程、文案规范 | Phase 6 前端编码前必读 |
 
 ## UI/UX 文档层级关系
 

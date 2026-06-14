@@ -20,7 +20,7 @@ updated: 2026-06-11
 | `manual QA checklist` | 手工 QA 清单 | 每次发布前必须手工验证的项目 |
 | `safety regression checklist` | 安全回归清单 | 确保目标项目只读等安全约束未被破坏 |
 
-| [`phase-6-mvp-validation.md`](phase-6-mvp-validation.md) | `draft` | Phase 6 持久化与 MVP 总体验收验证设计：测试矩阵、后端/前端/桌面验收 12 步骤、安全回归清单、MVP 完成标准 | Phase 6 验证与验收依据 |
+| [`phase-6-mvp-validation.md`](phase-6-mvp-validation.md) | `active` | Phase 6 持久化与 MVP 总体验收验证设计：测试矩阵、后端/前端/桌面验收 12 步骤、安全回归清单、MVP 完成标准 | Phase 6 验证与验收依据 |
 
 ## 测试关注点
 

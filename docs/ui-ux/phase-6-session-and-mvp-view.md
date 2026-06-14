@@ -1,13 +1,13 @@
 # Phase 6 Session 管理与 MVP 验收 UI/UX 设计
 
 ---
-status: draft
+status: active
 updated: 2026-06-14
 ---
 
 > 本文档定义 Phase 6 的 session 管理 UI/UX 设计：最近项目列表、保存状态、加载入口、加载失败/版本不兼容/目标路径不存在/checksum mismatch 的展示。同时定义 MVP 总体验收的桌面 UI 流程。
 >
-> 本文档为 draft，仅供评审与讨论，不得作为 Phase 6 编码唯一依据。本轮修复后仍需审核并转为 active，方可进入 Phase 6 编码。
+> 本文档 status 为 active，是 Phase 6 编码的实施依据之一。
 
 ## 1. 整体布局
 

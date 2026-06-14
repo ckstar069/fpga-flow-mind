@@ -1,13 +1,13 @@
 # Phase 6 持久化与回放后端设计
 
 ---
-status: draft
+status: active
 updated: 2026-06-14
 ---
 
 > 本文档定义 Phase 6 持久化与回放的后端概要设计、核心流程、Tauri commands、安全边界和原子性策略。
 >
-> 本文档为 draft，仅供评审与讨论，不得作为 Phase 6 编码唯一依据。本轮修复后仍需审核并转为 active，方可进入 Phase 6 编码。
+> 本文档 status 为 active，是 Phase 6 编码的实施依据之一。
 
 ## 1. 概要设计
 

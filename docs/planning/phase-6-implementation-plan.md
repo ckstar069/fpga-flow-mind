@@ -1,27 +1,27 @@
 # Phase 6 编码实施计划
 
 ---
-status: draft
+status: active
 updated: 2026-06-14
 ---
 
 > 本文档定义 Phase 6（持久化、回放与 MVP 验收）的编码实施计划，包含任务拆解、依赖关系、Batch 划分、进入/退出条件、验收标准和安全边界。
 >
-> 本文档为 draft，仅供评审与讨论，不得作为 Phase 6 编码唯一依据。本轮修复后仍需审核并转为 active，方可进入 Phase 6 编码。
+> 本文档 status 为 active，是 Phase 6 Batch A 编码的实施依据。进入 Batch B 及后续前需确认 Batch A 验收通过。
 
 ## 1. 进入条件
 
 | 条件 | 状态 |
 |------|------|
 | Phase 5 completion review status 为 active | ✅ |
-| Phase 5 真实 Tauri 桌面验收通过 | ✅ 9/9 |
-| Phase 6 需求文档已创建 | ✅ `phase-6-persistence-and-mvp-requirements.md`（draft） |
-| Phase 6 数据模型设计已创建 | ✅ `phase-6-persistence-model.md`（draft） |
-| Phase 6 后端设计已创建 | ✅ `phase-6-persistence-and-replay-design.md`（draft） |
-| Phase 6 UI/UX 文档已创建 | ✅ `phase-6-session-and-mvp-view.md`（draft） |
-| Phase 6 测试文档已创建 | ✅ `phase-6-mvp-validation.md`（draft） |
-| Phase 6 实施计划已创建 | ✅ 本文档（draft） |
-| **以上文档修复并审核后全部转为 active** | ⏳ 当前未满足，不允许进入 Phase 6 编码 |
+| Phase 5 真实 Tauri 桌面验收通过 | ✅ 12/12 |
+| Phase 6 需求文档 status 为 active | ✅ `phase-6-persistence-and-mvp-requirements.md`（active） |
+| Phase 6 数据模型设计 status 为 active | ✅ `phase-6-persistence-model.md`（active） |
+| Phase 6 后端设计 status 为 active | ✅ `phase-6-persistence-and-replay-design.md`（active） |
+| Phase 6 UI/UX 文档 status 为 active | ✅ `phase-6-session-and-mvp-view.md`（active） |
+| Phase 6 测试文档 status 为 active | ✅ `phase-6-mvp-validation.md`（active） |
+| Phase 6 实施计划 status 为 active | ✅ 本文档（active） |
+| **以上文档全部转为 active** | ✅ 已满足，允许进入 Phase 6 Batch A 编码（P6-T01~P6-T03） |
 
 ## 2. 任务拆分
 
