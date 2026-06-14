@@ -72,21 +72,11 @@ export default function WorkspacePage() {
   const excerptGuardRef = useRef<number>(0);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ─── 打开项目 ───
-  const handleOpen = useCallback(async () => {
-    const path = pathInput.trim();
-    if (!path) return;
-    setState({ phase: 'opening' });
-    try {
-      const profile = await openWorkspace(path);
-      setState({ phase: 'loaded', profile });
-    } catch (err) {
-      setState({ phase: 'error', error: makeUiError(err) });
-    }
-  }, [pathInput]);
-
   // ─── 清空 trace 相关状态 ───
   const clearTraceState = useCallback(() => {
+    // 递增守卫，使所有旧 trace/excerpt 请求失效
+    traceGuardRef.current += 1;
+    excerptGuardRef.current += 1;
     setSelectedTraceTarget(null);
     setResolvedTraces([]);
     setTraceLoading(false);
@@ -100,6 +90,20 @@ export default function WorkspacePage() {
       highlightTimerRef.current = null;
     }
   }, []);
+
+  // ─── 打开项目 ───
+  const handleOpen = useCallback(async () => {
+    const path = pathInput.trim();
+    if (!path) return;
+    clearTraceState();
+    setState({ phase: 'opening' });
+    try {
+      const profile = await openWorkspace(path);
+      setState({ phase: 'loaded', profile });
+    } catch (err) {
+      setState({ phase: 'error', error: makeUiError(err) });
+    }
+  }, [pathInput, clearTraceState]);
 
   // ─── 选择阶段 ───
   const handleSelectStage = useCallback(
@@ -237,6 +241,7 @@ export default function WorkspacePage() {
     if (state.phase === 'understanding_loading') return state.profile;
     if (state.phase === 'understanding_loaded') return state.profile;
     if (state.phase === 'views_loading') return state.profile;
+    if (state.phase === 'understanding_error') return state.profile;
     if (state.phase === 'views_loaded') return state.profile;
     if (state.phase === 'views_error') return state.profile;
     return null;
@@ -255,6 +260,7 @@ export default function WorkspacePage() {
     if (state.phase === 'evidence_error') return state.stageId;
     if (state.phase === 'understanding_loading') return state.stageId;
     if (state.phase === 'understanding_loaded') return state.stageId;
+    if (state.phase === 'understanding_error') return state.stageId;
     if (state.phase === 'views_loading') return state.stageId;
     if (state.phase === 'views_loaded') return state.stageId;
     if (state.phase === 'views_error') return state.stageId;
@@ -335,6 +341,8 @@ export default function WorkspacePage() {
   // ─── 处理视图节点选择 ───
   const handleSelectTraceTarget = useCallback(
     async (target: SelectedTraceTarget) => {
+      traceGuardRef.current += 1;
+      excerptGuardRef.current += 1;
       setSelectedTraceTarget(target);
       setTraceError(null);
       setSourceExcerpt(null);
@@ -352,7 +360,7 @@ export default function WorkspacePage() {
         return;
       }
 
-      const guard = ++traceGuardRef.current;
+      const guard = traceGuardRef.current;
       setTraceLoading(true);
       try {
         const traces = await resolveTraceTarget(
@@ -378,6 +386,8 @@ export default function WorkspacePage() {
 
   // ─── 清空选择 ───
   const handleClearTraceTarget = useCallback(() => {
+    traceGuardRef.current += 1;
+    excerptGuardRef.current += 1;
     setSelectedTraceTarget(null);
     setResolvedTraces([]);
     setTraceError(null);
@@ -398,13 +408,14 @@ export default function WorkspacePage() {
       const profile = currentProfile;
       if (!profile) return;
 
+      excerptGuardRef.current += 1;
       setExcerptError(null);
       setSourceExcerpt(null);
       if (location.evidence_id) {
         setCurrentSourceEvidenceId(location.evidence_id);
       }
 
-      const guard = ++excerptGuardRef.current;
+      const guard = excerptGuardRef.current;
       try {
         const excerpt = await getSourceExcerpt(location, profile.root_path);
         if (guard === excerptGuardRef.current) {
@@ -421,6 +432,7 @@ export default function WorkspacePage() {
 
   // ─── 关闭源码片段 ───
   const handleCloseSourceExcerpt = useCallback(() => {
+    excerptGuardRef.current += 1;
     setSourceExcerpt(null);
     setExcerptError(null);
     setCurrentSourceEvidenceId(null);

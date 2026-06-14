@@ -18,7 +18,7 @@ const LANGUAGE_LABEL: Record<Language, string> = {
 // ─── Props ──────────────────────────────────────────────────────────────
 
 interface SourceExcerptPanelProps {
-  excerpt: SourceExcerpt;
+  excerpt?: SourceExcerpt | null;
   onClose: () => void;
   error?: {
     message: string;
@@ -68,17 +68,19 @@ export default function SourceExcerptPanel({
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 15, fontWeight: 600 }}>源码片段</span>
-          <span
-            style={{
-              padding: '2px 8px',
-              borderRadius: 4,
-              fontSize: 12,
-              background: '#e3f2fd',
-              color: '#1565c0',
-            }}
-          >
-            {LANGUAGE_LABEL[excerpt.language] ?? excerpt.language}
-          </span>
+          {excerpt && (
+            <span
+              style={{
+                padding: '2px 8px',
+                borderRadius: 4,
+                fontSize: 12,
+                background: '#e3f2fd',
+                color: '#1565c0',
+              }}
+            >
+              {LANGUAGE_LABEL[excerpt.language] ?? excerpt.language}
+            </span>
+          )}
         </div>
         <button
           onClick={onClose}
@@ -96,29 +98,31 @@ export default function SourceExcerptPanel({
       </div>
 
       {/* 路径与行号范围 */}
-      <div
-        style={{
-          padding: '10px 14px',
-          borderBottom: '1px solid #e0e0e0',
-          fontSize: 12,
-          color: '#666',
-          wordBreak: 'break-all',
-        }}
-      >
-        <div>
-          <span style={{ color: '#999' }}>路径：</span>
-          <code style={{ fontSize: 12 }}>{excerpt.location.source_path}</code>
+      {excerpt && (
+        <div
+          style={{
+            padding: '10px 14px',
+            borderBottom: '1px solid #e0e0e0',
+            fontSize: 12,
+            color: '#666',
+            wordBreak: 'break-all',
+          }}
+        >
+          <div>
+            <span style={{ color: '#999' }}>路径：</span>
+            <code style={{ fontSize: 12 }}>{excerpt.location.source_path}</code>
+          </div>
+          <div style={{ marginTop: 4 }}>
+            <span style={{ color: '#999' }}>行号：</span>
+            {excerpt.location.line_range.start}–{excerpt.location.line_range.end}
+            {excerpt.location.evidence_id && (
+              <span style={{ marginLeft: 12, color: '#999' }}>
+                evidence: <code>{excerpt.location.evidence_id}</code>
+              </span>
+            )}
+          </div>
         </div>
-        <div style={{ marginTop: 4 }}>
-          <span style={{ color: '#999' }}>行号：</span>
-          {excerpt.location.line_range.start}–{excerpt.location.line_range.end}
-          {excerpt.location.evidence_id && (
-            <span style={{ marginLeft: 12, color: '#999' }}>
-              evidence: <code>{excerpt.location.evidence_id}</code>
-            </span>
-          )}
-        </div>
-      </div>
+      )}
 
       {/* 错误 */}
       {error && (
@@ -148,7 +152,7 @@ export default function SourceExcerptPanel({
       )}
 
       {/* 源码区域 */}
-      {!error && (
+      {!error && excerpt && (
         <div
           style={{
             maxHeight: 360,
@@ -179,7 +183,7 @@ export default function SourceExcerptPanel({
       )}
 
       {/* Warnings */}
-      {excerpt.warnings.length > 0 && (
+      {excerpt && excerpt.warnings.length > 0 && (
         <div
           style={{
             padding: '10px 14px',

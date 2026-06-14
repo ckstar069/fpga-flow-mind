@@ -463,7 +463,7 @@ export default function StageDetail({
       )}
 
       {/* SourceExcerptPanel */}
-      {sourceExcerpt && (
+      {(sourceExcerpt || excerptError) && (
         <SourceExcerptPanel
           excerpt={sourceExcerpt}
           onClose={onCloseSourceExcerpt ?? (() => {})}
