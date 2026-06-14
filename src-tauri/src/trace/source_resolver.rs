@@ -499,7 +499,7 @@ mod tests {
             symlink_dir(&real_dir, &link_dir).unwrap();
         }
 
-        let _file_in_real = write_lines(&real_dir, "test.v", 5);
+        write_lines(&real_dir, "test.v", 5);
         let via_link = link_dir.join("test.v");
 
         let location = SourceLocation {
