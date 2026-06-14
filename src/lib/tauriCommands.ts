@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { CommandResult, WorkspaceProfile, StageContext, EvidenceCollection, ImplementationUnderstanding, ViewGraph } from '../types/workspace';
+import type { CommandResult, WorkspaceProfile, StageContext, EvidenceCollection, ImplementationUnderstanding, ViewGraph, SelectedTraceTarget, TraceRefResolved, SourceLocation, SourceExcerpt, GroundedQuestion, GroundedAnswer } from '../types/workspace';
 
 export class CommandError extends Error {
   error_code: string;
@@ -54,6 +54,36 @@ export async function generateUnderstanding(rootPath: string, stageId: string): 
 export async function generateViews(understanding: ImplementationUnderstanding): Promise<ViewGraph[]> {
   const result = await invoke<CommandResult<ViewGraph[]>>('generate_views', {
     understanding: understanding,
+  });
+  return handleResult(result);
+}
+
+export async function resolveTraceTarget(
+  target: SelectedTraceTarget,
+  understanding: ImplementationUnderstanding,
+  evidenceCollection: EvidenceCollection,
+  views: ViewGraph[]
+): Promise<TraceRefResolved[]> {
+  const result = await invoke<CommandResult<TraceRefResolved[]>>('resolve_trace_target', {
+    target,
+    understanding,
+    evidenceCollection,
+    views,
+  });
+  return handleResult(result);
+}
+
+export async function getSourceExcerpt(location: SourceLocation, rootPath: string): Promise<SourceExcerpt> {
+  const result = await invoke<CommandResult<SourceExcerpt>>('get_source_excerpt', {
+    location,
+    rootPath,
+  });
+  return handleResult(result);
+}
+
+export async function askGroundedQuestion(question: GroundedQuestion): Promise<GroundedAnswer> {
+  const result = await invoke<CommandResult<GroundedAnswer>>('ask_grounded_question', {
+    question,
   });
   return handleResult(result);
 }
