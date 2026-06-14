@@ -1,13 +1,13 @@
 # Phase 5 Trace & Grounded Q&A 数据模型设计
 
 ---
-status: draft
-updated: 2026-06-13
+status: active
+updated: 2026-06-14
 ---
 
 > 本文档定义 Phase 5 所需的数据结构：选择目标、追溯解析结果、源码片段、面板状态、grounded 问答输入输出。所有 Rust/TypeScript 草案与 `mvp-functional-contract.md`、`phase-2-evidence-model.md`、`phase-3-understanding-model.md`、`phase-4-view-model.md` 对齐。
 >
-> 本文档为 draft，需审核收口后方可进入编码。
+> 本文档已收口（status=active），是 Phase 5 编码依据。
 
 ## 1. 设计目标
 

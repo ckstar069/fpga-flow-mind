@@ -1,13 +1,13 @@
 # Phase 5 证据回链与 Grounded Q&A 验证设计
 
 ---
-status: draft
-updated: 2026-06-13
+status: active
+updated: 2026-06-14
 ---
 
 > 本文档定义 Phase 5 的验证策略、测试矩阵、安全回归清单和桌面验收步骤。实施前必须与 `phase-5-trace-and-qa-requirements.md` 和 `phase-5-trace-and-qa-design.md` 对齐。
 >
-> 本文档为 draft，需审核收口后方可进入编码。
+> 本文档已收口（status=active），是 Phase 5 编码依据。
 
 ## 1. 验证目标
 

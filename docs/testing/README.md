@@ -64,4 +64,4 @@ updated: 2026-06-11
 | [`phase-2-evidence-validation.md`](phase-2-evidence-validation.md) | `active` | Phase 2 evidence collection 验证设计：测试夹具、Rust 单元/集成测试矩阵、前端组件测试、安全回归测试、手工验收 10 步骤、Phase 1 样例复用 | Phase 2 验证与验收依据 |
 | [`phase-3-understanding-validation.md`](phase-3-understanding-validation.md) | `active` | Phase 3 理解生成验证设计：数据模型 serde、context builder、schema validator、evidence_id 检查、claim 约束、unknown/gap 处理、mock provider pipeline、前端渲染、安全回归、手工验收 10 步骤 | Phase 3 验证与验收依据 |
 | [`phase-4-view-validation.md`](phase-4-view-validation.md) | `active` | Phase 4 视图验证设计：后端 ViewGraph 生成测试（~33 个）、前端渲染验证、hover tooltip、空状态/degraded、安全回归、桌面验收 8 步骤 | Phase 4 验证与验收依据 |
-| [`phase-5-trace-and-qa-validation.md`](phase-5-trace-and-qa-validation.md) | `draft` | Phase 5 证据回链与 Grounded Q&A 验证设计：TraceResolver/SourceExcerptResolver/Q&A 测试矩阵、安全回归、桌面验收 10 步骤、完成标准 | Phase 5 验证与验收依据 |
+| [`phase-5-trace-and-qa-validation.md`](phase-5-trace-and-qa-validation.md) | `active` | Phase 5 证据回链与 Grounded Q&A 验证设计：TraceResolver/SourceExcerptResolver/Q&A 测试矩阵、安全回归、桌面验收 10 步骤、完成标准 | Phase 5 验证与验收依据 |

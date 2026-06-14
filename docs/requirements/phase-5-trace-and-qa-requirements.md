@@ -1,13 +1,13 @@
 # Phase 5 证据回链与 Grounded Q&A 需求
 
 ---
-status: draft
-updated: 2026-06-13
+status: active
+updated: 2026-06-14
 ---
 
 > 本文档定义 Phase 5「证据回链与 grounded Q&A」的产品需求。Phase 5 的核心是：用户点击视图节点/边、claim 或 evidence 后，能够追溯到 evidence item、源码文件和行号；用户可以基于当前阶段的理解结果提出问题，系统给出有 evidence grounding 的回答，并明确区分 unknown / inferred / evidence_gap。
 >
-> 本文档为 draft，需审核收口后方可进入编码。
+> 本文档已收口（status=active），是 Phase 5 编码依据。
 
 ## 1. 一句话目标
 

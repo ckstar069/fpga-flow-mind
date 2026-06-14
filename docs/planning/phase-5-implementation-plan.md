@@ -1,13 +1,13 @@
 # Phase 5 编码实施计划
 
 ---
-status: draft
-updated: 2026-06-13
+status: active
+updated: 2026-06-14
 ---
 
-> 本文档定义 Phase 5（证据回链与 grounded Q&A）的编码实施计划，包含任务拆解、依赖关系、Batch 划分、进入/退出条件、验收标准和安全边界。需待本文档及配套需求/设计/UI/测试文档全部 active 后才允许编码。
+> 本文档定义 Phase 5（证据回链与 grounded Q&A）的编码实施计划，包含任务拆解、依赖关系、Batch 划分、进入/退出条件、验收标准和安全边界。本文档及配套需求/设计/UI/测试文档已全部 active，允许进入 Phase 5 Batch A 编码。
 >
-> 本文档为 draft，需审核收口后方可进入编码。
+> 本文档已收口（status=active），是 Phase 5 编码依据。Batch A 仅允许实现 P5-T01~P5-T03（trace model + TraceResolver + SourceExcerptResolver）。
 
 ## 1. 进入条件
 
@@ -15,13 +15,15 @@ updated: 2026-06-13
 |------|------|
 | Phase 4 completion review status 为 active | ✅ |
 | Phase 4 真实 Tauri 桌面验收通过 | ✅ 12/12 |
-| Phase 5 需求文档已创建 | ✅ `phase-5-trace-and-qa-requirements.md`（draft） |
-| Phase 5 数据模型设计已创建 | ✅ `phase-5-trace-model.md`（draft） |
-| Phase 5 后端设计已创建 | ✅ `phase-5-trace-and-qa-design.md`（draft） |
-| Phase 5 UI/UX 文档已创建 | ✅ `phase-5-trace-and-qa-view.md`（draft） |
-| Phase 5 测试文档已创建 | ✅ `phase-5-trace-and-qa-validation.md`（draft） |
-| Phase 5 实施计划已创建 | ✅ 本文档（draft） |
-| **以上文档全部转为 active** | ⏳ 当前未满足，不允许编码 |
+| Phase 4 completion review status 为 active | ✅ |
+| Phase 4 真实 Tauri 桌面验收通过 | ✅ 12/12 |
+| Phase 5 需求文档已创建 | ✅ `phase-5-trace-and-qa-requirements.md`（active） |
+| Phase 5 数据模型设计已创建 | ✅ `phase-5-trace-model.md`（active） |
+| Phase 5 后端设计已创建 | ✅ `phase-5-trace-and-qa-design.md`（active） |
+| Phase 5 UI/UX 文档已创建 | ✅ `phase-5-trace-and-qa-view.md`（active） |
+| Phase 5 测试文档已创建 | ✅ `phase-5-trace-and-qa-validation.md`（active） |
+| Phase 5 实施计划已创建 | ✅ 本文档（active） |
+| **以上文档全部转为 active** | ✅ 当前已满足，允许进入 Phase 5 Batch A 编码 |
 
 ## 2. 任务拆分
 
