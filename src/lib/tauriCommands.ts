@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { CommandResult, WorkspaceProfile, StageContext, EvidenceCollection, ImplementationUnderstanding, ViewGraph, SelectedTraceTarget, TraceRefResolved, SourceLocation, SourceExcerpt, GroundedQuestion, GroundedAnswer } from '../types/workspace';
+import type { CommandResult, WorkspaceProfile, StageContext, EvidenceCollection, ImplementationUnderstanding, ViewGraph, SelectedTraceTarget, TraceRefResolved, SourceLocation, SourceExcerpt, GroundedQuestion, GroundedAnswer, SessionState, SaveSessionResult, LoadSessionResult, SessionSummary } from '../types/workspace';
 
 export class CommandError extends Error {
   error_code: string;
@@ -91,6 +91,42 @@ export async function askGroundedQuestion(
     views: views ?? null,
     resolvedTraces: resolvedTraces ?? null,
   });
+  return handleResult(result);
+}
+
+// ─── Phase 6: Session Persistence Commands ──────────────────────────
+
+export async function saveSession(sessionState: SessionState, sessionId?: string): Promise<SaveSessionResult> {
+  const result = await invoke<CommandResult<SaveSessionResult>>('save_session', {
+    sessionId: sessionId ?? null,
+    sessionState,
+  });
+  return handleResult(result);
+}
+
+export async function loadSession(sessionId: string): Promise<LoadSessionResult> {
+  const result = await invoke<CommandResult<LoadSessionResult>>('load_session', {
+    sessionId,
+  });
+  return handleResult(result);
+}
+
+export async function listSessions(limit?: number): Promise<SessionSummary[]> {
+  const result = await invoke<CommandResult<SessionSummary[]>>('list_sessions', {
+    limit: limit ?? null,
+  });
+  return handleResult(result);
+}
+
+export async function deleteSession(sessionId: string): Promise<void> {
+  const result = await invoke<CommandResult<void>>('delete_session', {
+    sessionId,
+  });
+  return handleResult(result);
+}
+
+export async function getLastSession(): Promise<SessionSummary | null> {
+  const result = await invoke<CommandResult<SessionSummary | null>>('get_last_session', {});
   return handleResult(result);
 }
 

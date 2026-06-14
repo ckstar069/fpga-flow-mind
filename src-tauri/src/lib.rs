@@ -9,11 +9,16 @@ pub mod persistence;
 
 use commands::ask_grounded_question::ask_grounded_question;
 use commands::collect_evidence::collect_evidence;
+use commands::delete_session::delete_session;
 use commands::generate_understanding::generate_understanding;
 use commands::generate_views::generate_views;
+use commands::get_last_session::get_last_session;
 use commands::get_source_excerpt::get_source_excerpt;
+use commands::list_sessions::list_sessions;
+use commands::load_session::load_session;
 use commands::open_workspace::open_workspace;
 use commands::resolve_trace_target::resolve_trace_target;
+use commands::save_session::save_session;
 use commands::select_stage::select_stage;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -28,7 +33,12 @@ pub fn run() {
             generate_views,
             resolve_trace_target,
             get_source_excerpt,
-            ask_grounded_question
+            ask_grounded_question,
+            save_session,
+            load_session,
+            list_sessions,
+            delete_session,
+            get_last_session
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

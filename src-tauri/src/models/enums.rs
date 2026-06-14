@@ -50,6 +50,13 @@ pub enum ErrorCode {
     LineRangeInvalid,
     QaGenerationFailed,
     QaValidationFailed,
+    // Phase 6 新增
+    PersistFailed,
+    LoadFailed,
+    SessionNotFound,
+    StorageVersionIncompatible,
+    SessionDeleteFailed,
+    InvalidSessionId,
 }
 
 /// 源码文件的语义分类
@@ -129,6 +136,12 @@ mod tests {
             ErrorCode::LineRangeInvalid,
             ErrorCode::QaGenerationFailed,
             ErrorCode::QaValidationFailed,
+            ErrorCode::PersistFailed,
+            ErrorCode::LoadFailed,
+            ErrorCode::SessionNotFound,
+            ErrorCode::StorageVersionIncompatible,
+            ErrorCode::SessionDeleteFailed,
+            ErrorCode::InvalidSessionId,
         ] {
             let json = serde_json::to_string(&code).unwrap();
             let back: ErrorCode = serde_json::from_str(&json).unwrap();
