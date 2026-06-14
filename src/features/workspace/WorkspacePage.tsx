@@ -116,6 +116,22 @@ export default function WorkspacePage() {
   const qaGuardRef = useRef<number>(0);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dirtyVersionRef = useRef<number>(0);
+
+  // 统一清理自动保存定时器
+  const clearAutoSaveTimer = useCallback(() => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
+  }, []);
+
+  // 标记状态已脏，递增 dirty version 并清理旧定时器
+  const markUnsaved = useCallback(() => {
+    dirtyVersionRef.current += 1;
+    setSaveStatus('unsaved');
+    clearAutoSaveTimer();
+  }, [clearAutoSaveTimer]);
 
   // ─── 清空 trace 相关状态 ───
   const clearTraceState = useCallback(() => {
@@ -144,6 +160,7 @@ export default function WorkspacePage() {
   const handleOpen = useCallback(async () => {
     const path = pathInput.trim();
     if (!path) return;
+    clearAutoSaveTimer();
     clearTraceState();
     setSessionId(null);
     setSaveStatus('unsaved');
@@ -164,7 +181,7 @@ export default function WorkspacePage() {
     } catch (err) {
       setState({ phase: 'error', error: makeUiError(err) });
     }
-  }, [pathInput, clearTraceState]);
+  }, [pathInput, clearTraceState, clearAutoSaveTimer]);
 
   // ─── 选择阶段 ───
   const handleSelectStage = useCallback(
@@ -183,7 +200,7 @@ export default function WorkspacePage() {
           : null;
       if (!profile || isLoadingSession) return;
       clearTraceState();
-      setSaveStatus('unsaved');
+      markUnsaved();
       setState({ phase: 'selecting_stage', profile, stageId });
       try {
         const context = await selectStage(profile.root_path, stageId);
@@ -217,7 +234,7 @@ export default function WorkspacePage() {
     };
     // 进入 collecting_evidence 时自动清除旧 understanding / views / trace
     clearTraceState();
-    setSaveStatus('unsaved');
+    markUnsaved();
     setState({ phase: 'collecting_evidence', profile, stageId, context });
     try {
       const evidence = await collectEvidence(profile.root_path, stageId);
@@ -248,7 +265,7 @@ export default function WorkspacePage() {
     const evidence =
       'evidence' in state ? (state as { evidence?: EvidenceCollection }).evidence : undefined;
     clearTraceState();
-    setSaveStatus('unsaved');
+    markUnsaved();
     setState({ phase: 'understanding_loading', profile, stageId, context, evidence });
     try {
       const understanding = await generateUnderstanding(profile.root_path, stageId);
@@ -282,7 +299,7 @@ export default function WorkspacePage() {
       understanding: ImplementationUnderstanding;
     };
     clearTraceState();
-    setSaveStatus('unsaved');
+    markUnsaved();
     setState({ phase: 'views_loading', profile, stageId, context, evidence, understanding });
     try {
       const views = await generateViews(understanding);
@@ -424,18 +441,21 @@ export default function WorkspacePage() {
   const handleDeleteSession = useCallback(
     async (targetSessionId: string) => {
       try {
-        await deleteSession(targetSessionId);
         if (targetSessionId === sessionId) {
+          clearAutoSaveTimer();
           setSessionId(null);
           setSaveStatus('unsaved');
+          dirtyVersionRef.current += 1;
+          setLastSavedAt(null);
         }
+        await deleteSession(targetSessionId);
         await refreshSessions();
       } catch (err) {
         // 删除失败不阻断主流程；列表仍显示，可再次操作
         setLoadError(makeUiError(err));
       }
     },
-    [sessionId, refreshSessions]
+    [sessionId, refreshSessions, clearAutoSaveTimer]
   );
 
   // ─── Phase 6: 构造 SessionState ───
@@ -443,7 +463,6 @@ export default function WorkspacePage() {
     if (!currentProfile) return null;
     const stageId = selectedStageId ?? undefined;
 
-    let qaHistories = qaHistoriesMap;
     let uiStates = uiStatesMap;
 
     if (stageId) {
@@ -456,22 +475,6 @@ export default function WorkspacePage() {
         highlighted_evidence_id: highlightedEvidenceId ?? undefined,
       };
       uiStates = { ...uiStatesMap, [currentStageId]: uiStateForCurrentStage };
-
-      if (groundedAnswer) {
-        const qaHistoryForCurrentStage: QaHistory = {
-          stage_id: currentStageId,
-          entries: [
-            {
-              entry_id: `qa-${Date.now()}`,
-              timestamp: new Date().toISOString(),
-              question: '（未记录问题文本）',
-              answer: groundedAnswer,
-            },
-          ],
-          version: '1.0.0',
-        };
-        qaHistories = { ...qaHistoriesMap, [currentStageId]: qaHistoryForCurrentStage };
-      }
     }
 
     return {
@@ -481,7 +484,7 @@ export default function WorkspacePage() {
       evidence_collections: evidenceCollectionsMap,
       understandings: understandingsMap,
       view_graphs: viewGraphsMap,
-      qa_histories: qaHistories,
+      qa_histories: qaHistoriesMap,
       ui_states: uiStates,
       global_ui_state: {
         last_session_id: sessionId ?? undefined,
@@ -501,7 +504,6 @@ export default function WorkspacePage() {
     resolvedTraces,
     sourceExcerpt,
     highlightedEvidenceId,
-    groundedAnswer,
     sessionId,
   ]);
 
@@ -509,17 +511,23 @@ export default function WorkspacePage() {
   const handleSaveSession = useCallback(async () => {
     const sessionState = buildSessionState();
     if (!sessionState || isLoadingSession || saveStatus === 'saving') return;
+    const startedAtVersion = dirtyVersionRef.current;
     setSaveStatus('saving');
     setSaveError(null);
     try {
       const result = await saveSession(sessionState, sessionId ?? undefined);
-      setSessionId(result.session_id);
-      setSaveStatus('saved');
-      setLastSavedAt(result.saved_at);
+      if (dirtyVersionRef.current === startedAtVersion) {
+        setSessionId(result.session_id);
+        setSaveStatus('saved');
+        setLastSavedAt(result.saved_at);
+      }
       await refreshSessions();
     } catch (err) {
-      setSaveStatus('error');
-      setSaveError(makeUiError(err));
+      // 若保存期间 dirty version 已增加，说明状态已过期，避免覆盖更新的错误/未保存状态
+      if (dirtyVersionRef.current === startedAtVersion) {
+        setSaveStatus('error');
+        setSaveError(makeUiError(err));
+      }
     }
   }, [buildSessionState, sessionId, isLoadingSession, saveStatus, refreshSessions]);
 
@@ -527,6 +535,7 @@ export default function WorkspacePage() {
   const handleLoadSession = useCallback(
     async (targetSessionId: string) => {
       if (isLoadingSession || isLoadingStage) return;
+      clearAutoSaveTimer();
       setLoadingSessionId(targetSessionId);
       setIsLoadingSession(true);
       setLoadStatus(null);
@@ -541,10 +550,13 @@ export default function WorkspacePage() {
         setUnderstandingsMap(restored.understandings);
         setViewGraphsMap(restored.view_graphs);
         setQaHistoriesMap(restored.qa_histories);
+        setUiStatesMap(restored.ui_states);
 
         setSessionId(targetSessionId);
         setPathInput(restored.workspace_profile.root_path);
+        dirtyVersionRef.current = 0;
         setSaveStatus('saved');
+        setSaveError(null);
         setLoadStatus(result.status);
 
         const stageId = restored.selected_stage_id;
@@ -593,17 +605,29 @@ export default function WorkspacePage() {
           const uiState = restored.ui_states?.[stageId];
           if (uiState) {
             setSelectedTraceTarget(uiState.selected_trace_target ?? null);
-            setResolvedTraces(uiState.resolved_traces ?? []);
+            setResolvedTraces(uiState.resolved_traces);
             setSourceExcerpt(uiState.current_source_excerpt ?? null);
             setHighlightedEvidenceId(uiState.highlighted_evidence_id ?? null);
+          } else {
+            setSelectedTraceTarget(null);
+            setResolvedTraces([]);
+            setSourceExcerpt(null);
+            setHighlightedEvidenceId(null);
           }
 
           const qaHistory = restored.qa_histories?.[stageId];
           if (qaHistory && qaHistory.entries.length > 0) {
             setGroundedAnswer(qaHistory.entries[qaHistory.entries.length - 1].answer);
+          } else {
+            setGroundedAnswer(null);
           }
         } else {
           setState({ phase: 'loaded', profile: restored.workspace_profile });
+          setSelectedTraceTarget(null);
+          setResolvedTraces([]);
+          setSourceExcerpt(null);
+          setHighlightedEvidenceId(null);
+          setGroundedAnswer(null);
         }
       } catch (err) {
         setLoadError(makeUiError(err));
@@ -613,7 +637,7 @@ export default function WorkspacePage() {
         setLoadingSessionId(null);
       }
     },
-    [isLoadingSession, isLoadingStage, clearTraceState]
+    [isLoadingSession, isLoadingStage, clearTraceState, clearAutoSaveTimer]
   );
 
   // ─── Phase 6: 初始加载最近项目列表与最后一次路径 ───
@@ -699,7 +723,7 @@ export default function WorkspacePage() {
         // 仅在请求仍属于当前状态时更新结果
         if (guard === traceGuardRef.current) {
           setResolvedTraces(traces);
-          setSaveStatus('unsaved');
+          markUnsaved();
           setTraceLoading(false);
         }
       } catch (err) {
@@ -748,7 +772,7 @@ export default function WorkspacePage() {
         const excerpt = await getSourceExcerpt(location, profile.root_path);
         if (guard === excerptGuardRef.current) {
           setSourceExcerpt(excerpt);
-          setSaveStatus('unsaved');
+          markUnsaved();
         }
       } catch (err) {
         if (guard === excerptGuardRef.current) {
@@ -771,7 +795,7 @@ export default function WorkspacePage() {
   const handleLocateEvidence = useCallback((evidenceId: string) => {
     setHighlightedEvidenceId(evidenceId);
     setCurrentSourceEvidenceId(evidenceId);
-    setSaveStatus('unsaved');
+    markUnsaved();
     if (highlightTimerRef.current) {
       clearTimeout(highlightTimerRef.current);
     }
@@ -780,12 +804,12 @@ export default function WorkspacePage() {
         current === evidenceId ? null : current
       );
     }, 3000);
-  }, []);
+  }, [markUnsaved]);
 
   // ─── evidence 卡片点击 ───
   const handleEvidenceSelect = useCallback((evidenceId: string) => {
     setHighlightedEvidenceId(evidenceId);
-    setSaveStatus('unsaved');
+    markUnsaved();
     if (highlightTimerRef.current) {
       clearTimeout(highlightTimerRef.current);
     }
@@ -794,7 +818,7 @@ export default function WorkspacePage() {
         current === evidenceId ? null : current
       );
     }, 3000);
-  }, []);
+  }, [markUnsaved]);
 
   // ─── Grounded Q&A 提问 ───
   const handleAskGroundedQuestion = useCallback(
@@ -832,8 +856,23 @@ export default function WorkspacePage() {
           resolvedTraces
         );
         if (guard === qaGuardRef.current) {
+          const selectedTargetKind = selectedTraceTarget?.kind;
+          const newEntry: import('../../types/workspace').QaHistoryEntry = {
+            entry_id: `qa-${Date.now()}`,
+            timestamp: new Date().toISOString(),
+            question: questionText,
+            answer,
+            selected_target_kind: selectedTargetKind,
+          };
+          setQaHistoriesMap((prev) => {
+            const existing = prev[stageId];
+            const history: import('../../types/workspace').QaHistory = existing
+              ? { ...existing, entries: [...existing.entries, newEntry] }
+              : { stage_id: stageId, entries: [newEntry], version: '1.0.0' };
+            return { ...prev, [stageId]: history };
+          });
           setGroundedAnswer(answer);
-          setSaveStatus('unsaved');
+          markUnsaved();
           setGroundedAnswerLoading(false);
         }
       } catch (err) {

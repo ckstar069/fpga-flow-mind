@@ -551,7 +551,7 @@ export interface QaHistory {
 export interface QaHistoryEntry {
   entry_id: string;
   timestamp: string;
-  question?: string;
+  question: string;
   answer: GroundedAnswer;
   selected_target_kind?: string;
 }
@@ -560,7 +560,7 @@ export interface QaHistoryEntry {
 export interface PersistedUiState {
   stage_id: string;
   selected_trace_target?: SelectedTraceTarget;
-  resolved_traces?: TraceRefResolved[];
+  resolved_traces: TraceRefResolved[];
   current_source_excerpt?: SourceExcerpt;
   highlighted_evidence_id?: string;
   active_view_type?: ViewType;
