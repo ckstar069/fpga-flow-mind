@@ -8,7 +8,8 @@ use crate::models::error::{CommandError, CommandResult};
 use crate::trace::models::{GroundedAnswer, GroundedQuestion};
 
 #[tauri::command]
-pub fn ask_grounded_question(_question: GroundedQuestion) -> CommandResult<GroundedAnswer> {
+pub fn ask_grounded_question(question: GroundedQuestion) -> CommandResult<GroundedAnswer> {
+    let _ = question;
     CommandResult {
         success: false,
         data: None,
