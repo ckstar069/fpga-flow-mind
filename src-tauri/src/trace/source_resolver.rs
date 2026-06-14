@@ -207,18 +207,9 @@ impl SourceExcerptResolver {
         }
 
         // 检查每一级父路径直到 canonical_root（不含），不允许 symlink。
-        // 必须先将 parent canonicalize 后再与 canonical_root 比较，避免 macOS /var 等系统 symlink 误伤。
+        // 顺序：先检查当前 parent 是否为 symlink，再 canonicalize 比较，避免 symlink 指向 root 的绕过。
         let mut current = source_path.parent();
         while let Some(parent) = current {
-            let canonical_parent = parent.canonicalize().map_err(|e| {
-                SourceExcerptError::source_not_allowed(format!(
-                    "failed to canonicalize parent path: {}",
-                    e
-                ))
-            })?;
-            if canonical_parent == *canonical_root {
-                break;
-            }
             let meta = std::fs::symlink_metadata(parent).map_err(|e| {
                 SourceExcerptError::source_not_allowed(format!("failed to stat parent path: {}", e))
             })?;
@@ -228,6 +219,18 @@ impl SourceExcerptResolver {
                     parent.display()
                 )));
             }
+
+            // canonicalize 后比较，兼容 macOS /var -> /private/var 等系统路径差异
+            let canonical_parent = parent.canonicalize().map_err(|e| {
+                SourceExcerptError::source_not_allowed(format!(
+                    "failed to canonicalize parent path: {}",
+                    e
+                ))
+            })?;
+            if canonical_parent == *canonical_root {
+                break;
+            }
+
             current = parent.parent();
         }
 
@@ -320,7 +323,7 @@ mod tests {
 
     use super::*;
     use crate::evidence::models::{
-        EvidenceCollection, EvidenceItem, EvidenceStats, EvidenceStrength, EvidenceWarning, LineRange,
+        EvidenceCollection, EvidenceItem, EvidenceStats, EvidenceStrength, LineRange,
     };
     use crate::models::enums::{Language, SourceKind};
 
@@ -496,7 +499,7 @@ mod tests {
             symlink_dir(&real_dir, &link_dir).unwrap();
         }
 
-        let file_in_real = write_lines(&real_dir, "test.v", 5);
+        let _file_in_real = write_lines(&real_dir, "test.v", 5);
         let via_link = link_dir.join("test.v");
 
         let location = SourceLocation {
@@ -666,5 +669,39 @@ mod tests {
             .as_ref()
             .unwrap()
             .contains("8192"));
+    }
+
+    #[test]
+    fn sr_15_parent_symlink_to_root_rejected() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path().join("root");
+        fs::create_dir(&root).unwrap();
+
+        // root 内创建真实文件
+        write_lines(&root, "real.v", 5);
+
+        // root 内创建指向 root 自身的 symlink
+        let link_to_root = root.join("alias_to_root");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            symlink(&root, &link_to_root).unwrap();
+        }
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::symlink_dir;
+            symlink_dir(&root, &link_to_root).unwrap();
+        }
+
+        let location = SourceLocation {
+            source_path: link_to_root.join("real.v").to_string_lossy().to_string(),
+            line_range: LineRange { start: 1, end: 1 },
+            evidence_id: None,
+        };
+
+        let result = SourceExcerptResolver::resolve_from_location(&location, &root);
+
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().error_code, ErrorCode::SourcePathNotAllowed);
     }
 }

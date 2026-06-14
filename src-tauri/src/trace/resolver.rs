@@ -249,7 +249,7 @@ mod tests {
 
     use super::*;
     use crate::evidence::models::{
-        EvidenceCollection, EvidenceItem, EvidenceStats, EvidenceStrength, EvidenceWarning,
+        EvidenceCollection, EvidenceItem, EvidenceStats, EvidenceStrength,
     };
     use crate::models::enums::{Language, SourceKind};
     use crate::understanding::models::{
@@ -279,10 +279,7 @@ mod tests {
     }
 
     fn make_understanding(claims: Vec<ImplementationClaim>) -> ImplementationUnderstanding {
-        use crate::understanding::models::{
-            EvidenceGap, GenerationMeta, ModuleSummary, ProcessingStepSummary, SignalSummary,
-            StageSummary, InterfaceSummary, UnknownItem, UnderstandingStats,
-        };
+        use crate::understanding::models::{GenerationMeta, StageSummary, UnderstandingStats};
         ImplementationUnderstanding {
             stage_id: "L0".to_string(),
             version: "3.0.0".to_string(),
