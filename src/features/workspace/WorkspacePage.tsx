@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, useRef } from 'react';
+import { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import type {
   WorkspaceProfile,
   StageContext,
@@ -11,6 +11,11 @@ import type {
   SourceExcerpt,
   GroundedAnswer,
   GroundedAnswerCitation,
+  SessionState,
+  LoadSessionStatus,
+  QaHistory,
+  SessionSummary,
+  PersistedUiState,
 } from '../../types/workspace';
 import {
   openWorkspace,
@@ -21,6 +26,11 @@ import {
   resolveTraceTarget,
   getSourceExcerpt,
   askGroundedQuestion,
+  saveSession,
+  loadSession,
+  listSessions,
+  deleteSession,
+  getLastSession,
   CommandError,
 } from '../../lib/tauriCommands';
 import type { CommandError as CommandErrorType } from '../../types/workspace';
@@ -30,6 +40,9 @@ import ErrorPanel from './components/ErrorPanel';
 import WorkspaceSummary from './components/WorkspaceSummary';
 import StageList from './components/StageList';
 import StageDetail from './components/StageDetail';
+import SessionStatusIndicator from './components/SessionStatusIndicator';
+import RecentProjectsPanel from './components/RecentProjectsPanel';
+import LoadStatusBanner from './components/LoadStatusBanner';
 
 // ─── 状态机 ───
 type AppState =
@@ -75,11 +88,34 @@ export default function WorkspacePage() {
   const [groundedAnswerLoading, setGroundedAnswerLoading] = useState(false);
   const [groundedAnswerError, setGroundedAnswerError] = useState<UiError | null>(null);
 
+  // Phase 6 Session 状态
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<'unsaved' | 'saving' | 'saved' | 'error'>('unsaved');
+  const [saveError, setSaveError] = useState<UiError | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [isLoadingSession, setIsLoadingSession] = useState(false);
+  const [loadStatus, setLoadStatus] = useState<LoadSessionStatus | null>(null);
+  const [loadError, setLoadError] = useState<UiError | null>(null);
+
+  // Phase 6 跨阶段累积映射（用于构造 SessionState）
+  const [stageContextsMap, setStageContextsMap] = useState<Record<string, StageContext>>({});
+  const [evidenceCollectionsMap, setEvidenceCollectionsMap] = useState<Record<string, EvidenceCollection>>({});
+  const [understandingsMap, setUnderstandingsMap] = useState<Record<string, ImplementationUnderstanding>>({});
+  const [viewGraphsMap, setViewGraphsMap] = useState<Record<string, ViewGraph[]>>({});
+  const [qaHistoriesMap, setQaHistoriesMap] = useState<Record<string, QaHistory>>({});
+  const [uiStatesMap, setUiStatesMap] = useState<Record<string, PersistedUiState>>({});
+
+  // Phase 6 最近项目列表
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
+
   // 用于取消旧 trace/excerpt/qa 请求的守卫
   const traceGuardRef = useRef<number>(0);
   const excerptGuardRef = useRef<number>(0);
   const qaGuardRef = useRef<number>(0);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ─── 清空 trace 相关状态 ───
   const clearTraceState = useCallback(() => {
@@ -109,6 +145,18 @@ export default function WorkspacePage() {
     const path = pathInput.trim();
     if (!path) return;
     clearTraceState();
+    setSessionId(null);
+    setSaveStatus('unsaved');
+    setSaveError(null);
+    setLastSavedAt(null);
+    setLoadStatus(null);
+    setLoadError(null);
+    setStageContextsMap({});
+    setEvidenceCollectionsMap({});
+    setUnderstandingsMap({});
+    setViewGraphsMap({});
+    setQaHistoriesMap({});
+    setUiStatesMap({});
     setState({ phase: 'opening' });
     try {
       const profile = await openWorkspace(path);
@@ -133,17 +181,19 @@ export default function WorkspacePage() {
         state.phase === 'views_error'
           ? (state as { profile: WorkspaceProfile }).profile
           : null;
-      if (!profile) return;
+      if (!profile || isLoadingSession) return;
       clearTraceState();
+      setSaveStatus('unsaved');
       setState({ phase: 'selecting_stage', profile, stageId });
       try {
         const context = await selectStage(profile.root_path, stageId);
+        setStageContextsMap((prev) => ({ ...prev, [stageId]: context }));
         setState({ phase: 'stage_loaded', profile, stageId, context });
       } catch (err) {
         setState({ phase: 'stage_error', profile, stageId, error: makeUiError(err) });
       }
     },
-    [state, clearTraceState]
+    [state, clearTraceState, isLoadingSession]
   );
 
   // ─── 收集证据 ───
@@ -159,6 +209,7 @@ export default function WorkspacePage() {
       state.phase !== 'views_loaded' &&
       state.phase !== 'views_error'
     ) return;
+    if (isLoadingSession) return;
     const { profile, stageId, context } = state as {
       profile: WorkspaceProfile;
       stageId: string;
@@ -166,14 +217,16 @@ export default function WorkspacePage() {
     };
     // 进入 collecting_evidence 时自动清除旧 understanding / views / trace
     clearTraceState();
+    setSaveStatus('unsaved');
     setState({ phase: 'collecting_evidence', profile, stageId, context });
     try {
       const evidence = await collectEvidence(profile.root_path, stageId);
+      setEvidenceCollectionsMap((prev) => ({ ...prev, [stageId]: evidence }));
       setState({ phase: 'evidence_loaded', profile, stageId, context, evidence });
     } catch (err) {
       setState({ phase: 'evidence_error', profile, stageId, context, error: makeUiError(err) });
     }
-  }, [state, clearTraceState]);
+  }, [state, clearTraceState, isLoadingSession]);
 
   // ─── 生成理解 ───
   const handleGenerateUnderstanding = useCallback(async () => {
@@ -186,6 +239,7 @@ export default function WorkspacePage() {
       state.phase !== 'views_loaded' &&
       state.phase !== 'views_error'
     ) return;
+    if (isLoadingSession) return;
     const { profile, stageId, context } = state as {
       profile: WorkspaceProfile;
       stageId: string;
@@ -194,9 +248,11 @@ export default function WorkspacePage() {
     const evidence =
       'evidence' in state ? (state as { evidence?: EvidenceCollection }).evidence : undefined;
     clearTraceState();
+    setSaveStatus('unsaved');
     setState({ phase: 'understanding_loading', profile, stageId, context, evidence });
     try {
       const understanding = await generateUnderstanding(profile.root_path, stageId);
+      setUnderstandingsMap((prev) => ({ ...prev, [stageId]: understanding }));
       setState({ phase: 'understanding_loaded', profile, stageId, context, evidence, understanding });
     } catch (err) {
       setState({
@@ -208,7 +264,7 @@ export default function WorkspacePage() {
         understandingError: makeUiError(err),
       });
     }
-  }, [state, clearTraceState]);
+  }, [state, clearTraceState, isLoadingSession]);
 
   // ─── 生成视图 ───
   const handleGenerateViews = useCallback(async () => {
@@ -217,6 +273,7 @@ export default function WorkspacePage() {
       state.phase !== 'views_loaded' &&
       state.phase !== 'views_error'
     ) return;
+    if (isLoadingSession) return;
     const { profile, stageId, context, evidence, understanding } = state as {
       profile: WorkspaceProfile;
       stageId: string;
@@ -225,9 +282,11 @@ export default function WorkspacePage() {
       understanding: ImplementationUnderstanding;
     };
     clearTraceState();
+    setSaveStatus('unsaved');
     setState({ phase: 'views_loading', profile, stageId, context, evidence, understanding });
     try {
       const views = await generateViews(understanding);
+      setViewGraphsMap((prev) => ({ ...prev, [stageId]: views }));
       setState({ phase: 'views_loaded', profile, stageId, context, evidence, understanding, views });
     } catch (err) {
       setState({
@@ -240,7 +299,7 @@ export default function WorkspacePage() {
         viewsError: makeUiError(err),
       });
     }
-  }, [state, clearTraceState]);
+  }, [state, clearTraceState, isLoadingSession]);
 
   // ─── 当前 profile 提取 ───
   const currentProfile = useMemo<WorkspaceProfile | null>(() => {
@@ -348,6 +407,261 @@ export default function WorkspacePage() {
     return null;
   }, [state]);
 
+  // ─── Phase 6: 刷新最近项目列表 ───
+  const refreshSessions = useCallback(async () => {
+    setSessionsLoading(true);
+    try {
+      const list = await listSessions();
+      setSessions(list);
+    } catch {
+      // 列表加载失败不阻断主流程
+    } finally {
+      setSessionsLoading(false);
+    }
+  }, []);
+
+  // ─── Phase 6: 删除最近项目记录 ───
+  const handleDeleteSession = useCallback(
+    async (targetSessionId: string) => {
+      try {
+        await deleteSession(targetSessionId);
+        if (targetSessionId === sessionId) {
+          setSessionId(null);
+          setSaveStatus('unsaved');
+        }
+        await refreshSessions();
+      } catch (err) {
+        // 删除失败不阻断主流程；列表仍显示，可再次操作
+        setLoadError(makeUiError(err));
+      }
+    },
+    [sessionId, refreshSessions]
+  );
+
+  // ─── Phase 6: 构造 SessionState ───
+  const buildSessionState = useCallback((): SessionState | null => {
+    if (!currentProfile) return null;
+    const stageId = selectedStageId ?? undefined;
+
+    let qaHistories = qaHistoriesMap;
+    let uiStates = uiStatesMap;
+
+    if (stageId) {
+      const currentStageId = stageId;
+      const uiStateForCurrentStage: PersistedUiState = {
+        stage_id: currentStageId,
+        selected_trace_target: selectedTraceTarget ?? undefined,
+        resolved_traces: resolvedTraces,
+        current_source_excerpt: sourceExcerpt ?? undefined,
+        highlighted_evidence_id: highlightedEvidenceId ?? undefined,
+      };
+      uiStates = { ...uiStatesMap, [currentStageId]: uiStateForCurrentStage };
+
+      if (groundedAnswer) {
+        const qaHistoryForCurrentStage: QaHistory = {
+          stage_id: currentStageId,
+          entries: [
+            {
+              entry_id: `qa-${Date.now()}`,
+              timestamp: new Date().toISOString(),
+              question: '（未记录问题文本）',
+              answer: groundedAnswer,
+            },
+          ],
+          version: '1.0.0',
+        };
+        qaHistories = { ...qaHistoriesMap, [currentStageId]: qaHistoryForCurrentStage };
+      }
+    }
+
+    return {
+      workspace_profile: currentProfile,
+      selected_stage_id: stageId,
+      stage_contexts: stageContextsMap,
+      evidence_collections: evidenceCollectionsMap,
+      understandings: understandingsMap,
+      view_graphs: viewGraphsMap,
+      qa_histories: qaHistories,
+      ui_states: uiStates,
+      global_ui_state: {
+        last_session_id: sessionId ?? undefined,
+        last_root_path: currentProfile.root_path,
+      },
+    };
+  }, [
+    currentProfile,
+    selectedStageId,
+    stageContextsMap,
+    evidenceCollectionsMap,
+    understandingsMap,
+    viewGraphsMap,
+    qaHistoriesMap,
+    uiStatesMap,
+    selectedTraceTarget,
+    resolvedTraces,
+    sourceExcerpt,
+    highlightedEvidenceId,
+    groundedAnswer,
+    sessionId,
+  ]);
+
+  // ─── Phase 6: 保存 session ───
+  const handleSaveSession = useCallback(async () => {
+    const sessionState = buildSessionState();
+    if (!sessionState || isLoadingSession || saveStatus === 'saving') return;
+    setSaveStatus('saving');
+    setSaveError(null);
+    try {
+      const result = await saveSession(sessionState, sessionId ?? undefined);
+      setSessionId(result.session_id);
+      setSaveStatus('saved');
+      setLastSavedAt(result.saved_at);
+      await refreshSessions();
+    } catch (err) {
+      setSaveStatus('error');
+      setSaveError(makeUiError(err));
+    }
+  }, [buildSessionState, sessionId, isLoadingSession, saveStatus, refreshSessions]);
+
+  // ─── Phase 6: 加载并恢复 session ───
+  const handleLoadSession = useCallback(
+    async (targetSessionId: string) => {
+      if (isLoadingSession || isLoadingStage) return;
+      setLoadingSessionId(targetSessionId);
+      setIsLoadingSession(true);
+      setLoadStatus(null);
+      setLoadError(null);
+      clearTraceState();
+      try {
+        const result = await loadSession(targetSessionId);
+        const restored = result.session_state;
+
+        setStageContextsMap(restored.stage_contexts);
+        setEvidenceCollectionsMap(restored.evidence_collections);
+        setUnderstandingsMap(restored.understandings);
+        setViewGraphsMap(restored.view_graphs);
+        setQaHistoriesMap(restored.qa_histories);
+
+        setSessionId(targetSessionId);
+        setPathInput(restored.workspace_profile.root_path);
+        setSaveStatus('saved');
+        setLoadStatus(result.status);
+
+        const stageId = restored.selected_stage_id;
+        if (stageId && restored.stage_contexts[stageId]) {
+          const context = restored.stage_contexts[stageId];
+          const evidence = restored.evidence_collections[stageId];
+          const understanding = restored.understandings[stageId];
+          const views = restored.view_graphs[stageId];
+
+          if (views) {
+            setState({
+              phase: 'views_loaded',
+              profile: restored.workspace_profile,
+              stageId,
+              context,
+              evidence,
+              understanding,
+              views,
+            });
+          } else if (understanding) {
+            setState({
+              phase: 'understanding_loaded',
+              profile: restored.workspace_profile,
+              stageId,
+              context,
+              evidence,
+              understanding,
+            });
+          } else if (evidence) {
+            setState({
+              phase: 'evidence_loaded',
+              profile: restored.workspace_profile,
+              stageId,
+              context,
+              evidence,
+            });
+          } else {
+            setState({
+              phase: 'stage_loaded',
+              profile: restored.workspace_profile,
+              stageId,
+              context,
+            });
+          }
+
+          const uiState = restored.ui_states?.[stageId];
+          if (uiState) {
+            setSelectedTraceTarget(uiState.selected_trace_target ?? null);
+            setResolvedTraces(uiState.resolved_traces ?? []);
+            setSourceExcerpt(uiState.current_source_excerpt ?? null);
+            setHighlightedEvidenceId(uiState.highlighted_evidence_id ?? null);
+          }
+
+          const qaHistory = restored.qa_histories?.[stageId];
+          if (qaHistory && qaHistory.entries.length > 0) {
+            setGroundedAnswer(qaHistory.entries[qaHistory.entries.length - 1].answer);
+          }
+        } else {
+          setState({ phase: 'loaded', profile: restored.workspace_profile });
+        }
+      } catch (err) {
+        setLoadError(makeUiError(err));
+        setSaveStatus('unsaved');
+      } finally {
+        setIsLoadingSession(false);
+        setLoadingSessionId(null);
+      }
+    },
+    [isLoadingSession, isLoadingStage, clearTraceState]
+  );
+
+  // ─── Phase 6: 初始加载最近项目列表与最后一次路径 ───
+  useEffect(() => {
+    refreshSessions();
+    getLastSession()
+      .then((session) => {
+        if (session) setPathInput(session.root_path);
+      })
+      .catch(() => {});
+  }, [refreshSessions]);
+
+  // ─── Phase 6: 轻量自动保存 ───
+  useEffect(() => {
+    if (!currentProfile) return;
+    if (isLoadingStage || isLoadingSession) return;
+    if (saveStatus !== 'unsaved') return;
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+    autoSaveTimerRef.current = setTimeout(() => {
+      handleSaveSession();
+    }, 2000);
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, [
+    currentProfile,
+    selectedStageId,
+    state.phase,
+    evidenceCollectionsMap,
+    understandingsMap,
+    viewGraphsMap,
+    qaHistoriesMap,
+    uiStatesMap,
+    selectedTraceTarget,
+    resolvedTraces,
+    sourceExcerpt,
+    highlightedEvidenceId,
+    groundedAnswer,
+    isLoadingStage,
+    isLoadingSession,
+    saveStatus,
+    handleSaveSession,
+  ]);
+
   // ─── trace/excerpt 请求守卫 ───
   const currentStageIdForTrace = selectedStageId;
 
@@ -385,6 +699,7 @@ export default function WorkspacePage() {
         // 仅在请求仍属于当前状态时更新结果
         if (guard === traceGuardRef.current) {
           setResolvedTraces(traces);
+          setSaveStatus('unsaved');
           setTraceLoading(false);
         }
       } catch (err) {
@@ -433,6 +748,7 @@ export default function WorkspacePage() {
         const excerpt = await getSourceExcerpt(location, profile.root_path);
         if (guard === excerptGuardRef.current) {
           setSourceExcerpt(excerpt);
+          setSaveStatus('unsaved');
         }
       } catch (err) {
         if (guard === excerptGuardRef.current) {
@@ -455,6 +771,7 @@ export default function WorkspacePage() {
   const handleLocateEvidence = useCallback((evidenceId: string) => {
     setHighlightedEvidenceId(evidenceId);
     setCurrentSourceEvidenceId(evidenceId);
+    setSaveStatus('unsaved');
     if (highlightTimerRef.current) {
       clearTimeout(highlightTimerRef.current);
     }
@@ -468,6 +785,7 @@ export default function WorkspacePage() {
   // ─── evidence 卡片点击 ───
   const handleEvidenceSelect = useCallback((evidenceId: string) => {
     setHighlightedEvidenceId(evidenceId);
+    setSaveStatus('unsaved');
     if (highlightTimerRef.current) {
       clearTimeout(highlightTimerRef.current);
     }
@@ -515,6 +833,7 @@ export default function WorkspacePage() {
         );
         if (guard === qaGuardRef.current) {
           setGroundedAnswer(answer);
+          setSaveStatus('unsaved');
           setGroundedAnswerLoading(false);
         }
       } catch (err) {
@@ -578,32 +897,43 @@ export default function WorkspacePage() {
         <h1 style={{ fontSize: 18, margin: 0 }}>fpga-flow-mind</h1>
         <div style={{ display: 'flex', gap: 8, flex: 1 }}>
           <input
+            id="workspace-path-input"
             type="text"
             placeholder="输入项目路径..."
             value={pathInput}
             onChange={(e) => setPathInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleOpen()}
+            disabled={isLoadingSession}
             style={{
               flex: 1,
               padding: '6px 12px',
               border: '1px solid #ccc',
               borderRadius: 4,
               fontSize: 14,
+              background: isLoadingSession ? '#f5f5f5' : '#fff',
             }}
           />
           <button
             onClick={handleOpen}
-            disabled={state.phase === 'opening'}
+            disabled={state.phase === 'opening' || isLoadingSession}
             style={{
               padding: '6px 16px',
               borderRadius: 4,
               border: '1px solid #ccc',
-              cursor: 'pointer',
+              cursor: state.phase === 'opening' || isLoadingSession ? 'not-allowed' : 'pointer',
+              background: '#fff',
             }}
           >
             {state.phase === 'opening' ? '扫描中...' : '打开项目'}
           </button>
         </div>
+        <SessionStatusIndicator
+          status={saveStatus}
+          error={saveError}
+          lastSavedAt={lastSavedAt}
+          onSave={handleSaveSession}
+          onRetry={handleSaveSession}
+        />
       </header>
 
       {/* 主内容 */}
@@ -639,15 +969,62 @@ export default function WorkspacePage() {
               <StageList
                 stages={currentProfile.stages}
                 selectedStageId={selectedStageId}
-                isLoading={isLoadingStage}
+                isLoading={isLoadingStage || isLoadingSession}
                 onSelect={handleSelectStage}
               />
             </>
+          )}
+
+          <RecentProjectsPanel
+            sessions={sessions}
+            loading={sessionsLoading}
+            disabled={isLoadingSession || isLoadingStage}
+            loadingSessionId={loadingSessionId}
+            onLoad={handleLoadSession}
+            onDelete={handleDeleteSession}
+            onOpenOtherProject={() => {
+              const input = document.getElementById('workspace-path-input') as HTMLInputElement | null;
+              input?.focus();
+            }}
+          />
+
+          {loadError && (
+            <div
+              style={{
+                marginTop: 16,
+                padding: 12,
+                background: '#ffebee',
+                borderRadius: 8,
+                border: '1px solid #ef9a9a',
+              }}
+            >
+              <h4 style={{ margin: '0 0 8px', fontSize: 14, color: '#c62828' }}>加载失败</h4>
+              <p style={{ margin: '0 0 4px', fontSize: 13, color: '#333' }}>{loadError.message}</p>
+              {'error_code' in loadError && (
+                <code style={{ fontSize: 12, color: '#666' }}>{loadError.error_code}</code>
+              )}
+            </div>
           )}
         </aside>
 
         {/* 右栏 */}
         <main style={{ flex: 1, padding: 24, overflowY: 'auto' }}>
+          {loadStatus && (
+            <LoadStatusBanner
+              status={loadStatus}
+              onClose={() => setLoadStatus(null)}
+              onReanalyze={() => {
+                setLoadStatus(null);
+                if (selectedStageId) {
+                  handleCollectEvidence();
+                }
+              }}
+              onDelete={() => {
+                if (sessionId) handleDeleteSession(sessionId);
+              }}
+            />
+          )}
+
           {state.phase === 'initial' && (
             <div
               style={{
