@@ -471,3 +471,141 @@ export interface GroundedAnswer {
   provider: string;
   is_degraded: boolean;
 }
+
+// ─── Phase 6: Persistence Types ─────────────────────────────────────
+
+/** 持久化存储格式版本号 */
+export interface StorageVersion {
+  major: number;
+  minor: number;
+  patch: number;
+}
+
+/** 持久化的目标项目信息 */
+export interface PersistedWorkspace {
+  workspace_name: string;
+  root_path: string;
+  canonical_root_path: string;
+  fingerprint: string;
+  fingerprint_algorithm: string;
+  workspace_profile_path: string;
+}
+
+/** artifact 相对路径索引 */
+export interface ArtifactIndex {
+  stage_context_path?: string;
+  evidence_collection_path?: string;
+  understanding_path?: string;
+  view_graphs_path?: string;
+  qa_history_path?: string;
+  ui_state_path?: string;
+}
+
+/** manifest 中的阶段摘要 */
+export interface PersistedStageSummary {
+  stage_id: string;
+  stage_name: string;
+  artifacts: ArtifactIndex;
+  last_analyzed_at: string;
+}
+
+/** 会话清单 */
+export interface SessionManifest {
+  session_id: string;
+  storage_version: StorageVersion;
+  created_at: string;
+  updated_at: string;
+  app_version: string;
+  persisted_workspace: PersistedWorkspace;
+  stages: PersistedStageSummary[];
+  selected_stage_id?: string;
+  global_ui_state?: GlobalUiState;
+}
+
+/** 单阶段完整产物集合 */
+export interface PersistedStageArtifacts {
+  stage_id: string;
+  stage_context?: StageContext;
+  evidence_collection?: EvidenceCollection;
+  understanding?: ImplementationUnderstanding;
+  view_graphs?: ViewGraph[];
+  qa_history?: QaHistory;
+  ui_state?: PersistedUiState;
+}
+
+/** Q&A 历史 */
+export interface QaHistory {
+  stage_id: string;
+  entries: QaHistoryEntry[];
+  version: string;
+}
+
+/** 单条 Q&A 记录 */
+export interface QaHistoryEntry {
+  entry_id: string;
+  timestamp: string;
+  question: string;
+  answer: GroundedAnswer;
+  selected_target_kind?: string;
+}
+
+/** 单阶段 UI 状态 */
+export interface PersistedUiState {
+  stage_id: string;
+  selected_trace_target?: SelectedTraceTarget;
+  resolved_traces: TraceRefResolved[];
+  current_source_excerpt?: SourceExcerpt;
+  highlighted_evidence_id?: string;
+  active_view_type?: ViewType;
+}
+
+/** 全局 UI 状态 */
+export interface GlobalUiState {
+  last_session_id?: string;
+  last_root_path?: string;
+}
+
+/** load_session 的目标项目状态 */
+export type LoadSessionStatus =
+  | 'source_unchanged'
+  | 'source_changed'
+  | 'source_missing'
+  | 'source_path_not_allowed';
+
+/** 完整运行时会话状态 */
+export interface SessionState {
+  workspace_profile: WorkspaceProfile;
+  selected_stage_id?: string;
+  stage_contexts: Record<string, StageContext>;
+  evidence_collections: Record<string, EvidenceCollection>;
+  understandings: Record<string, ImplementationUnderstanding>;
+  view_graphs: Record<string, ViewGraph[]>;
+  qa_histories: Record<string, QaHistory>;
+  ui_states: Record<string, PersistedUiState>;
+  global_ui_state?: GlobalUiState;
+}
+
+/** load_session 命令的业务结果（成功分支） */
+export interface LoadSessionResult {
+  success: boolean;
+  status: LoadSessionStatus;
+  session_state: SessionState;
+  mismatch_reason?: string;
+  warnings: string[];
+}
+
+/** save_session 命令的结果 */
+export interface SaveSessionResult {
+  session_id: string;
+  saved_at: string;
+  success: boolean;
+}
+
+/** 会话列表摘要 */
+export interface SessionSummary {
+  session_id: string;
+  workspace_name: string;
+  root_path: string;
+  updated_at: string;
+  stage_count: number;
+}
