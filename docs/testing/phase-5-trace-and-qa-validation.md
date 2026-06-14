@@ -150,7 +150,7 @@ rg "PASS|HOLD|正确|错误|审计" src/ src-tauri/src/trace/
 
 ## 7. Phase 5 完成标准
 
-- P5-T01~P5-T10 全部完成。
+- P5-T01~P5-T11 全部完成。
 - Rust 测试新增 ~53 个且全部通过，总测试数 ≥ 313。
 - `npm run build` 通过。
 - `cargo check` 通过。
