@@ -87,22 +87,23 @@ updated: YYYY-MM-DD
 | [`phase-4-completion-review.md`](phase-4-completion-review.md) | `active` | Phase 4 收尾验收与完成审查：P4-T01~P4-T09 完成状态、后端/前端/桌面验收结果、**允许进入 Phase 5** | Phase 4 完成后必读 |
 | [`phase-5-implementation-plan.md`](phase-5-implementation-plan.md) | `active` | Phase 5 编码实施计划：进入条件、P5-T01~P5-T11 任务拆解、5 个 Batch 划分、退出条件、安全边界、进入 Phase 6 条件、Batch A 仅允许 P5-T01~P5-T03 | Phase 5 编码实施依据 |
 | [`phase-5-completion-review.md`](phase-5-completion-review.md) | `active` | Phase 5 完成审查：P5-T01~P5-T11 完成状态、真实 Tauri 桌面验收结果、测试/安全回归结果、进入 Phase 6 条件 | Phase 5 完成后必读 |
+| [`phase-6-implementation-plan.md`](phase-6-implementation-plan.md) | `draft` | Phase 6 编码实施计划：进入条件、P6-T01~P6-T10 任务拆解、5 个 Batch 划分、退出条件、安全边界、进入 Phase 7 条件 | Phase 6 编码实施依据（需先转为 active） |
 
-> **Phase 5 已完成，允许进入 Phase 6 准备阶段。**
+> **Phase 5 已完成，允许进入 Phase 6 规划阶段。**
 >
 > 验收确认：
-> - ✅ P4-T01~P4-T09 全部完成
-> - ✅ `npm run build` 通过，`cargo test` 260 passed，`cargo check` 通过
-> - ✅ 真实 Tauri 桌面验收 12/12 通过（样例项目：`/tmp/fpga-flow-mind-phase4-acceptance-20260612-194151`）
-> - ✅ checksum 只读验证通过（6 文件前后一致）
+> - ✅ P5-T01~P5-T11 全部完成
+> - ✅ `npm run build` 通过，`cargo test` 通过，`cargo check` 通过
+> - ✅ 真实 Tauri 桌面验收 12/12 通过
+> - ✅ checksum 只读验证通过
 > - ✅ 安全约束满足（目标目录只读、无 LLM API、无 Phase 5 越界功能）
-> - ✅ **允许进入 Phase 5**
+> - ✅ **允许进入 Phase 6 规划阶段**
 >
-> **Phase 5 文档已收口（status=active），允许进入 Phase 5 Batch A 编码。**
+> **Phase 6 规划文档已起草（status=draft），尚未允许进入 Phase 6 编码。**
 >
-> Batch A 范围限制：
-> - ✅ 允许：P5-T01（Phase 5 Rust 数据模型）、P5-T02（TraceResolver）、P5-T03（SourceExcerptResolver）
-> - ❌ 不允许：Tauri commands（P5-T07）、前端 UI（P5-T08~P5-T09）、GroundedQAPanel（P5-T10）、真实 LLM、Phase 6 持久化
+> 当前 Phase 6 draft 文档：`phase-6-persistence-and-mvp-requirements.md`、`phase-6-persistence-model.md`、`phase-6-persistence-and-replay-design.md`、`phase-6-session-and-mvp-view.md`、`phase-6-mvp-validation.md`、`phase-6-implementation-plan.md`。
 >
-> 当前 active 文档：`phase-5-trace-and-qa-requirements.md`、`phase-5-trace-model.md`、`phase-5-trace-and-qa-design.md`、`phase-5-trace-and-qa-view.md`、`phase-5-trace-and-qa-validation.md`、`phase-5-implementation-plan.md`。
-> 进入 Phase 5 Batch B 及后续前需确认 Batch A 验收通过。
+> 进入 Phase 6 编码条件：
+> - 以上 6 份 Phase 6 文档全部转为 `active`。
+> - 明确 Phase 6 Batch A 范围（P6-T01~P6-T03）。
+> - 不允许：真实 LLM、Vivado、数据库服务、云同步、多用户协作、PASS/HOLD 审计、Phase 7+。
