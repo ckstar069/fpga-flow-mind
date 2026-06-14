@@ -272,6 +272,98 @@ mod tests {
     }
 
     #[test]
+    fn slash_session_id_is_rejected() {
+        let tmp = tempfile::tempdir().unwrap();
+        let result =
+            SessionManifestRepository::write(tmp.path(), "abc/def", &sample_manifest());
+        assert!(
+            matches!(result.unwrap_err(), ManifestRepositoryError::InvalidSessionId { .. }),
+            "含路径分隔符的 session_id 应被拒绝"
+        );
+    }
+
+    #[test]
+    fn leading_dot_session_id_is_rejected() {
+        let tmp = tempfile::tempdir().unwrap();
+        let result =
+            SessionManifestRepository::write(tmp.path(), ".hidden", &sample_manifest());
+        assert!(
+            matches!(result.unwrap_err(), ManifestRepositoryError::InvalidSessionId { .. }),
+            "以 . 开头的 session_id 应被拒绝"
+        );
+    }
+
+    #[test]
+    fn session_dir_symlink_is_rejected() {
+        let tmp = tempfile::tempdir().unwrap();
+        let base = tmp.path().join("sessions");
+        fs::create_dir(&base).unwrap();
+
+        let real_session = base.join("real_session");
+        fs::create_dir(&real_session).unwrap();
+        let link_session = base.join("sess-001");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            symlink(&real_session, &link_session).unwrap();
+        }
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::symlink_dir;
+            symlink_dir(&real_session, &link_session).unwrap();
+        }
+
+        let write_result = SessionManifestRepository::write(&base, "sess-001", &sample_manifest(),
+        );
+        assert!(
+            matches!(write_result.unwrap_err(), ManifestRepositoryError::PathNotAllowed { .. }),
+            "session 目录为 symlink 时写入应被拒绝"
+        );
+
+        let read_result = SessionManifestRepository::read(&base, "sess-001",
+        );
+        assert!(
+            matches!(read_result.unwrap_err(), ManifestRepositoryError::PathNotAllowed { .. }),
+            "session 目录为 symlink 时读取应被拒绝"
+        );
+    }
+
+    #[test]
+    fn manifest_file_symlink_is_rejected() {
+        let tmp = tempfile::tempdir().unwrap();
+        let base = tmp.path().join("sessions");
+        fs::create_dir(&base).unwrap();
+
+        let session_dir = base.join("sess-001");
+        fs::create_dir(&session_dir).unwrap();
+
+        let real_manifest = session_dir.join("real_manifest.json");
+        fs::write(
+            &real_manifest,
+            serde_json::to_string_pretty(&sample_manifest()).unwrap(),
+        )
+        .unwrap();
+        let manifest_link = session_dir.join("manifest.json");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            symlink(&real_manifest, &manifest_link).unwrap();
+        }
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::symlink_file;
+            symlink_file(&real_manifest, &manifest_link).unwrap();
+        }
+
+        let result = SessionManifestRepository::read(&base, "sess-001",
+        );
+        assert!(
+            matches!(result.unwrap_err(), ManifestRepositoryError::PathNotAllowed { .. }),
+            "manifest.json 为 symlink 时应被拒绝"
+        );
+    }
+
+    #[test]
     fn corrupted_manifest_returns_error() {
         let tmp = tempfile::tempdir().unwrap();
         let session_dir = tmp.path().join("sess-001");

@@ -342,6 +342,23 @@ impl ArtifactRepository {
             }
         }
 
+        // 在 canonicalize 之前检查 session_dir 本身是否为 symlink。
+        // 调用方若传入 symlink，canonicalize 会解析为真实目录，导致原始 symlink 信息丢失。
+        match std::fs::symlink_metadata(session_dir) {
+            Ok(m) if m.file_type().is_symlink() => {
+                return Err(ArtifactRepositoryError::SymlinkNotAllowed {
+                    path: session_dir.display().to_string(),
+                });
+            }
+            Ok(_) => {}
+            Err(e) if e.kind() == io::ErrorKind::NotFound => {}
+            Err(e) => {
+                return Err(ArtifactRepositoryError::IoError {
+                    message: format!("无法读取 session 目录元数据 {}: {}", session_dir.display(), e),
+                });
+            }
+        }
+
         let canonical_session = session_dir.canonicalize().map_err(|e| {
             ArtifactRepositoryError::IoError {
                 message: format!("无法规范化 session 目录: {}", e),
@@ -757,6 +774,69 @@ mod tests {
         assert!(
             matches!(result.unwrap_err(), ArtifactRepositoryError::SymlinkNotAllowed { .. }),
             "父目录为 symlink 应被拒绝"
+        );
+    }
+
+    #[test]
+    fn session_dir_symlink_is_rejected_for_write() {
+        let tmp = tempfile::tempdir().unwrap();
+        let real_session = tmp.path().join("real_session");
+        fs::create_dir(&real_session).unwrap();
+        let link_session = tmp.path().join("link_session");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            symlink(&real_session, &link_session).unwrap();
+        }
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::symlink_dir;
+            symlink_dir(&real_session, &link_session).unwrap();
+        }
+
+        let profile = sample_workspace_profile();
+        let result = ArtifactRepository::write_workspace_profile(
+            &link_session,
+            "workspace_profile.json",
+            &profile,
+        );
+        assert!(
+            matches!(result.unwrap_err(), ArtifactRepositoryError::SymlinkNotAllowed { .. }),
+            "session_dir 为 symlink 时写入应被拒绝"
+        );
+    }
+
+    #[test]
+    fn session_dir_symlink_is_rejected_for_read() {
+        let tmp = tempfile::tempdir().unwrap();
+        let real_session = tmp.path().join("real_session");
+        fs::create_dir(&real_session).unwrap();
+        let link_session = tmp.path().join("link_session");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            symlink(&real_session, &link_session).unwrap();
+        }
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::symlink_dir;
+            symlink_dir(&real_session, &link_session).unwrap();
+        }
+
+        ArtifactRepository::write_workspace_profile(
+            &real_session,
+            "workspace_profile.json",
+            &sample_workspace_profile(),
+        )
+        .unwrap();
+
+        let result = ArtifactRepository::read_workspace_profile(
+            &link_session,
+            "workspace_profile.json",
+        );
+        assert!(
+            matches!(result.unwrap_err(), ArtifactRepositoryError::SymlinkNotAllowed { .. }),
+            "session_dir 为 symlink 时读取应被拒绝"
         );
     }
 

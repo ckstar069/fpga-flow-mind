@@ -777,6 +777,43 @@ mod tests {
     }
 
     #[test]
+    fn delete_session_rejects_symlink_session_dir_and_preserves_target() {
+        let (_tmp, store) = make_store();
+        let sessions_dir = store.sessions_dir();
+        fs::create_dir_all(&sessions_dir).unwrap();
+
+        let external_dir = tempfile::tempdir().unwrap();
+        let marker = external_dir.path().join("marker.txt");
+        fs::write(&marker, "preserve me").unwrap();
+
+        let link_session = sessions_dir.join("sess-001");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            symlink(external_dir.path(), &link_session).unwrap();
+        }
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::symlink_dir;
+            symlink_dir(external_dir.path(), &link_session).unwrap();
+        }
+
+        let result = store.delete_session("sess-001");
+        assert!(
+            result.is_err(),
+            "symlink session_dir 应拒绝删除，实际成功"
+        );
+        assert!(
+            marker.exists(),
+            "不应删除 symlink 指向的外部目录"
+        );
+        assert!(
+            link_session.exists(),
+            "sessions/sess-001 symlink 不应被移除"
+        );
+    }
+
+    #[test]
     fn load_nonexistent_session() {
         let (_tmp, store) = make_store();
         let result = store.load_session("sess-missing");
