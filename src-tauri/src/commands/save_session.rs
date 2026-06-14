@@ -19,8 +19,15 @@ pub fn save_session(
         Ok(s) => s,
         Err(e) => return e,
     };
+    execute_save_session(store, session_id, &session_state)
+}
 
-    match store.save_session(session_id, &session_state) {
+fn execute_save_session(
+    store: SessionStore,
+    session_id: Option<String>,
+    session_state: &SessionState,
+) -> CommandResult<SaveSessionResult> {
+    match store.save_session(session_id, session_state) {
         Ok(result) => CommandResult {
             success: true,
             data: Some(result),
@@ -266,5 +273,19 @@ mod tests {
             matches!(result, SessionStoreError::SessionNotFound { .. }),
             "应为 SessionNotFound"
         );
+    }
+
+    #[test]
+    fn save_session_invalid_id_returns_command_error() {
+        let workspace = workspace_with_top_py();
+        let (_tmp_dir, store) = make_store();
+        let state = sample_session_state(workspace.path());
+
+        let result = execute_save_session(store, Some("bad/id".to_string()), &state);
+
+        assert!(!result.success);
+        let error = result.error.expect("应有错误");
+        assert_eq!(error.error_code, ErrorCode::InvalidSessionId);
+        assert_eq!(error.message, "非法 session_id: bad/id");
     }
 }

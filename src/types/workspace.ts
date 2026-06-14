@@ -28,7 +28,14 @@ export type ErrorCode =
   | 'source_file_unreadable'
   | 'line_range_invalid'
   | 'qa_generation_failed'
-  | 'qa_validation_failed';
+  | 'qa_validation_failed'
+  // Phase 6 新增
+  | 'persist_failed'
+  | 'load_failed'
+  | 'session_not_found'
+  | 'storage_version_incompatible'
+  | 'session_delete_failed'
+  | 'invalid_session_id';
 
 export interface WorkspaceProfile {
   workspace_name: string;

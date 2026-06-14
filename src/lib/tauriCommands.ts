@@ -122,12 +122,12 @@ export async function deleteSession(sessionId: string): Promise<void> {
   const result = await invoke<CommandResult<void>>('delete_session', {
     sessionId,
   });
-  return handleResult(result);
+  return handleVoidResult(result);
 }
 
 export async function getLastSession(): Promise<SessionSummary | null> {
   const result = await invoke<CommandResult<SessionSummary | null>>('get_last_session', {});
-  return handleResult(result);
+  return handleNullableResult(result);
 }
 
 function handleResult<T>(result: CommandResult<T>): T {
@@ -151,6 +151,36 @@ function handleResult<T>(result: CommandResult<T>): T {
       message: '返回数据缺失',
       recoverable: false,
     });
+  }
+  return result.data;
+}
+
+function handleVoidResult(result: CommandResult<unknown>): void {
+  if (!result.success) {
+    if (result.error) {
+      throw new CommandError(result.error);
+    }
+    throw new CommandError({
+      error_code: 'unknown',
+      message: '未知错误',
+      recoverable: false,
+    });
+  }
+}
+
+function handleNullableResult<T>(result: CommandResult<T | null>): T | null {
+  if (!result.success) {
+    if (result.error) {
+      throw new CommandError(result.error);
+    }
+    throw new CommandError({
+      error_code: 'unknown',
+      message: '未知错误',
+      recoverable: false,
+    });
+  }
+  if (result.data === undefined || result.data === null) {
+    return null;
   }
   return result.data;
 }

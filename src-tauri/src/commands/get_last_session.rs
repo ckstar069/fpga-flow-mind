@@ -14,7 +14,10 @@ pub fn get_last_session(app_handle: tauri::AppHandle) -> CommandResult<Option<Se
         Ok(s) => s,
         Err(e) => return e,
     };
+    execute_get_last_session(store)
+}
 
+fn execute_get_last_session(store: SessionStore) -> CommandResult<Option<SessionSummary>> {
     match store.list_sessions(Some(1)) {
         Ok(mut summaries) => CommandResult {
             success: true,
@@ -53,4 +56,23 @@ fn build_session_store(
         warnings: vec![],
     })?;
     Ok(SessionStore::new(app_data_dir))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_store() -> SessionStore {
+        let tmp = tempfile::tempdir().unwrap();
+        SessionStore::with_version(tmp.path().to_path_buf(), "0.1.0".to_string())
+    }
+
+    #[test]
+    fn get_last_session_empty_returns_success_with_none() {
+        let store = make_store();
+        let result = execute_get_last_session(store);
+
+        assert!(result.success);
+        assert!(result.data.is_none() || result.data.as_ref().unwrap().is_none());
+    }
 }

@@ -16,8 +16,11 @@ pub fn delete_session(
         Ok(s) => s,
         Err(e) => return e,
     };
+    execute_delete_session(store, &session_id)
+}
 
-    match store.delete_session(&session_id) {
+fn execute_delete_session(store: SessionStore, session_id: &str) -> CommandResult<()> {
+    match store.delete_session(session_id) {
         Ok(()) => CommandResult {
             success: true,
             data: Some(()),
@@ -79,4 +82,25 @@ fn build_session_store(
         warnings: vec![],
     })?;
     Ok(SessionStore::new(app_data_dir))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_store() -> SessionStore {
+        let tmp = tempfile::tempdir().unwrap();
+        SessionStore::with_version(tmp.path().to_path_buf(), "0.1.0".to_string())
+    }
+
+    #[test]
+    fn delete_session_not_found_returns_command_error() {
+        let store = make_store();
+        let result = execute_delete_session(store, "sess-missing");
+
+        assert!(!result.success);
+        let error = result.error.expect("应有错误");
+        assert_eq!(error.error_code, ErrorCode::SessionNotFound);
+        assert_eq!(error.message, "session 不存在: sess-missing");
+    }
 }
