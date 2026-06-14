@@ -1,11 +1,11 @@
 # Phase 6 完成审查
 
 ---
-status: draft
-updated: 2026-06-14
+status: active
+updated: 2026-06-15
 ---
 
-> 本文档是 Phase 6（持久化、回放与 MVP 总体验收）的完成审查草稿。真实交互式桌面验收尚未完成，因此本文档状态为 `draft`，**暂不允许 Phase 6 / MVP completion**。
+> 本文档是 Phase 6（持久化、回放与 MVP 总体验收）的完成审查。P6-T01~P6-T11 已完成，真实桌面验收已通过，checksum 只读验证通过，允许 Phase 6 / MVP completion。
 
 ## 1. 任务完成状态
 
@@ -19,11 +19,11 @@ updated: 2026-06-14
 | P6-T06 | SessionStore | ✅ | `cargo test --lib persistence::session_store` |
 | P6-T07 | Phase 6 Tauri commands | ✅ | `cargo test --lib commands::` |
 | P6-T08 | 前端 TypeScript 类型 + command 调用 | ✅ | `npm run build` |
-| P6-T09 | 前端 Session 管理与状态恢复 | ✅ | `npm run build` + 代码路径审查 |
+| P6-T09 | 前端 Session 管理与状态恢复 | ✅ | `npm run build` + 桌面验收 |
 | P6-T10 | Batch D 审核收口（自动保存竞态、ui_states 恢复、QA history 真实问题、类型对齐） | ✅ | `npm run build` + `cargo test --lib` |
-| P6-T11 | MVP 总体验收与 completion review 收口 | ⚠️ partially_done / pending_desktop_acceptance | 代码、自动化测试、非交互式预检查完成；**真实交互式桌面验收未完成** |
+| P6-T11 | MVP 总体验收与 completion review 收口 | ✅ | 真实桌面验收 15 步 + checksum 对比 |
 
-## 2. 测试结果（已完成部分）
+## 2. 测试结果
 
 ### 2.1 前端构建
 
@@ -47,62 +47,71 @@ test result: ok. 411 passed; 0 failed
 Finished `dev` profile [unoptimized + debuginfo] target(s)
 ```
 
-### 2.3 非交互式验收
+## 3. 真实桌面验收
 
-| 验收项 | 方式 | 结果 |
-|--------|------|------|
-| 样例项目结构完整 | 脚本生成 + 文件检查 | ✅ |
-| checksum 只读基线 | `shasum -a 256` | ✅ |
-| 前端构建 | `npm run build` | ✅ |
-| Rust 全量测试 | `cargo test --lib` | ✅ 411 passed |
-| Rust 类型检查 | `cargo check` | ✅ |
-| 后端 save/load/list/delete 集成 | 单元测试 | ✅ |
-| fingerprint 变更/缺失/不安全路径检测 | 单元测试 | ✅ |
-| 版本不兼容拒绝 | 单元测试 | ✅ |
-| 目标项目只读（代码层面） | rg + 代码审查 | ✅ |
+### 3.1 验收项目
 
-## 3. 真实桌面验收（待完成）
+临时样例项目路径：
 
-### 3.1 自动化验证不能替代真实桌面验收
+```text
+/tmp/fpga-flow-mind-phase6-acceptance-20260614-214944
+├── L0/
+│   ├── __init__.py
+│   ├── top.py
+│   └── utils.py
+├── L1/
+│   ├── controller.py
+│   └── interface_l1_to_l0.py
+├── L2/               (空目录)
+├── rtl_final/
+│   └── top.v
+└── docs/
+    └── README.md
+```
 
-`npm run build`、`cargo test --lib`、`cargo check`、单元测试和代码审查覆盖了编译正确性、数据契约、持久化逻辑和大部分安全边界，但**不能验证以下用户体验**:
+验收前 checksum 基线：`/tmp/fpga-flow-mind-phase6-acceptance-20260614-214944/checksums.md`
 
-- 真实 Tauri 桌面窗口渲染
-- 用户点击后的 UI 状态变化
-- 跨阶段状态清空与恢复
-- 手动保存/自动保存的视觉反馈
-- source_changed / source_missing 横幅展示
-- Grounded Q&A 在真实 DOM 中的回答展示
+### 3.2 15 步验收结果
 
-因此，P6-T11 状态为 `partially_done / pending_desktop_acceptance`，completion review 文档保持 `draft`。
+| 步骤 | 验收内容 | 结果 |
+|------|----------|------|
+| 1 | 打开样例项目，workspace 概览、阶段列表（L0/L1/L2/RTL）、warnings 正常 | ✅ |
+| 2 | L0 收集证据 → 生成理解 → 生成视图 | ✅ |
+| 3 | 点击视图节点/边，TracePanel 展示 trace_refs | ✅ |
+| 4 | 点击“查看源码片段”，SourceExcerptPanel 展示源码且不打开外部编辑器 | ✅ |
+| 5 | 点击“定位 evidence”，EvidencePanel 高亮 | ✅ |
+| 6 | 可回答问题“L0 counter 的位宽是多少？”返回带 citation 的回答（8 bit） | ✅ |
+| 7 | 不可回答问题“这个模块的量子纠缠算法是什么？”返回 unknown/证据不足，无伪造 citation | ✅ |
+| 8 | 手动保存 session，顶部状态变为“已保存”，最近项目列表出现记录 | ✅ |
+| 9 | 切换到 L1，旧 L0 trace/Q&A/views 清空；对 L1 执行收集/理解/视图并保存 | ✅（用户口头确认） |
+| 10 | 关闭重开 app，从最近项目加载 session，状态恢复 | ✅（用户口头确认） |
+| 11 | 修改临时项目源文件后重新加载，出现 source_changed 可恢复提示 | ✅（用户口头确认） |
+| 12 | L2 空阶段无收集/生成误入口或明确空状态 | ✅（L2 显示“为空”） |
+| 13 | RTL 命名异常阶段可收集、理解、生成视图 | ✅ |
+| 14 | 删除最近项目记录，只删除 app-owned session，不删除目标项目 | ✅（用户口头确认） |
+| 15 | 重新计算 checksum，目标项目文件前后一致 | ✅ |
 
-### 3.2 15 步真实桌面验收清单
+### 3.3 截图证据
 
-用户需在可交互的桌面会话中完成以下步骤：
+用户已回传关键步骤截图：
 
-1. 打开样例项目，确认 workspace 概览、阶段列表、warnings 正常。
-2. 在 L0 执行：收集证据 → 生成理解 → 生成视图。
-3. 点击视图节点/边，确认 TracePanel 展示 trace_refs。
-4. 点击“查看源码片段”，确认 SourceExcerptPanel 展示源码且不打开外部编辑器。
-5. 点击“定位 evidence”，确认 EvidencePanel 高亮。
-6. 提问可回答问题，确认 Grounded Q&A 返回带 citation 的回答。
-7. 提问证据不足问题，确认返回 unknown/证据不足，不伪造 citation。
-8. 手动保存 session，确认保存状态变为“已保存”，最近项目列表出现记录。
-9. 切换到 L1，确认旧 L0 trace/Q&A/views 状态清空；对 L1 执行收集/理解/视图，并保存。
-10. 关闭并重新打开 app，从最近项目加载 session，确认 root_path、selected_stage_id、stage_context、evidence、understanding、views、trace/excerpt/qa/ui_state 恢复。
-11. 修改临时项目中的一个源文件（副本），确认加载时出现 source_changed 可恢复提示。
-12. 验证 L2 空阶段无收集/生成误入口或明确空状态。
-13. 验证 rtl_final Verilog 阶段可收集、理解、生成视图。
-14. 删除最近项目记录，确认只删除 app-owned session，不删除目标项目。
-15. 重新计算 checksum，确认目标项目文件前后一致。
+- 图 1：L0 阶段已完成证据收集、理解生成、视图生成；TracePanel 展示 `module_Counter` trace；SourceExcerptPanel 展示 `top.py` 源码；最近项目列表已出现该 session；顶部显示“已保存”。
+- 图 2：Grounded Q&A 可回答问题“L0 counter 的位宽是多少？”返回“位宽为 8 bit”，带 8 条 citation。
+- 图 3：Grounded Q&A 不可回答问题“这个模块的量子纠缠算法是什么？”返回“未知”，提示 `evidence_gap`，无伪造 citation。
+- 图 4：RTL 命名异常阶段可完成证据收集、理解生成、视图生成，并展示 trace 详情与源码片段。
 
-### 3.3 验收通过标准
+### 3.4 checksum 只读验证
 
-- 15 步全部完成且无阻塞错误。
-- 目标项目 checksum 与验收前一致。
-- 用户回传确认或关键步骤截图。
+验收前后源文件 checksum 对比：
 
-## 4. Session 保存/加载/删除/恢复验证（已覆盖部分）
+```bash
+diff checksums.md checksums-recomputed.md
+# Source files checksums MATCH
+```
+
+目标项目文件未被修改，只读验证通过。
+
+## 4. Session 保存/加载/删除/恢复验证
 
 ### 4.1 后端集成测试
 
@@ -116,7 +125,7 @@ Finished `dev` profile [unoptimized + debuginfo] target(s)
 - `delete_session_removes_storage`：删除仅移除 app storage。
 - `delete_session_rejects_symlink_session_dir_and_preserves_target`：拒绝 symlink 攻击并保护目标项目。
 
-### 4.2 前端状态恢复（代码审查）
+### 4.2 前端状态恢复
 
 `WorkspacePage.tsx` 已实现：
 
@@ -153,18 +162,20 @@ rg "PASS|HOLD|审计" src/features src/lib src/types docs/planning docs/README.m
 2. **自动保存策略轻量**：2s debounce，无复杂队列/后台 watcher/冲突合并。
 3. **active_view_type 未持久化**：当前 UI 无集中 active view type 状态。
 4. **提问文本集中保存**：QA history 使用 `handleAskGroundedQuestion` 的真实 `questionText`，但历史列表未在 UI 中展示，仅持久化。
-5. **交互式桌面验收受环境限制**：本 CLI 环境无法完成 15 步人工点击验收，已提供可复现样例项目和清单供用户在真实桌面环境补做。
-6. **source_changed 模拟需用户手动触发**：临时项目 checksum 基线已建立，验收时可通过修改临时项目源文件后重新加载来验证。
+5. **source_changed 模拟为手动触发**：本次验收通过手动修改临时项目源文件验证，未引入文件系统 watcher。
 
 ## 7. 结论
 
-- P6-T01~P6-T10 已完成并通过自动化验证。
-- P6-T11 完成审查文档已产出，但**真实交互式桌面验收尚未完成**。
-- 代码层面、测试层面、安全检查层面均满足 Phase 6 编码退出条件，但**这些不能替代真实桌面验收**。
-- **暂不允许 Phase 6 / MVP completion。需在真实桌面环境完成 15 步验收并确认 checksum 前后一致后，再更新本文档为 `status: active` 并允许 completion。**
+- P6-T01~P6-T11 全部完成。
+- 真实桌面验收 15 步通过，关键步骤有截图佐证。
+- 目标项目 checksum 验收前后一致，只读验证通过。
+- 全量测试、构建、类型检查通过。
+- 安全边界满足。
+- **允许 Phase 6 / MVP completion。**
 
 ## 8. 变更记录
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
 | 2026-06-14 | 初始 draft：记录 Phase 6 任务状态、测试结果、安全边界、已知限制。明确真实交互式桌面验收未完成，completion review 不应标记为完成。 | Claude |
+| 2026-06-15 | 更新为 active：用户完成 15 步真实桌面验收，checksum 只读验证通过，允许 Phase 6 / MVP completion。 | Claude |
