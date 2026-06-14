@@ -416,6 +416,88 @@ mod tests {
     }
 
     #[test]
+    fn symlink_inside_root_directory_is_skipped() {
+        // 目标：root 内子目录 symlink 指向 root 外时，必须跳过，不参与 fingerprint。
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path().join("root");
+        fs::create_dir(&root).unwrap();
+        let external = tmp.path().join("external");
+        fs::create_dir(&external).unwrap();
+
+        fs::write(root.join("a.py"), "root content").unwrap();
+        fs::write(external.join("secret.py"), "secret v1").unwrap();
+
+        let link = root.join("link_to_external");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            symlink(&external, &link).unwrap();
+        }
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::symlink_dir;
+            symlink_dir(&external, &link).unwrap();
+        }
+
+        let fp1 = WorkspaceFingerprintService::compute_fingerprint(&root).unwrap();
+
+        // 修改 root 外的文件，若 symlink 被跳过则 fingerprint 不变。
+        fs::write(external.join("secret.py"), "secret v2").unwrap();
+        let fp2 = WorkspaceFingerprintService::compute_fingerprint(&root).unwrap();
+
+        assert_eq!(fp1, fp2, "root 内指向外部的目录 symlink 不应影响 fingerprint");
+    }
+
+    #[test]
+    fn symlink_inside_root_file_is_skipped() {
+        // 目标：root 内文件 symlink 指向 root 外文件时，必须跳过。
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path().join("root");
+        fs::create_dir(&root).unwrap();
+        let external = tmp.path().join("external");
+        fs::create_dir(&external).unwrap();
+
+        fs::write(root.join("a.py"), "root content").unwrap();
+        let target = external.join("secret.py");
+        fs::write(&target, "secret v1").unwrap();
+
+        let link = root.join("link.py");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            symlink(&target, &link).unwrap();
+        }
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::symlink_file;
+            symlink_file(&target, &link).unwrap();
+        }
+
+        let fp1 = WorkspaceFingerprintService::compute_fingerprint(&root).unwrap();
+
+        fs::write(&target, "secret v2").unwrap();
+        let fp2 = WorkspaceFingerprintService::compute_fingerprint(&root).unwrap();
+
+        assert_eq!(fp1, fp2, "root 内指向外部的文件 symlink 不应影响 fingerprint");
+    }
+
+    #[test]
+    fn canonical_dotdot_root_is_stable() {
+        // 目标：root 与 root/subdir/.. 应指向同一真实目录，fingerprint 一致。
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path().join("root");
+        fs::create_dir(&root).unwrap();
+        fs::create_dir(root.join("subdir")).unwrap();
+        fs::write(root.join("a.py"), "x").unwrap();
+
+        let fp_root = WorkspaceFingerprintService::compute_fingerprint(&root).unwrap();
+        let fp_dotdot =
+            WorkspaceFingerprintService::compute_fingerprint(&root.join("subdir").join("..")).unwrap();
+
+        assert_eq!(fp_root, fp_dotdot, "canonical dotdot 路径应与 root 一致");
+    }
+
+    #[test]
     fn algorithm_label_is_correct() {
         assert_eq!(WorkspaceFingerprintService::algorithm(), "sha256:file-list:v1");
     }
