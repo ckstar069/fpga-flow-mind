@@ -1,9 +1,21 @@
-import type { StageContext, StageFile, UpstreamRef, EvidenceCollection, ImplementationUnderstanding, ViewGraph } from '../../../types/workspace';
+import type {
+  StageContext,
+  StageFile,
+  UpstreamRef,
+  EvidenceCollection,
+  ImplementationUnderstanding,
+  ViewGraph,
+  SelectedTraceTarget,
+  TraceRefResolved,
+  SourceExcerpt,
+} from '../../../types/workspace';
 import type { UiError } from '../workspaceUiTypes';
 import { formatBytes } from '../workspaceUiUtils';
 import EvidencePanel from './EvidencePanel';
 import UnderstandingPanel from './UnderstandingPanel';
 import MultiViewPanel from './MultiViewPanel';
+import TracePanel from './TracePanel';
+import SourceExcerptPanel from './SourceExcerptPanel';
 
 interface StageDetailProps {
   context: StageContext;
@@ -19,6 +31,25 @@ interface StageDetailProps {
   viewsLoading?: boolean;
   viewsError?: UiError;
   onGenerateViews?: () => void;
+  rootPath?: string;
+  selectedTraceTarget?: SelectedTraceTarget | null;
+  resolvedTraces?: TraceRefResolved[];
+  traceLoading?: boolean;
+  traceError?: UiError | null;
+  sourceExcerpt?: SourceExcerpt | null;
+  excerptError?: UiError | null;
+  highlightedEvidenceId?: string | null;
+  currentSourceEvidenceId?: string | null;
+  onSelectTraceTarget?: (target: SelectedTraceTarget) => void;
+  onClearTraceTarget?: () => void;
+  onViewSource?: (location: {
+    source_path: string;
+    line_range: { start: number; end: number };
+    evidence_id?: string;
+  }) => void;
+  onCloseSourceExcerpt?: () => void;
+  onLocateEvidence?: (evidenceId: string) => void;
+  onEvidenceSelect?: (evidenceId: string) => void;
 }
 
 export default function StageDetail({
@@ -35,6 +66,20 @@ export default function StageDetail({
   viewsLoading,
   viewsError,
   onGenerateViews,
+  selectedTraceTarget,
+  resolvedTraces,
+  traceLoading,
+  traceError,
+  sourceExcerpt,
+  excerptError,
+  highlightedEvidenceId,
+  currentSourceEvidenceId,
+  onSelectTraceTarget,
+  onClearTraceTarget,
+  onViewSource,
+  onCloseSourceExcerpt,
+  onLocateEvidence,
+  onEvidenceSelect,
 }: StageDetailProps) {
   const canCollect =
     !context.error_code && context.files.length > 0 && !!onCollectEvidence;
@@ -398,10 +443,42 @@ export default function StageDetail({
           views={views ?? []}
           loading={viewsLoading}
           error={!viewsLoading ? viewsError : undefined}
+          selectedTarget={selectedTraceTarget}
+          onSelectTarget={onSelectTraceTarget}
         />
       )}
 
-      {evidence && <EvidencePanel evidence={evidence} />}
+      {/* TracePanel */}
+      {selectedTraceTarget && (
+        <TracePanel
+          selectedTargetLabel={getSelectedTargetLabel(selectedTraceTarget, views)}
+          selectedTargetType={getSelectedTargetTypeLabel(selectedTraceTarget)}
+          resolvedTraces={resolvedTraces ?? []}
+          loading={traceLoading}
+          error={traceError}
+          onClear={onClearTraceTarget ?? (() => {})}
+          onViewSource={onViewSource ?? (() => {})}
+          onLocateEvidence={onLocateEvidence ?? (() => {})}
+        />
+      )}
+
+      {/* SourceExcerptPanel */}
+      {sourceExcerpt && (
+        <SourceExcerptPanel
+          excerpt={sourceExcerpt}
+          onClose={onCloseSourceExcerpt ?? (() => {})}
+          error={excerptError}
+        />
+      )}
+
+      {evidence && (
+        <EvidencePanel
+          evidence={evidence}
+          highlightedEvidenceId={highlightedEvidenceId ?? undefined}
+          currentSourceEvidenceId={currentSourceEvidenceId ?? undefined}
+          onEvidenceSelect={onEvidenceSelect}
+        />
+      )}
 
       {context.external_deps.length > 0 && (
         <div style={{ marginBottom: 24 }}>
@@ -454,4 +531,43 @@ export default function StageDetail({
       )}
     </div>
   );
+}
+
+// ─── 选择目标标签辅助函数 ───────────────────────────────────────────────
+
+function getSelectedTargetTypeLabel(target: SelectedTraceTarget): string {
+  switch (target.kind) {
+    case 'view_node':
+      return '视图节点';
+    case 'view_edge':
+      return '视图边';
+    case 'claim':
+      return '声明';
+    case 'evidence':
+      return '证据';
+    default:
+      return '未知';
+  }
+}
+
+function getSelectedTargetLabel(
+  target: SelectedTraceTarget,
+  views?: ViewGraph[]
+): string {
+  if (target.kind === 'view_node') {
+    const node = views
+      ?.find((g) => g.view_type === target.view_type)
+      ?.nodes.find((n) => n.node_id === target.node_id);
+    return node?.label ?? target.node_id;
+  }
+  if (target.kind === 'view_edge') {
+    const edge = views
+      ?.find((g) => g.view_type === target.view_type)
+      ?.edges.find((e) => e.edge_id === target.edge_id);
+    return edge?.label ?? edge?.edge_id ?? target.edge_id;
+  }
+  if (target.kind === 'claim') {
+    return target.claim_id;
+  }
+  return target.evidence_id;
 }

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import type { EvidenceCollection, EvidenceItem, EvidenceStrength } from '../../../types/workspace';
 
 // ─── strength 标签映射 ───
@@ -19,9 +20,17 @@ const STRENGTH_COLOR: Record<EvidenceStrength, string> = {
 
 interface EvidencePanelProps {
   evidence: EvidenceCollection;
+  highlightedEvidenceId?: string;
+  currentSourceEvidenceId?: string;
+  onEvidenceSelect?: (evidenceId: string) => void;
 }
 
-export default function EvidencePanel({ evidence }: EvidencePanelProps) {
+export default function EvidencePanel({
+  evidence,
+  highlightedEvidenceId,
+  currentSourceEvidenceId,
+  onEvidenceSelect,
+}: EvidencePanelProps) {
   const { stats, warnings, evidence_items } = evidence;
 
   return (
@@ -151,7 +160,13 @@ export default function EvidencePanel({ evidence }: EvidencePanelProps) {
       {evidence_items.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {evidence_items.map((item) => (
-            <EvidenceItemCard key={item.evidence_id} item={item} />
+            <EvidenceItemCard
+              key={item.evidence_id}
+              item={item}
+              highlighted={highlightedEvidenceId === item.evidence_id}
+              currentSource={currentSourceEvidenceId === item.evidence_id}
+              onSelect={onEvidenceSelect}
+            />
           ))}
         </div>
       )}
@@ -160,19 +175,42 @@ export default function EvidencePanel({ evidence }: EvidencePanelProps) {
 }
 
 // ─── 证据项卡片 ───
-function EvidenceItemCard({ item }: { item: EvidenceItem }) {
+function EvidenceItemCard({
+  item,
+  highlighted,
+  currentSource,
+  onSelect,
+}: {
+  item: EvidenceItem;
+  highlighted?: boolean;
+  currentSource?: boolean;
+  onSelect?: (evidenceId: string) => void;
+}) {
+  const cardRef = useRef<HTMLDivElement>(null);
   const strengthColor =
     STRENGTH_COLOR[item.strength as EvidenceStrength] ?? '#9e9e9e';
   const strengthLabel =
     STRENGTH_LABEL[item.strength as EvidenceStrength] ?? item.strength;
 
+  // 高亮时滚动到该元素
+  useEffect(() => {
+    if (highlighted && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [highlighted]);
+
   return (
     <div
+      ref={cardRef}
+      onClick={() => onSelect?.(item.evidence_id)}
       style={{
         padding: '10px 14px',
-        background: '#fff',
+        background: highlighted ? '#fff9c4' : currentSource ? '#e3f2fd' : '#fff',
         borderRadius: 6,
         border: '1px solid #e0e0e0',
+        borderLeft: currentSource ? '4px solid #1976d2' : highlighted ? '4px solid #fbc02d' : '1px solid #e0e0e0',
+        cursor: onSelect ? 'pointer' : 'default',
+        transition: 'background 0.2s',
       }}
     >
       {/* 顶行：ID + strength badge */}

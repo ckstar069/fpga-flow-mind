@@ -5,6 +5,7 @@ import type {
   ViewType,
   NodeType,
   EdgeType,
+  SelectedTraceTarget,
 } from '../../../types/workspace';
 import type { UiError } from '../workspaceUiTypes';
 
@@ -133,11 +134,19 @@ interface MultiViewPanelProps {
   views: ViewGraph[];
   loading?: boolean;
   error?: UiError | string;
+  selectedTarget?: SelectedTraceTarget | null;
+  onSelectTarget?: (target: SelectedTraceTarget) => void;
 }
 
 // ─── 主组件 ─────────────────────────────────────────────────────────────
 
-export default function MultiViewPanel({ views, loading, error }: MultiViewPanelProps) {
+export default function MultiViewPanel({
+  views,
+  loading,
+  error,
+  selectedTarget,
+  onSelectTarget,
+}: MultiViewPanelProps) {
   const [selectedTab, setSelectedTab] = useState<ViewType>('structure');
 
   const currentGraph = useMemo(
@@ -146,6 +155,9 @@ export default function MultiViewPanel({ views, loading, error }: MultiViewPanel
   );
 
   const isDegraded = views.some((g) => g.meta.is_degraded_source);
+
+  // 切换 tab 时，如果当前 selectedTarget 不属于新 tab，保留但 ViewGraphRenderer 不显示高亮
+  // 这里选择保留 selectedTarget，由上层在切换阶段/视图生成时清空
 
   // ─── Loading 状态 ───
   if (loading) {
@@ -266,7 +278,11 @@ export default function MultiViewPanel({ views, loading, error }: MultiViewPanel
 
       {/* 当前视图渲染 */}
       {currentGraph ? (
-        <ViewGraphRenderer graph={currentGraph} />
+        <ViewGraphRenderer
+          graph={currentGraph}
+          selectedTarget={selectedTarget}
+          onSelectTarget={onSelectTarget}
+        />
       ) : (
         <div
           style={{
@@ -286,8 +302,42 @@ export default function MultiViewPanel({ views, loading, error }: MultiViewPanel
 
 // ─── 视图渲染器 ─────────────────────────────────────────────────────────
 
-function ViewGraphRenderer({ graph }: { graph: ViewGraph }) {
+function ViewGraphRenderer({
+  graph,
+  selectedTarget,
+  onSelectTarget,
+}: {
+  graph: ViewGraph;
+  selectedTarget?: SelectedTraceTarget | null;
+  onSelectTarget?: (target: SelectedTraceTarget) => void;
+}) {
   const { nodes, edges, meta } = graph;
+
+  // 当前选中是否在当前 graph 内
+  const selectedNodeId =
+    selectedTarget?.kind === 'view_node' && selectedTarget.view_type === graph.view_type
+      ? selectedTarget.node_id
+      : null;
+  const selectedEdgeId =
+    selectedTarget?.kind === 'view_edge' && selectedTarget.view_type === graph.view_type
+      ? selectedTarget.edge_id
+      : null;
+
+  const handleNodeClick = (nodeId: string) => {
+    onSelectTarget?.({
+      kind: 'view_node',
+      view_type: graph.view_type,
+      node_id: nodeId,
+    });
+  };
+
+  const handleEdgeClick = (edge: ViewEdge) => {
+    onSelectTarget?.({
+      kind: 'view_edge',
+      view_type: graph.view_type,
+      edge_id: edge.edge_id,
+    });
+  };
 
   // 空状态
   if (nodes.length === 0 && edges.length === 0) {
@@ -398,6 +448,7 @@ function ViewGraphRenderer({ graph }: { graph: ViewGraph }) {
           const stroke = confidenceEdgeStroke(edge.confidence);
           const dash = confidenceDashArray(edge.confidence);
           const sw = confidenceStrokeWidth(edge.confidence);
+          const isSelected = selectedEdgeId === edge.edge_id;
 
           // 边从节点右边缘中心 → 目标节点左边缘中心
           const x1 = from.x + NODE_W;
@@ -406,16 +457,19 @@ function ViewGraphRenderer({ graph }: { graph: ViewGraph }) {
           const y2 = to.y + NODE_H / 2;
 
           return (
-            <g key={edge.edge_id}>
+            <g key={edge.edge_id} onClick={() => handleEdgeClick(edge)} style={{ cursor: 'pointer' }}>
               <line
                 x1={x1}
                 y1={y1}
                 x2={x2}
                 y2={y2}
-                stroke={stroke}
-                strokeWidth={sw}
+                stroke={isSelected ? '#1565c0' : stroke}
+                strokeWidth={isSelected ? sw + 2 : sw}
                 strokeDasharray={dash === 'none' ? undefined : dash}
                 markerEnd="url(#arrowhead)"
+                style={{
+                  filter: isSelected ? 'drop-shadow(0 0 3px #1976d2)' : undefined,
+                }}
               />
               {/* 边标签（中点上方） */}
               <text
@@ -428,7 +482,7 @@ function ViewGraphRenderer({ graph }: { graph: ViewGraph }) {
               >
                 {EDGE_TYPE_LABEL[edge.edge_type] ?? edge.edge_type}
               </text>
-              {/* 透明宽点击区域用于 hover */}
+              {/* 透明宽点击区域用于 hover/click */}
               <line
                 x1={x1}
                 y1={y1}
@@ -473,7 +527,7 @@ function ViewGraphRenderer({ graph }: { graph: ViewGraph }) {
             n.label.length > maxLabelLen ? n.label.slice(0, maxLabelLen) + '…' : n.label;
 
           return (
-            <g key={n.node_id}>
+            <g key={n.node_id} onClick={() => handleNodeClick(n.node_id)} style={{ cursor: 'pointer' }}>
               {/* 节点矩形 */}
               <rect
                 x={pos.x}
@@ -483,10 +537,13 @@ function ViewGraphRenderer({ graph }: { graph: ViewGraph }) {
                 rx={6}
                 ry={6}
                 fill={style.fill}
-                stroke={strokeColor}
-                strokeWidth={sw}
+                stroke={selectedNodeId === n.node_id ? '#1565c0' : strokeColor}
+                strokeWidth={selectedNodeId === n.node_id ? sw + 2 : sw}
                 strokeDasharray={dash === 'none' ? undefined : dash}
-                style={{ cursor: 'pointer' }}
+                style={{
+                  cursor: 'pointer',
+                  filter: selectedNodeId === n.node_id ? 'drop-shadow(0 0 4px #1976d2)' : undefined,
+                }}
               />
               {/* 标签 */}
               <text

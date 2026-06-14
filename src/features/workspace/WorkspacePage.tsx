@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useRef } from 'react';
 import type {
   WorkspaceProfile,
   StageContext,
@@ -6,8 +6,20 @@ import type {
   EvidenceCollection,
   ImplementationUnderstanding,
   ViewGraph,
+  SelectedTraceTarget,
+  TraceRefResolved,
+  SourceExcerpt,
 } from '../../types/workspace';
-import { openWorkspace, selectStage, collectEvidence, generateUnderstanding, generateViews, CommandError } from '../../lib/tauriCommands';
+import {
+  openWorkspace,
+  selectStage,
+  collectEvidence,
+  generateUnderstanding,
+  generateViews,
+  resolveTraceTarget,
+  getSourceExcerpt,
+  CommandError,
+} from '../../lib/tauriCommands';
 import type { CommandError as CommandErrorType } from '../../types/workspace';
 import type { UiError } from './workspaceUiTypes';
 
@@ -45,6 +57,21 @@ export default function WorkspacePage() {
   const [state, setState] = useState<AppState>({ phase: 'initial' });
   const [pathInput, setPathInput] = useState('');
 
+  // Phase 5 trace 状态
+  const [selectedTraceTarget, setSelectedTraceTarget] = useState<SelectedTraceTarget | null>(null);
+  const [resolvedTraces, setResolvedTraces] = useState<TraceRefResolved[]>([]);
+  const [traceLoading, setTraceLoading] = useState(false);
+  const [traceError, setTraceError] = useState<UiError | null>(null);
+  const [sourceExcerpt, setSourceExcerpt] = useState<SourceExcerpt | null>(null);
+  const [excerptError, setExcerptError] = useState<UiError | null>(null);
+  const [highlightedEvidenceId, setHighlightedEvidenceId] = useState<string | null>(null);
+  const [currentSourceEvidenceId, setCurrentSourceEvidenceId] = useState<string | null>(null);
+
+  // 用于取消旧 trace/excerpt 请求的守卫
+  const traceGuardRef = useRef<number>(0);
+  const excerptGuardRef = useRef<number>(0);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // ─── 打开项目 ───
   const handleOpen = useCallback(async () => {
     const path = pathInput.trim();
@@ -57,6 +84,22 @@ export default function WorkspacePage() {
       setState({ phase: 'error', error: makeUiError(err) });
     }
   }, [pathInput]);
+
+  // ─── 清空 trace 相关状态 ───
+  const clearTraceState = useCallback(() => {
+    setSelectedTraceTarget(null);
+    setResolvedTraces([]);
+    setTraceLoading(false);
+    setTraceError(null);
+    setSourceExcerpt(null);
+    setExcerptError(null);
+    setHighlightedEvidenceId(null);
+    setCurrentSourceEvidenceId(null);
+    if (highlightTimerRef.current) {
+      clearTimeout(highlightTimerRef.current);
+      highlightTimerRef.current = null;
+    }
+  }, []);
 
   // ─── 选择阶段 ───
   const handleSelectStage = useCallback(
@@ -74,6 +117,7 @@ export default function WorkspacePage() {
           ? (state as { profile: WorkspaceProfile }).profile
           : null;
       if (!profile) return;
+      clearTraceState();
       setState({ phase: 'selecting_stage', profile, stageId });
       try {
         const context = await selectStage(profile.root_path, stageId);
@@ -82,7 +126,7 @@ export default function WorkspacePage() {
         setState({ phase: 'stage_error', profile, stageId, error: makeUiError(err) });
       }
     },
-    [state]
+    [state, clearTraceState]
   );
 
   // ─── 收集证据 ───
@@ -103,8 +147,8 @@ export default function WorkspacePage() {
       stageId: string;
       context: StageContext;
     };
-    // 进入 collecting_evidence 时自动清除旧 understanding / views
-    // （AppState 从 understanding_* / views_* 切换到 collecting_evidence）
+    // 进入 collecting_evidence 时自动清除旧 understanding / views / trace
+    clearTraceState();
     setState({ phase: 'collecting_evidence', profile, stageId, context });
     try {
       const evidence = await collectEvidence(profile.root_path, stageId);
@@ -112,7 +156,7 @@ export default function WorkspacePage() {
     } catch (err) {
       setState({ phase: 'evidence_error', profile, stageId, context, error: makeUiError(err) });
     }
-  }, [state]);
+  }, [state, clearTraceState]);
 
   // ─── 生成理解 ───
   const handleGenerateUnderstanding = useCallback(async () => {
@@ -132,6 +176,7 @@ export default function WorkspacePage() {
     };
     const evidence =
       'evidence' in state ? (state as { evidence?: EvidenceCollection }).evidence : undefined;
+    clearTraceState();
     setState({ phase: 'understanding_loading', profile, stageId, context, evidence });
     try {
       const understanding = await generateUnderstanding(profile.root_path, stageId);
@@ -146,7 +191,7 @@ export default function WorkspacePage() {
         understandingError: makeUiError(err),
       });
     }
-  }, [state]);
+  }, [state, clearTraceState]);
 
   // ─── 生成视图 ───
   const handleGenerateViews = useCallback(async () => {
@@ -162,6 +207,7 @@ export default function WorkspacePage() {
       evidence?: EvidenceCollection;
       understanding: ImplementationUnderstanding;
     };
+    clearTraceState();
     setState({ phase: 'views_loading', profile, stageId, context, evidence, understanding });
     try {
       const views = await generateViews(understanding);
@@ -177,7 +223,7 @@ export default function WorkspacePage() {
         viewsError: makeUiError(err),
       });
     }
-  }, [state]);
+  }, [state, clearTraceState]);
 
   // ─── 当前 profile 提取 ───
   const currentProfile = useMemo<WorkspaceProfile | null>(() => {
@@ -282,6 +328,130 @@ export default function WorkspacePage() {
     }
     return null;
   }, [state]);
+
+  // ─── trace/excerpt 请求守卫 ───
+  const currentStageIdForTrace = selectedStageId;
+
+  // ─── 处理视图节点选择 ───
+  const handleSelectTraceTarget = useCallback(
+    async (target: SelectedTraceTarget) => {
+      setSelectedTraceTarget(target);
+      setTraceError(null);
+      setSourceExcerpt(null);
+      setExcerptError(null);
+      setHighlightedEvidenceId(null);
+      setCurrentSourceEvidenceId(null);
+
+      if (
+        state.phase !== 'views_loaded' ||
+        !state.views ||
+        !state.understanding ||
+        !state.evidence
+      ) {
+        setResolvedTraces([]);
+        return;
+      }
+
+      const guard = ++traceGuardRef.current;
+      setTraceLoading(true);
+      try {
+        const traces = await resolveTraceTarget(
+          target,
+          state.understanding,
+          state.evidence,
+          state.views
+        );
+        // 仅在请求仍属于当前状态时更新结果
+        if (guard === traceGuardRef.current) {
+          setResolvedTraces(traces);
+          setTraceLoading(false);
+        }
+      } catch (err) {
+        if (guard === traceGuardRef.current) {
+          setTraceError(makeUiError(err));
+          setTraceLoading(false);
+        }
+      }
+    },
+    [state]
+  );
+
+  // ─── 清空选择 ───
+  const handleClearTraceTarget = useCallback(() => {
+    setSelectedTraceTarget(null);
+    setResolvedTraces([]);
+    setTraceError(null);
+    setSourceExcerpt(null);
+    setExcerptError(null);
+    setHighlightedEvidenceId(null);
+    setCurrentSourceEvidenceId(null);
+  }, []);
+
+  // ─── 查看源码片段 ───
+  const handleViewSource = useCallback(
+    async (location: {
+      source_path: string;
+      line_range: { start: number; end: number };
+      evidence_id?: string;
+    }) => {
+      if (currentStageIdForTrace == null) return;
+      const profile = currentProfile;
+      if (!profile) return;
+
+      setExcerptError(null);
+      setSourceExcerpt(null);
+      if (location.evidence_id) {
+        setCurrentSourceEvidenceId(location.evidence_id);
+      }
+
+      const guard = ++excerptGuardRef.current;
+      try {
+        const excerpt = await getSourceExcerpt(location, profile.root_path);
+        if (guard === excerptGuardRef.current) {
+          setSourceExcerpt(excerpt);
+        }
+      } catch (err) {
+        if (guard === excerptGuardRef.current) {
+          setExcerptError(makeUiError(err));
+        }
+      }
+    },
+    [currentProfile, currentStageIdForTrace]
+  );
+
+  // ─── 关闭源码片段 ───
+  const handleCloseSourceExcerpt = useCallback(() => {
+    setSourceExcerpt(null);
+    setExcerptError(null);
+    setCurrentSourceEvidenceId(null);
+  }, []);
+
+  // ─── 定位 evidence 高亮 ───
+  const handleLocateEvidence = useCallback((evidenceId: string) => {
+    setHighlightedEvidenceId(evidenceId);
+    setCurrentSourceEvidenceId(evidenceId);
+    if (highlightTimerRef.current) {
+      clearTimeout(highlightTimerRef.current);
+    }
+    highlightTimerRef.current = setTimeout(() => {
+      setHighlightedEvidenceId((current) =>
+        current === evidenceId ? null : current
+      );
+    }, 3000);
+  }, []);
+
+  // ─── evidence 卡片点击 ───
+  const handleEvidenceSelect = useCallback((evidenceId: string) => {
+    setHighlightedEvidenceId(evidenceId);
+    if (highlightTimerRef.current) {
+      clearTimeout(highlightTimerRef.current);
+    }
+    highlightTimerRef.current = setTimeout(() => {
+      setHighlightedEvidenceId((current) =>
+        current === evidenceId ? null : current
+      );
+    }, 3000);
+  }, []);
 
   // ─── 渲染 ───
   return (
@@ -424,6 +594,20 @@ export default function WorkspacePage() {
               viewsLoading={'viewsLoading' in evidenceState ? evidenceState.viewsLoading : undefined}
               viewsError={'viewsError' in evidenceState ? evidenceState.viewsError : undefined}
               onGenerateViews={handleGenerateViews}
+              selectedTraceTarget={selectedTraceTarget}
+              resolvedTraces={resolvedTraces}
+              traceLoading={traceLoading}
+              traceError={traceError}
+              sourceExcerpt={sourceExcerpt}
+              excerptError={excerptError}
+              highlightedEvidenceId={highlightedEvidenceId}
+              currentSourceEvidenceId={currentSourceEvidenceId}
+              onSelectTraceTarget={handleSelectTraceTarget}
+              onClearTraceTarget={handleClearTraceTarget}
+              onViewSource={handleViewSource}
+              onCloseSourceExcerpt={handleCloseSourceExcerpt}
+              onLocateEvidence={handleLocateEvidence}
+              onEvidenceSelect={handleEvidenceSelect}
             />
           )}
 
