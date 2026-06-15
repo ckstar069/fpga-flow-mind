@@ -186,7 +186,7 @@ export default function QualityReviewPanel({
                 label="维度指标"
                 value={String(report.summary.metric_snapshots.length)}
               />
-              <StatBox label=" Issues " value={String(report.issues.length)} />
+              <StatBox label="质量记录" value={String(report.issues.length)} />
             </div>
 
             {<ObjectList title="按分类" data={report.summary.issues_by_kind} />}

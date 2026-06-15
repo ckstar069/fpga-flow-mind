@@ -507,6 +507,31 @@ export default function WorkspacePage() {
     return null;
   }, [state]);
 
+  // Phase 7 质量报告是否处于忙碌或无可评估产物
+  const hasQualityEvaluableArtifact =
+    evidenceState?.evidence != null ||
+    evidenceState?.understanding != null ||
+    evidenceState?.views != null ||
+    groundedAnswer != null;
+
+  const canGenerateQualityReport =
+    !isLoadingSession &&
+    !isLoadingStage &&
+    !groundedAnswerLoading &&
+    !qualityLoading &&
+    evidenceState != null &&
+    hasQualityEvaluableArtifact;
+
+  const qualityDisabledReason = (() => {
+    if (isLoadingSession) return '正在加载会话';
+    if (isLoadingStage) return '阶段加载中，请稍候';
+    if (groundedAnswerLoading) return 'Q\u{26}A 生成中，请稍候';
+    if (qualityLoading) return '质量报告生成中';
+    if (evidenceState == null) return '请先选择一个阶段';
+    if (!hasQualityEvaluableArtifact) return '请先收集证据或生成理解/视图';
+    return undefined;
+  })();
+
   // ─── Phase 6: 刷新最近项目列表 ───
   const refreshSessions = useCallback(async () => {
     setSessionsLoading(true);
@@ -623,6 +648,7 @@ export default function WorkspacePage() {
       setLoadStatus(null);
       setLoadError(null);
       clearTraceState();
+      clearQualityState();
       try {
         const result = await loadSession(targetSessionId);
         const restored = result.session_state;
@@ -1215,8 +1241,8 @@ export default function WorkspacePage() {
               qualityReport={qualityReport}
               qualityLoading={qualityLoading}
               qualityError={qualityError}
-              canGenerateQualityReport={!isLoadingSession}
-              qualityDisabledReason={isLoadingSession ? '正在加载会话' : undefined}
+              canGenerateQualityReport={canGenerateQualityReport}
+              qualityDisabledReason={qualityDisabledReason}
               onGenerateQualityReport={handleGenerateQualityReport}
             />
           )}

@@ -157,4 +157,5 @@ Phase 7 完成后，方允许考虑进入：
 | 2026-06-15 | 初始 draft：定义后端/前端测试方向、桌面验收步骤、≥2 真实样本策略、checksum、rg 安全回归、Phase 7 完成标准与进入 Phase 8/9 条件。Batch A/B 后续已实现，当前进入审核收口。 | Claude |
 | 2026-06-15 | 审核收口修复（status 保持 draft）：测试矩阵新增阶段识别评估行（`stage_identification_mismatch`）；追溯字段补 `source_path`/`line_range`；`hallucinated_claim_blocked` 标注为正向 guardrail 不计入负向 backlog；Q&A 评估改用 `QaEvaluationQuestionSet`；完成标准 backlog 闭环明确仅看 polarity=problem。Batch A/B 后续已实现，当前进入审核收口。 | Claude |
 | 2026-06-15 | 审核通过，status 从 draft 转为 active，作为 Phase 7 编码依据；Phase 7 Batch A/B 已实现并进入审核收口，Batch C 未授权。 | Claude |
-| 2026-06-15 | Batch C 验证：`cargo test --lib` 483 通过；`npm run build` 通过；新增 `commands::generate_quality_report` 5 项单测；rg 边界检查无新增产品代码越界（PASS/HOLD/Vivado/LLM）；前端 Quality Review 组件类型检查通过。 | Claude |
+| 2026-06-15 | Batch C 验证：`cargo test --lib` 485 通过；`npm run build` 通过；`commands::generate_quality_report` 单测增至 7 项（新增空阶段错误、有文件无 evidence 诚实暴露 missing_evidence、禁止空 meets_gate 报告）；rg 边界检查无新增产品代码越界（PASS/HOLD/Vivado/LLM/目标项目写入）；前端 Quality Review 按钮 disabled 状态与原因、Issues 标签中文化。 | Claude |
+| 2026-06-15 | Batch C 审核收口修复：空阶段无产物返回错误、有文件无 evidence 构造空 EvidenceCollection 暴露 missing_evidence、加载会话清空 qualityReport、质量报告按钮在加载/无评估产物时禁用并给出原因、"Issues" 标签改为"质量记录"；未进入 Batch D/E。 | Claude |
