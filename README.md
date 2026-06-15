@@ -41,15 +41,17 @@ L0/L1/L2/... 一直推进到 RTL/硬件实现阶段的 FPGA 业务项目。
 
 **MVP / Phase 0–6 已完成（tag `v0.1.0-mvp`，2026-06-15）。**
 
-首个可用闭环已实现并完成真实桌面验收：
+首个可用闭环已实现并完成桌面验收（基于自包含验收样例项目）：
 
-- 打开一个真实业务项目；
+- 打开并分析自包含验收样例项目，完成桌面闭环；
 - 选择一个阶段；
 - 读取 Python/Verilog/docs/tests/config 相关上下文；
 - 生成结构图、数据流图、时序/流水图等理解视图；
 - 所有主要结论可回链到源码证据；
 - 支持用户继续追问具体节点、公式、信号和映射来源；
 - session 可保存、加载、从最近项目恢复，目标项目只读。
+
+> 说明：桌面验收基于自包含样例项目；**真实 `ai_project_template` 业务项目的可用性验证留给 Phase 7**，本阶段不声称已在真实复杂业务项目上验证通过。
 
 完整发布说明见 [`docs/planning/mvp-release-notes.md`](docs/planning/mvp-release-notes.md)，Phase 6 完成审查见 [`docs/planning/phase-6-completion-review.md`](docs/planning/phase-6-completion-review.md)。
 

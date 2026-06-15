@@ -108,7 +108,33 @@ Phase 7（真实项目质量）
 
 本轮**只完成第 1 步**：总体路线图 + Phase 7 ~ Phase 11 的 overview 文档，全部 `draft`。第 2 步及之后的详细文档、编码、验收均**未开始**。
 
-## 6. 整体非目标（适用于整个 Post-MVP）
+## 6. 未来详细文档清单（每阶段编码前必须补齐）
+
+§5 给出了进入纪律的流程。本节列出 Phase 7 ~ Phase 11 **任一阶段**进入编码前必须补齐的详细文档清单。这些文档当前**均不存在**，需在各阶段启动时编制，并逐份审核转为 `active` 后，该阶段才允许编码。
+
+| 文档类型 | 目录 | 用途 | 是否每阶段必需 |
+|----------|------|------|----------------|
+| 阶段需求 | `docs/requirements/phase-N-*-requirements.md` | 该阶段要解决什么问题、量化验收门槛、非目标 | 是 |
+| 技术设计 | `docs/design/phase-N-*-design.md`（必要时含 `phase-N-*-model.md`） | 数据模型、架构、接口、安全设计 | 是 |
+| UI/UX 设计 | `docs/ui-ux/phase-N-*-view.md` | 信息架构、视图、交互 | 涉及 UI 变更时必需 |
+| 验证设计 | `docs/testing/phase-N-*-validation.md` | 验证策略、量化度量、回归、安全回归 | 是 |
+| 编码实施计划 | `docs/planning/phase-N-implementation-plan.md` | 任务拆解、依赖、Batch 划分、退出条件 | 是 |
+| 完成审查 | `docs/planning/phase-N-completion-review.md` | 编码完成后真实桌面验收与完成审查 | 编码完成后 |
+
+> 约束：上述任一"必须"文档未达到 `active` 前，对应阶段不得进入编码；每个"详细文档 active"决策都应可追溯到对对应 overview draft 的审阅。
+
+## 7. 验收方向（roadmap 层面）
+
+本路线图本轮（draft 阶段）的验收不涉及任何编码，只验收"方向与纪律是否就位"：
+
+- 6 份 overview 文档（本路线图 + Phase 7 ~ Phase 11 各一份）已建立，状态均为 `draft`；
+- 索引已同步（`docs/planning/README.md`、`docs/README.md`、根 `README.md` 均已引用，且不暗示 Phase 7 已开始）；
+- Phase 7 及后续阶段**未开始编码**，真实 LLM / 跨阶段映射 / 语义记忆等能力**未实现**；
+- 硬约束：上述能力**不得**在任何阶段的详细文档审核转为 `active` 之前被实现。
+
+各阶段的具体量化验收标准，在该阶段的需求文档（`docs/requirements/phase-N-*-requirements.md`）与验证设计（`docs/testing/phase-N-*-validation.md`）中定义，不属于本路线图范畴。
+
+## 8. 整体非目标（适用于整个 Post-MVP）
 
 即便进入 Post-MVP，以下边界在整个 Phase 7 ~ Phase 11 期间始终不变：
 
@@ -119,20 +145,21 @@ Phase 7（真实项目质量）
 - 不默认调用真实 LLM，不上传完整源码到外部，不绕过 grounding；
 - 不做团队协作平台、审批流、多人分享。
 
-## 7. 版本与标签策略
+## 9. 版本与标签策略
 
 - 本轮**不打新 tag**。tag `v0.1.0-mvp` 仍是当前唯一发布点。
 - 后续每个阶段完成真实桌面验收后，可由该阶段 completion review 提议打 tag（如 Phase 7 完成后提议 `v0.2.0-phase7`），但标签决策由用户在该阶段 completion review 时确定，不在 overview 阶段承诺。
 
-## 8. 风险与边界（整体）
+## 10. 风险与边界（整体）
 
 - **顺序风险**：最大风险是在 Phase 7 质量基线未立前就推进 Phase 9/10/11，导致真实 LLM 与跨阶段映射建立在不可信的理解上。本路线图以依赖顺序约束规避。
 - **范围扩张风险**：每个阶段都有明确非目标（见各 overview §5），实施时不得脱离文档边界扩张需求（`AGENTS.md` §10）。
 - **定位漂移风险**：Post-MVP 容易向"审计器 / dashboard / 大而全可视化平台"漂移；每阶段验收都应复查 `AGENTS.md` §9 审核关注点。
 - **安全边界**：真实 LLM 接入会引入新的敏感信息面（API key、源码片段外发），Phase 9 必须显式设计安全边界，其他阶段不得在 overview 之外私自引入外部调用。
 
-## 9. 变更记录
+## 11. 变更记录
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
 | 2026-06-15 | 初始 draft：建立 Post-MVP 总体路线图，明确 Phase 7 ~ Phase 11 阶段关系、依赖顺序、进入纪律、整体非目标与版本/标签策略。本文档为总体方向，不含任何阶段详细需求/设计/编码。 | Claude |
+| 2026-06-15 | 小修收口：新增"未来详细文档清单（§6）"与"验收方向 roadmap 层面（§7）"小节，原 §6~§9 顺延为 §8~§11；status 保持 draft。 | Claude |
