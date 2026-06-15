@@ -167,6 +167,8 @@ P7-T01 (evaluation model)
 **允许范围**：仅新增 `src-tauri/src/quality/` 评估层模型与 reporter，只读消费既有产物。
 **禁止越界**：不实现 evaluator 逻辑（留给 Batch B）；不改既有 evidence/understanding/view/qa 模型；不接 LLM。
 
+> 边界澄清：P7-T02 的 `QualityReporter` 可在内部实现最小 **baseline reporter checks**（如 trace_refs 存在性、空视图、错误 citation 等），用于在 Batch A 产出最小确定性 `QualityReport`。这些内嵌检查不替代 Batch B 将拆分的正式 `evidence_evaluator` / `stage_evaluator` / `understanding_evaluator` / `view_evaluator` / `qa_evaluator` 模块；Batch B 会在此基础上增强并复用/替换。
+
 ### 4.2 Batch B：后端 evaluator
 
 | 任务 | 内容 |

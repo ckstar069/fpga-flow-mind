@@ -13,6 +13,15 @@
 //! - report_id / issue_id 确定性生成（无 random / uuid / Date）。
 //!
 //! 输出只表达"工具理解质量"与"不确定性/缺口"，不做对错裁决。
+//!
+//! Batch A / Batch B 边界说明：
+//! 本 reporter 内嵌的 `evaluate_evidence` / `evaluate_understanding` /
+//! `evaluate_view` / `evaluate_qa` 是 Batch A 的 **baseline reporter checks**，
+//! 用于在单一 reporter 中产出最小确定性质量报告。它们只覆盖基础启发式
+//!（trace 存在性、空视图、错误 citation 等），不替代 Batch B 将拆分的
+//! 正式 evaluator 模块（`evidence_evaluator` / `stage_evaluator` /
+//! `understanding_evaluator` / `view_evaluator` / `qa_evaluator`）。
+//! Batch B 会增强并复用/替换这些检查，引入更完整的评估逻辑。
 
 use std::collections::HashSet;
 
@@ -232,6 +241,8 @@ fn evaluate_stage(
     issues
 }
 
+/// Batch A baseline evidence check：覆盖缺口、噪声标记、source_kind/language 自洽。
+/// Batch B 的 `evidence_evaluator` / `stage_evaluator` 将替换/增强为更完整评估。
 fn evaluate_evidence(
     sample_id: &str,
     stage_id: &str,
@@ -298,6 +309,8 @@ fn evaluate_evidence(
     (report, issues)
 }
 
+/// Batch A baseline understanding check：claim existence、honest gap、summary 强度。
+/// Batch B 的 `understanding_evaluator` 将提供更系统的 confidence 校准与 claim 评估。
 fn evaluate_understanding(
     sample_id: &str,
     stage_id: &str,
@@ -392,6 +405,10 @@ fn evaluate_understanding(
     (report, issues)
 }
 
+/// Batch A baseline view check：检查空图、节点/边 trace_refs 缺失/不可解析、孤立节点。
+///
+/// 注意：这是 reporter 内嵌的最小 baseline，Batch B 的 `view_evaluator` 将提供更系统的
+/// 视图可解释性评估（如布局语义、错连检测、退化原因分类）。
 fn evaluate_view(
     sample_id: &str,
     stage_id: &str,
@@ -413,7 +430,7 @@ fn evaluate_view(
                 sample_id: sample_id.to_string(),
                 stage_id: stage_id.to_string(),
                 view_type,
-                trace_resolvable_ratio: 1.0,
+                trace_resolvable_ratio: 0.0,
                 isolated_node_count: 0,
                 suspected_misconnection_count: 0,
                 issue_refs: Vec::new(),
@@ -422,28 +439,74 @@ fn evaluate_view(
         );
     }
 
-    let mut total_refs = 0u32;
-    let mut resolvable_refs = 0u32;
+    // 以 node/edge artifact 为粒度统计：每个 artifact 只要存在至少一个可解析 trace_ref
+    // 即视为 resolvable；trace_refs 为空或全部不可解析视为 not resolvable。
+    let mut total_artifacts = 0u32;
+    let mut resolvable_artifacts = 0u32;
+
     for n in &view.nodes {
+        total_artifacts += 1;
+        if n.trace_refs.is_empty() {
+            issues.push(make_issue(
+                sample_id, stage_id, ArtifactKind::View, QualityIssueKind::EmptyOrUnhelpfulView,
+                QualitySeverity::Medium, None, None, Some(n.node_id.as_str()), None, None,
+                &format!("视图 {} 节点缺少 trace_refs，无法追溯回 evidence/claim（node={}）", view_type, n.node_id),
+            ));
+            continue;
+        }
+        let mut any_ok = false;
         for tr in &n.trace_refs {
-            total_refs += 1;
-            if trace_ref_ok(&tr.evidence_id, &tr.claim_id, evidence_id_set, claim_id_set) {
-                resolvable_refs += 1;
+            if trace_ref_ok(&tr.evidence_id, &tr.claim_id, evidence_id_set, claim_id_set,
+            ) {
+                any_ok = true;
+                break;
             }
         }
+        if any_ok {
+            resolvable_artifacts += 1;
+        } else {
+            issues.push(make_issue(
+                sample_id, stage_id, ArtifactKind::View, QualityIssueKind::EmptyOrUnhelpfulView,
+                QualitySeverity::Medium, None, None, Some(n.node_id.as_str()), None, None,
+                &format!("视图 {} 节点 trace_refs 全部不可解析（node={}）", view_type, n.node_id),
+            ));
+        }
     }
+
     for e in &view.edges {
+        total_artifacts += 1;
+        if e.trace_refs.is_empty() {
+            // QualityIssue 当前无 edge_id 字段；模型契约未扩展 edge_id，故用 description 承载。
+            issues.push(make_issue(
+                sample_id, stage_id, ArtifactKind::View, QualityIssueKind::EmptyOrUnhelpfulView,
+                QualitySeverity::Medium, None, None, None, None, None,
+                &format!("视图 {} 边缺少 trace_refs，无法追溯回 evidence/claim（edge={}）", view_type, e.edge_id),
+            ));
+            continue;
+        }
+        let mut any_ok = false;
         for tr in &e.trace_refs {
-            total_refs += 1;
-            if trace_ref_ok(&tr.evidence_id, &tr.claim_id, evidence_id_set, claim_id_set) {
-                resolvable_refs += 1;
+            if trace_ref_ok(&tr.evidence_id, &tr.claim_id, evidence_id_set, claim_id_set,
+            ) {
+                any_ok = true;
+                break;
             }
         }
+        if any_ok {
+            resolvable_artifacts += 1;
+        } else {
+            issues.push(make_issue(
+                sample_id, stage_id, ArtifactKind::View, QualityIssueKind::EmptyOrUnhelpfulView,
+                QualitySeverity::Medium, None, None, None, None, None,
+                &format!("视图 {} 边 trace_refs 全部不可解析（edge={}）", view_type, e.edge_id),
+            ));
+        }
     }
-    let trace_resolvable_ratio = if total_refs > 0 {
-        resolvable_refs as f32 / total_refs as f32
+
+    let trace_resolvable_ratio = if total_artifacts > 0 {
+        resolvable_artifacts as f32 / total_artifacts as f32
     } else {
-        1.0
+        0.0
     };
 
     // 孤立节点（无连边）
@@ -484,6 +547,8 @@ fn evaluate_view(
     )
 }
 
+/// Batch A baseline Q&A check：citation 存在性/有效性、置信度诚实性代理。
+/// Batch B 的 `qa_evaluator` 将基于 `QaEvaluationQuestionSet` 做完整命中/诚实性评估。
 fn evaluate_qa(
     sample_id: &str,
     stage_id: &str,
@@ -545,16 +610,18 @@ fn trace_ref_ok(
     evidence_set: &HashSet<String>,
     claim_set: &HashSet<String>,
 ) -> bool {
-    let mut ok = true;
-    if let Some(ev) = evidence_id {
-        if !ev.is_empty() && !evidence_set.contains(ev) {
-            ok = false;
-        }
+    let ev_present = evidence_id.as_ref().map(|s| !s.is_empty()).unwrap_or(false);
+    let cl_present = claim_id.as_ref().map(|s| !s.is_empty()).unwrap_or(false);
+    // 空引用（无 evidence_id 且无 claim_id）无法解析回任何产物。
+    if !ev_present && !cl_present {
+        return false;
     }
-    if let Some(cl) = claim_id {
-        if !cl.is_empty() && !claim_set.contains(cl) {
-            ok = false;
-        }
+    let mut ok = true;
+    if ev_present && !evidence_set.contains(evidence_id.as_ref().unwrap()) {
+        ok = false;
+    }
+    if cl_present && !claim_set.contains(claim_id.as_ref().unwrap()) {
+        ok = false;
     }
     ok
 }
@@ -642,11 +709,11 @@ fn build_run_summary(
     let mut positive_guardrail_event_count = 0u32;
 
     for i in issues {
-        *issues_by_kind.entry(format!("{:?}", i.kind).to_lowercase()).or_insert(0) += 1;
+        *issues_by_kind.entry(i.kind.as_str().to_string()).or_insert(0) += 1;
         if i.polarity == QualityIssuePolarity::Problem {
             total_issues += 1;
-            *issues_by_severity.entry(format!("{:?}", i.severity).to_lowercase()).or_insert(0) += 1;
-            *issues_by_status.entry(format!("{:?}", i.status).to_lowercase()).or_insert(0) += 1;
+            *issues_by_severity.entry(i.severity.as_str().to_string()).or_insert(0) += 1;
+            *issues_by_status.entry(i.status.as_str().to_string()).or_insert(0) += 1;
         } else {
             positive_guardrail_event_count += 1;
         }
@@ -708,7 +775,7 @@ mod tests {
         ClaimCategory, ClaimConfidence, EvidenceRef, GenerationMeta, ImplementationClaim,
         ImplementationUnderstanding, StageSummary, UnderstandingStats,
     };
-    use crate::views::models::{ViewGraph, ViewMeta, ViewType};
+    use crate::views::models::{EdgeType, NodeType, ViewEdge, ViewGraph, ViewMeta, ViewNode, ViewTraceRef, ViewType};
     use std::collections::HashMap as StdHashMap;
 
     fn empty_evidence(stage_id: &str) -> EvidenceCollection {
@@ -784,6 +851,66 @@ mod tests {
 
     fn reporter() -> QualityReporter {
         QualityReporter::new()
+    }
+
+    fn view_node(id: &str, trace_refs: Vec<ViewTraceRef>) -> ViewNode {
+        ViewNode {
+            node_id: id.to_string(),
+            node_type: NodeType::Module,
+            label: id.to_string(),
+            description: "".to_string(),
+            confidence: ClaimConfidence::Confirmed,
+            trace_refs,
+            layout: None,
+        }
+    }
+
+    fn view_edge(id: &str, source: &str, target: &str, trace_refs: Vec<ViewTraceRef>) -> ViewEdge {
+        ViewEdge {
+            edge_id: id.to_string(),
+            edge_type: EdgeType::Contains,
+            source_node_id: source.to_string(),
+            target_node_id: target.to_string(),
+            label: None,
+            description: "".to_string(),
+            confidence: ClaimConfidence::Confirmed,
+            trace_refs,
+        }
+    }
+
+    fn view_trace_evidence(evidence_id: &str) -> ViewTraceRef {
+        ViewTraceRef {
+            claim_id: None,
+            evidence_id: Some(evidence_id.to_string()),
+            confidence: ClaimConfidence::Confirmed,
+            relevance: None,
+        }
+    }
+
+    fn view_trace_claim(claim_id: &str) -> ViewTraceRef {
+        ViewTraceRef {
+            claim_id: Some(claim_id.to_string()),
+            evidence_id: None,
+            confidence: ClaimConfidence::Confirmed,
+            relevance: None,
+        }
+    }
+
+    fn structure_view(stage_id: &str, nodes: Vec<ViewNode>, edges: Vec<ViewEdge>) -> ViewGraph {
+        ViewGraph {
+            view_type: ViewType::Structure,
+            stage_id: stage_id.to_string(),
+            nodes,
+            edges,
+            meta: ViewMeta {
+                stage_id: stage_id.to_string(),
+                view_type: ViewType::Structure,
+                source_provider: "mock".to_string(),
+                is_degraded_source: false,
+                generated_at: "2026-06-15T00:00:00Z".to_string(),
+                empty_reason: None,
+            },
+        }
     }
 
     #[test]
@@ -1051,5 +1178,218 @@ mod tests {
         let report = reporter().evaluate(&base_input("sample-qa", vec![stage]));
         assert!(report.issues.iter().any(|i| i.kind == QualityIssueKind::QaAnswerWithoutValidCitation));
         assert!(report.qa_reports[0].citation_validity_ratio < 1.0);
+    }
+
+    #[test]
+    fn connected_view_with_missing_node_trace_is_not_fully_resolvable() {
+        // 节点 N1 无 trace_refs，节点 N2 有有效 trace_ref，比率应为 0.5 并生成 issue。
+        let n1 = view_node("N1", vec![]);
+        let n2 = view_node("N2", vec![view_trace_evidence("EV-L0-000001")]);
+        let e1 = view_edge("E1", "N1", "N2", vec![view_trace_evidence("EV-L0-000001")]);
+        let v = structure_view("L0", vec![n1, n2], vec![e1]);
+        let ec = EvidenceCollection {
+            stage_id: "L0".to_string(),
+            evidence_items: vec![ev_item("EV-L0-000001", "/p/a.py", Language::Python, SourceKind::PythonStage, "ok")],
+            index_by_path: StdHashMap::new(), index_by_kind: StdHashMap::new(), index_by_symbol: StdHashMap::new(),
+            warnings: vec![],
+            stats: EvidenceStats {
+                files_processed: 1, files_skipped: 0, total_items: 1,
+                items_by_kind: StdHashMap::new(), items_by_strength: StdHashMap::new(),
+            },
+            version: "1.0.0".to_string(),
+        };
+        let stage = StageQualityInput {
+            stage_id: "L0".to_string(),
+            recognized_status: "available".to_string(),
+            expected_status: None,
+            evidence: Some(&ec),
+            understanding: None,
+            views: vec![&v],
+            grounded_answer: None,
+        };
+        let report = reporter().evaluate(&base_input("sample-view-missing-node-trace", vec![stage]));
+        let view_report = report.view_reports.iter().find(|r| r.stage_id == "L0").expect("应有 view report");
+        assert!(
+            (view_report.trace_resolvable_ratio - 0.666_666_7).abs() < 1e-5,
+            "期望 2/3 可解析，实际 {}",
+            view_report.trace_resolvable_ratio
+        );
+        let node_issue = report
+            .issues
+            .iter()
+            .find(|i| i.kind == QualityIssueKind::EmptyOrUnhelpfulView && i.description.contains("node=N1"));
+        assert!(node_issue.is_some(), "应生成针对 N1 节点缺 trace_refs 的 issue");
+    }
+
+    #[test]
+    fn edge_without_trace_refs_emits_issue() {
+        let n1 = view_node("N1", vec![view_trace_evidence("EV-L0-000001")]);
+        let n2 = view_node("N2", vec![view_trace_evidence("EV-L0-000001")]);
+        // 边 E1 缺少 trace_refs
+        let e1 = view_edge("E1", "N1", "N2", vec![]);
+        let v = structure_view("L0", vec![n1, n2], vec![e1]);
+        let ec = EvidenceCollection {
+            stage_id: "L0".to_string(),
+            evidence_items: vec![ev_item("EV-L0-000001", "/p/a.py", Language::Python, SourceKind::PythonStage, "ok")],
+            index_by_path: StdHashMap::new(), index_by_kind: StdHashMap::new(), index_by_symbol: StdHashMap::new(),
+            warnings: vec![],
+            stats: EvidenceStats {
+                files_processed: 1, files_skipped: 0, total_items: 1,
+                items_by_kind: StdHashMap::new(), items_by_strength: StdHashMap::new(),
+            },
+            version: "1.0.0".to_string(),
+        };
+        let stage = StageQualityInput {
+            stage_id: "L0".to_string(),
+            recognized_status: "available".to_string(),
+            expected_status: None,
+            evidence: Some(&ec),
+            understanding: None,
+            views: vec![&v],
+            grounded_answer: None,
+        };
+        let report = reporter().evaluate(&base_input("sample-view-edge-no-trace", vec![stage]));
+        let view_report = report.view_reports.iter().find(|r| r.stage_id == "L0").expect("应有 view report");
+        assert!(
+            (view_report.trace_resolvable_ratio - 0.666_666_7).abs() < 1e-5,
+            "期望 2/3 可解析，实际 {}",
+            view_report.trace_resolvable_ratio
+        );
+        let edge_issue = report
+            .issues
+            .iter()
+            .find(|i| i.kind == QualityIssueKind::EmptyOrUnhelpfulView && i.description.contains("edge=E1"));
+        assert!(edge_issue.is_some(), "应生成针对 E1 边缺 trace_refs 的 issue");
+    }
+
+    #[test]
+    fn view_with_valid_node_and_edge_traces_reports_ratio_1() {
+        let n1 = view_node("N1", vec![view_trace_evidence("EV-L0-000001")]);
+        let n2 = view_node("N2", vec![view_trace_claim("CL-L0-000001")]);
+        let e1 = view_edge("E1", "N1", "N2", vec![view_trace_evidence("EV-L0-000001")]);
+        let v = structure_view("L0", vec![n1, n2], vec![e1]);
+        let ec = EvidenceCollection {
+            stage_id: "L0".to_string(),
+            evidence_items: vec![ev_item("EV-L0-000001", "/p/a.py", Language::Python, SourceKind::PythonStage, "ok")],
+            index_by_path: StdHashMap::new(), index_by_kind: StdHashMap::new(), index_by_symbol: StdHashMap::new(),
+            warnings: vec![],
+            stats: EvidenceStats {
+                files_processed: 1, files_skipped: 0, total_items: 1,
+                items_by_kind: StdHashMap::new(), items_by_strength: StdHashMap::new(),
+            },
+            version: "1.0.0".to_string(),
+        };
+        let iu = minimal_iu("L0", vec![claim("CL-L0-000001", ClaimConfidence::Confirmed, vec!["EV-L0-000001"], false)]);
+        let stage = StageQualityInput {
+            stage_id: "L0".to_string(),
+            recognized_status: "available".to_string(),
+            expected_status: None,
+            evidence: Some(&ec),
+            understanding: Some(&iu),
+            views: vec![&v],
+            grounded_answer: None,
+        };
+        let report = reporter().evaluate(&base_input("sample-view-all-trace", vec![stage]));
+        let view_report = report.view_reports.iter().find(|r| r.stage_id == "L0").expect("应有 view report");
+        assert!(
+            (view_report.trace_resolvable_ratio - 1.0).abs() < 1e-5,
+            "所有节点/边 trace 均可解析，应返回 1.0，实际 {}",
+            view_report.trace_resolvable_ratio
+        );
+        assert!(
+            !report.issues.iter().any(|i| {
+                i.kind == QualityIssueKind::EmptyOrUnhelpfulView
+                    && (i.description.contains("node=N1") || i.description.contains("edge=E1"))
+            }),
+            "不应为 N1/E1 生成 trace 缺失 issue"
+        );
+    }
+
+    #[test]
+    fn run_summary_uses_snake_case_issue_keys() {
+        let ec = EvidenceCollection {
+            stage_id: "L0".to_string(),
+            evidence_items: vec![ev_item("EV-L0-000001", "/p/a.py", Language::Python, SourceKind::PythonStage, "TODO fix")],
+            index_by_path: StdHashMap::new(), index_by_kind: StdHashMap::new(), index_by_symbol: StdHashMap::new(),
+            warnings: vec![],
+            stats: EvidenceStats {
+                files_processed: 1, files_skipped: 0, total_items: 1,
+                items_by_kind: StdHashMap::new(), items_by_strength: StdHashMap::new(),
+            },
+            version: "1.0.0".to_string(),
+        };
+        let iu = minimal_iu("L0", vec![
+            claim("CL-L0-000001", ClaimConfidence::Unknown, vec![], true),
+            claim("CL-L0-000002", ClaimConfidence::Supported, vec!["EV-L0-999999"], false),
+        ]);
+        let stage = StageQualityInput {
+            stage_id: "L0".to_string(),
+            recognized_status: "available".to_string(),
+            expected_status: Some("missing".to_string()),
+            evidence: Some(&ec),
+            understanding: Some(&iu),
+            views: vec![],
+            grounded_answer: None,
+        };
+        let report = reporter().evaluate(&base_input("sample-summary-keys", vec![stage]));
+        let keys: Vec<&String> = report.summary.issues_by_kind.keys().collect();
+        for k in &keys {
+            assert!(
+                !k.contains("stageidentificationmismatch")
+                    && !k.contains("unsupportedclaim")
+                    && !k.contains("hallucinatedclaimblocked")
+                    && !k.contains("noisyevidence"),
+                "发现驼峰/拼接 key: {}",
+                k
+            );
+        }
+        assert!(report.summary.issues_by_kind.contains_key("stage_identification_mismatch"));
+        assert!(report.summary.issues_by_kind.contains_key("unsupported_claim"));
+        assert!(report.summary.issues_by_kind.contains_key("hallucinated_claim_blocked"));
+        assert!(report.summary.issues_by_kind.contains_key("noisy_evidence"));
+    }
+
+    #[test]
+    fn run_summary_uses_snake_case_status_keys() {
+        let ec = empty_evidence("L0");
+        let stage = StageQualityInput {
+            stage_id: "L0".to_string(),
+            recognized_status: "available".to_string(),
+            expected_status: None,
+            evidence: Some(&ec),
+            understanding: None,
+            views: vec![],
+            grounded_answer: None,
+        };
+        let report = reporter().evaluate(&base_input("sample-status-keys", vec![stage]));
+        let keys: Vec<&String> = report.summary.issues_by_status.keys().collect();
+        for k in &keys {
+            assert!(
+                !k.contains("acceptedasknownlimitation") && !k.contains("openfixed"),
+                "发现拼接 status key: {}",
+                k
+            );
+        }
+        assert!(report.summary.issues_by_status.contains_key("open"));
+    }
+
+    #[test]
+    fn run_summary_uses_snake_case_severity_keys() {
+        let ec = empty_evidence("L0");
+        let stage = StageQualityInput {
+            stage_id: "L0".to_string(),
+            recognized_status: "available".to_string(),
+            expected_status: None,
+            evidence: Some(&ec),
+            understanding: None,
+            views: vec![],
+            grounded_answer: None,
+        };
+        let report = reporter().evaluate(&base_input("sample-severity-keys", vec![stage]));
+        let keys: Vec<&String> = report.summary.issues_by_severity.keys().collect();
+        for k in &keys {
+            assert!(!k.chars().any(|c| c.is_uppercase()), "severity key 应全小写: {}", k);
+        }
+        assert!(report.summary.issues_by_severity.contains_key("high"));
     }
 }

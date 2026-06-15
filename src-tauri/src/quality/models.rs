@@ -45,6 +45,17 @@ pub enum IssueStatus {
     AcceptedAsKnownLimitation,
 }
 
+impl IssueStatus {
+    /// 稳定的 snake_case 字符串 key（与 serde 一致）。
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            IssueStatus::Open => "open",
+            IssueStatus::Fixed => "fixed",
+            IssueStatus::AcceptedAsKnownLimitation => "accepted_as_known_limitation",
+        }
+    }
+}
+
 // ─── 枚举：分类 / 严重程度 / 极性 ─────────────────────────────────────
 
 /// 工具理解质量记录分类。
@@ -87,6 +98,23 @@ impl QualityIssueKind {
             _ => QualityIssuePolarity::Problem,
         }
     }
+
+    /// 稳定的 snake_case 字符串 key（与 serde 一致，无运行时分配）。
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            QualityIssueKind::MissingEvidence => "missing_evidence",
+            QualityIssueKind::NoisyEvidence => "noisy_evidence",
+            QualityIssueKind::WrongSourceKind => "wrong_source_kind",
+            QualityIssueKind::StageIdentificationMismatch => "stage_identification_mismatch",
+            QualityIssueKind::WeakSummary => "weak_summary",
+            QualityIssueKind::UnsupportedClaim => "unsupported_claim",
+            QualityIssueKind::HallucinatedClaimBlocked => "hallucinated_claim_blocked",
+            QualityIssueKind::EmptyOrUnhelpfulView => "empty_or_unhelpful_view",
+            QualityIssueKind::QaUnansweredWhenEvidenceExists => "qa_unanswered_when_evidence_exists",
+            QualityIssueKind::QaAnswerWithoutValidCitation => "qa_answer_without_valid_citation",
+            QualityIssueKind::ConfusingUiState => "confusing_ui_state",
+        }
+    }
 }
 
 /// 问题严重程度（仅用于补强优先级排序，不用于目标项目评价）。
@@ -99,6 +127,17 @@ pub enum QualitySeverity {
     Medium,
     /// 重要：理解质量系统性受损或追溯链断裂
     High,
+}
+
+impl QualitySeverity {
+    /// 稳定的 snake_case 字符串 key（与 serde 一致）。
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            QualitySeverity::Low => "low",
+            QualitySeverity::Medium => "medium",
+            QualitySeverity::High => "high",
+        }
+    }
 }
 
 /// 质量记录极性。
@@ -457,6 +496,37 @@ mod tests {
         assert!(serde_json::from_str::<QualityIssueKind>("\"definitely_a_bug\"").is_err());
         assert!(serde_json::from_str::<QualitySeverity>("\"critical\"").is_err());
         assert!(serde_json::from_str::<QualityIssuePolarity>("\"neutral\"").is_err());
+    }
+
+    #[test]
+    fn enum_as_str_matches_serde_snake_case() {
+        for kind in [
+            QualityIssueKind::MissingEvidence,
+            QualityIssueKind::NoisyEvidence,
+            QualityIssueKind::WrongSourceKind,
+            QualityIssueKind::StageIdentificationMismatch,
+            QualityIssueKind::WeakSummary,
+            QualityIssueKind::UnsupportedClaim,
+            QualityIssueKind::HallucinatedClaimBlocked,
+            QualityIssueKind::EmptyOrUnhelpfulView,
+            QualityIssueKind::QaUnansweredWhenEvidenceExists,
+            QualityIssueKind::QaAnswerWithoutValidCitation,
+            QualityIssueKind::ConfusingUiState,
+        ] {
+            let from_serde = serde_json::to_string(&kind).unwrap();
+            assert_eq!(
+                kind.as_str(),
+                from_serde.trim_matches('"'),
+                "{:?} as_str 与 serde 不一致",
+                kind
+            );
+        }
+        assert_eq!(QualitySeverity::Low.as_str(), "low");
+        assert_eq!(QualitySeverity::Medium.as_str(), "medium");
+        assert_eq!(QualitySeverity::High.as_str(), "high");
+        assert_eq!(IssueStatus::Open.as_str(), "open");
+        assert_eq!(IssueStatus::Fixed.as_str(), "fixed");
+        assert_eq!(IssueStatus::AcceptedAsKnownLimitation.as_str(), "accepted_as_known_limitation");
     }
 
     #[test]
