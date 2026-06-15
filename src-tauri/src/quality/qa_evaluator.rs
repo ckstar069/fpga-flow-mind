@@ -52,9 +52,12 @@ impl QaEvaluator {
             let has_ev = ev_id.map(|s| !s.is_empty()).unwrap_or(false);
             let has_cl = cl_id.map(|s| !s.is_empty()).unwrap_or(false);
 
-            if has_ev || has_cl {
-                total_citations_with_id += 1;
+            if !(has_ev || has_cl) {
+                // 完全没有 ID 的 citation 不计入 denominator
+                continue;
             }
+
+            total_citations_with_id += 1;
 
             let mut ev_valid = true;
             let mut cl_valid = true;
@@ -72,10 +75,7 @@ impl QaEvaluator {
                     None,
                     None,
                     None,
-                    &format!(
-                        "Q&A 回答引用了不存在的 evidence '{}'",
-                        ev_id.unwrap()
-                    ),
+                    &format!("Q&A 回答引用了不存在的 evidence '{}'", ev_id.unwrap()),
                 ));
             }
 
@@ -92,15 +92,13 @@ impl QaEvaluator {
                     None,
                     None,
                     None,
-                    &format!(
-                        "Q&A 回答引用了不存在的 claim '{}'",
-                        cl_id.unwrap()
-                    ),
+                    &format!("Q&A 回答引用了不存在的 claim '{}'", cl_id.unwrap()),
                 ));
             }
 
-            if (has_ev && ev_valid) || (has_cl && cl_valid) {
-                // At least one part is valid; count as valid citation
+            let ev_ok = !has_ev || ev_valid;
+            let cl_ok = !has_cl || cl_valid;
+            if ev_ok && cl_ok {
                 valid_citations += 1;
             }
         }
@@ -476,21 +474,17 @@ mod tests {
     }
 
     #[test]
-    fn fallback_without_question_set_is_documented() {
-        // This test verifies the Batch A fallback behavior when no question_set is provided.
-        // The fallback uses confidence as a proxy for hit/honesty ratios.
-
+    fn citation_with_valid_evidence_but_invalid_claim_is_not_valid() {
         let mut ev_set = HashSet::new();
         ev_set.insert("EV-1".to_string());
 
-        // High confidence answer without question_set -> answerable_hit_ratio = 1.0
         let answer = make_answer(
             ClaimConfidence::Confirmed,
             false,
-            vec![make_citation(Some("EV-1"), None)],
+            vec![make_citation(Some("EV-1"), Some("CL-BAD"))],
         );
         let input = QaEvaluatorInput {
-            sample_id: "sample-006",
+            sample_id: "sample-010",
             stage_id: "L0",
             answer: &answer,
             evidence_id_set: &ev_set,
@@ -498,23 +492,84 @@ mod tests {
             question_set: None,
         };
         let (report, issues) = QaEvaluator::evaluate(&input);
-        assert_eq!(report.answerable_hit_ratio, 1.0);
-        assert_eq!(report.unknown_honesty_ratio, 0.0); // not Unknown
-        assert!(issues.is_empty());
+        assert_eq!(report.citation_validity_ratio, 0.0);
+        assert_eq!(issues.len(), 1);
+        assert_eq!(issues[0].claim_id, Some("CL-BAD".to_string()));
+    }
 
-        // Unknown confidence without question_set -> unknown_honesty_ratio = 1.0
-        let answer2 = make_answer(ClaimConfidence::Unknown, true, vec![]);
-        let input2 = QaEvaluatorInput {
-            sample_id: "sample-006",
+    #[test]
+    fn citation_with_valid_claim_but_invalid_evidence_is_not_valid() {
+        let mut cl_set = HashSet::new();
+        cl_set.insert("CL-1".to_string());
+
+        let answer = make_answer(
+            ClaimConfidence::Confirmed,
+            false,
+            vec![make_citation(Some("EV-BAD"), Some("CL-1"))],
+        );
+        let input = QaEvaluatorInput {
+            sample_id: "sample-011",
             stage_id: "L0",
-            answer: &answer2,
+            answer: &answer,
+            evidence_id_set: &HashSet::new(),
+            claim_id_set: &cl_set,
+            question_set: None,
+        };
+        let (report, issues) = QaEvaluator::evaluate(&input);
+        assert_eq!(report.citation_validity_ratio, 0.0);
+        assert_eq!(issues.len(), 1);
+        assert_eq!(issues[0].evidence_id, Some("EV-BAD".to_string()));
+    }
+
+    #[test]
+    fn citation_with_both_valid_counts_once() {
+        let mut ev_set = HashSet::new();
+        ev_set.insert("EV-1".to_string());
+        let mut cl_set = HashSet::new();
+        cl_set.insert("CL-1".to_string());
+
+        let answer = make_answer(
+            ClaimConfidence::Confirmed,
+            false,
+            vec![make_citation(Some("EV-1"), Some("CL-1"))],
+        );
+        let input = QaEvaluatorInput {
+            sample_id: "sample-012",
+            stage_id: "L0",
+            answer: &answer,
+            evidence_id_set: &ev_set,
+            claim_id_set: &cl_set,
+            question_set: None,
+        };
+        let (report, issues) = QaEvaluator::evaluate(&input);
+        assert_eq!(report.citation_validity_ratio, 1.0);
+        assert!(issues.is_empty());
+    }
+
+    #[test]
+    fn citation_without_ids_not_counted_in_denominator() {
+        let mut ev_set = HashSet::new();
+        ev_set.insert("EV-1".to_string());
+
+        // One citation without IDs, one valid citation
+        let answer = make_answer(
+            ClaimConfidence::Confirmed,
+            false,
+            vec![
+                make_citation(None, None),
+                make_citation(Some("EV-1"), None),
+            ],
+        );
+        let input = QaEvaluatorInput {
+            sample_id: "sample-013",
+            stage_id: "L0",
+            answer: &answer,
             evidence_id_set: &ev_set,
             claim_id_set: &HashSet::new(),
             question_set: None,
         };
-        let (report2, issues2) = QaEvaluator::evaluate(&input2);
-        assert_eq!(report2.answerable_hit_ratio, 0.0); // degraded/unknown
-        assert_eq!(report2.unknown_honesty_ratio, 1.0); // Unknown
-        assert!(issues2.is_empty()); // no issues in fallback mode
+        let (report, issues) = QaEvaluator::evaluate(&input);
+        assert_eq!(report.citation_validity_ratio, 1.0);
+        assert!(issues.is_empty());
     }
 }

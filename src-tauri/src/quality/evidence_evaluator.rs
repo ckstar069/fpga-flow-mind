@@ -43,34 +43,6 @@ impl EvidenceEvaluator {
 
         let total_items = input.collection.evidence_items.len() as u32;
 
-        // ── 空 collection 处理 ──────────────────────────────────────────
-        if input.collection.evidence_items.is_empty() {
-            issues.push(make_issue(
-                input.sample_id,
-                input.stage_id,
-                ArtifactKind::Evidence,
-                QualityIssueKind::MissingEvidence,
-                QualitySeverity::Medium,
-                None,
-                None,
-                None,
-                None,
-                None,
-                "该阶段未收集到任何 evidence（coverage 缺口）",
-            ));
-
-            let report = EvidenceQualityReport {
-                sample_id: input.sample_id.to_string(),
-                stage_id: input.stage_id.to_string(),
-                file_coverage_ratio: 0.0,
-                line_range_accuracy: 0.0,
-                label_sanity_ratio: 1.0,
-                uncovered_files,
-                issue_refs: Vec::new(),
-            };
-            return (report, issues);
-        }
-
         // ── 收集已覆盖的 source_path 集合 ──────────────────────────────
         let collected_paths: HashSet<&str> = input
             .collection
@@ -87,7 +59,7 @@ impl EvidenceEvaluator {
                 .copied()
                 .collect();
 
-            // 未覆盖文件
+            // 未覆盖文件（含空 collection 时所有 expected path 均未覆盖）
             for path in expected_set.difference(&collected_paths) {
                 uncovered_files.push(UncoveredFile {
                     source_path: path.to_string(),
@@ -114,9 +86,30 @@ impl EvidenceEvaluator {
                 covered.len() as f32 / expected_set.len() as f32
             }
         } else {
-            // fallback：有 evidence 则 1.0，无则 0.0（空 collection 已在上方处理）
-            1.0
+            // fallback：无 expected paths 时，有 evidence 则 1.0，无则 0.0
+            if input.collection.evidence_items.is_empty() {
+                0.0
+            } else {
+                1.0
+            }
         };
+
+        // ── 空 collection 且无期望文件清单时，生成阶段级 coverage 缺口 ──
+        if input.collection.evidence_items.is_empty() && input.expected_source_paths.is_none() {
+            issues.push(make_issue(
+                input.sample_id,
+                input.stage_id,
+                ArtifactKind::Evidence,
+                QualityIssueKind::MissingEvidence,
+                QualitySeverity::Medium,
+                None,
+                None,
+                None,
+                None,
+                None,
+                "该阶段未收集到任何 evidence（coverage 缺口）",
+            ));
+        }
 
         // ── 逐 item 检查 ──────────────────────────────────────────────
         let mut valid_line_range_count = 0u32;
@@ -454,39 +447,59 @@ mod tests {
     }
 
     #[test]
-    fn no_expected_files_uses_fallback_without_fake_uncovered_files() {
-        let collection = EvidenceCollection {
-            stage_id: "L0".to_string(),
-            evidence_items: vec![make_item(
-                "EV-L0-000001",
-                "/tmp/a.py",
-                Language::Python,
-                SourceKind::PythonStage,
-                LineRange { start: 1, end: 5 },
-                "ok",
-            )],
-            index_by_path: HashMap::new(),
-            index_by_kind: HashMap::new(),
-            index_by_symbol: HashMap::new(),
-            warnings: vec![],
-            stats: EvidenceStats {
-                files_processed: 1,
-                files_skipped: 0,
-                total_items: 1,
-                items_by_kind: HashMap::new(),
-                items_by_strength: HashMap::new(),
-            },
-            version: "1.0.0".to_string(),
-        };
+    fn empty_evidence_with_expected_paths_emits_uncovered_files() {
+        let collection = empty_collection("L0");
+        let expected = vec!["/tmp/a.py".to_string(), "/tmp/b.py".to_string()];
         let input = EvidenceEvaluatorInput {
-            sample_id: "sample-006",
+            sample_id: "sample-007",
+            stage_id: "L0",
+            collection: &collection,
+            expected_source_paths: Some(&expected),
+        };
+        let (report, issues) = EvidenceEvaluator::evaluate(&input);
+        assert_eq!(report.file_coverage_ratio, 0.0);
+        assert_eq!(report.uncovered_files.len(), 2);
+        let mut uncovered: Vec<&str> = report.uncovered_files.iter().map(|f| f.source_path.as_str()).collect();
+        uncovered.sort();
+        assert_eq!(uncovered, vec!["/tmp/a.py", "/tmp/b.py"]);
+        assert_eq!(issues.len(), 2);
+        for issue in &issues {
+            assert_eq!(issue.kind, QualityIssueKind::MissingEvidence);
+            assert!(issue.source_path.is_some());
+        }
+    }
+
+    #[test]
+    fn empty_evidence_with_empty_expected_paths_does_not_fake_uncovered_files() {
+        let collection = empty_collection("L0");
+        let expected: Vec<String> = vec![];
+        let input = EvidenceEvaluatorInput {
+            sample_id: "sample-008",
+            stage_id: "L0",
+            collection: &collection,
+            expected_source_paths: Some(&expected),
+        };
+        let (report, issues) = EvidenceEvaluator::evaluate(&input);
+        assert_eq!(report.file_coverage_ratio, 1.0);
+        assert!(report.uncovered_files.is_empty());
+        assert!(issues.is_empty());
+    }
+
+    #[test]
+    fn empty_evidence_without_expected_paths_keeps_stage_level_gap() {
+        let collection = empty_collection("L0");
+        let input = EvidenceEvaluatorInput {
+            sample_id: "sample-009",
             stage_id: "L0",
             collection: &collection,
             expected_source_paths: None,
         };
         let (report, issues) = EvidenceEvaluator::evaluate(&input);
-        assert_eq!(report.file_coverage_ratio, 1.0); // fallback: non-empty -> 1.0
-        assert!(report.uncovered_files.is_empty()); // no fake uncovered files
-        assert!(issues.is_empty()); // no issues for a clean collection
+        assert_eq!(report.file_coverage_ratio, 0.0);
+        assert!(report.uncovered_files.is_empty());
+        assert_eq!(issues.len(), 1);
+        assert_eq!(issues[0].kind, QualityIssueKind::MissingEvidence);
+        assert!(issues[0].source_path.is_none());
+        assert_eq!(issues[0].description, "该阶段未收集到任何 evidence（coverage 缺口）");
     }
 }
