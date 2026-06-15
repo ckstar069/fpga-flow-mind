@@ -1,7 +1,7 @@
 # Phase 7 真实项目质量评估数据模型
 
 ---
-status: draft
+status: active
 updated: 2026-06-15
 ---
 
@@ -9,7 +9,7 @@ updated: 2026-06-15
 >
 > **关键定位**：本文档定义的所有对象都是 **Phase 7 质量评估产物**，描述"工具理解得怎么样"；**它们不是用户业务项目的审计结论**，不描述"目标项目正确/错误"。质量评分（若出现）只用于内部质量门槛，不对目标项目做评价。
 >
-> 本文档 status 为 `draft`，待审核通过后转为 `active`。Phase 7 当前**未开始编码**，本文模型为计划中的数据契约，实现以 P7-T01~P7-T05 为准。
+> 本文档 status 为 `active`，是 Phase 7 编码的数据模型依据。**Phase 7 编码尚未开始**，本文模型为待实现的契约，实现以 P7-T01~P7-T05 为准。
 >
 > 既有类型引用（保持稳定，不重定义）：`EvidenceItem`/`EvidenceCollection`/`EvidenceStrength`、`ImplementationUnderstanding`/`ImplementationClaim`/`ClaimConfidence`/`UnknownItem`/`EvidenceGap`、`ViewGraph`/`ViewNode`/`ViewEdge`/`ViewTraceRef`、`GroundedAnswer`/`GroundedAnswerCitation`，以及 `StageStatus`/`SourceKind`/`Language`/`LineRange`。
 
@@ -478,3 +478,4 @@ pub enum QualityAcceptanceStatus {
 |------|------|------|
 | 2026-06-15 | 初始 draft：定义 RealProjectSample / StageEvaluationTarget / 4 类 QualityReport / QualityIssue(+Kind+Severity) / QualityRunSummary / QualityAcceptanceStatus。强调评估产物非审计结论、可追溯、评分仅内部门槛。Phase 7 未进入编码。 | Claude |
 | 2026-06-15 | 审核收口修复（status 保持 draft）：QualityIssue 增加 source_path/line_range 源码级追溯与 polarity 字段；QualityIssueKind 新增 stage_identification_mismatch 并限定 confusing_ui_state 仅用于 UI 状态；新增 QualityIssuePolarity（problem/positive_guardrail），hallucinated_claim_blocked 归为正向 guardrail，不计入 backlog/门槛；QualityRunSummary 区分负向问题与正向守卫计数；新增 §4.5 QaEvaluationQuestion/QaEvaluationQuestionSet。Phase 7 未进入编码。 | Claude |
+| 2026-06-15 | 审核通过，status 从 draft 转为 active，作为 Phase 7 编码依据；Phase 7 编码尚未开始。 | Claude |

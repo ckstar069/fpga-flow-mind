@@ -1,7 +1,7 @@
 # Phase 7 真实项目评估与 evidence/understanding 质量补强需求
 
 ---
-status: draft
+status: active
 updated: 2026-06-15
 ---
 
@@ -10,7 +10,7 @@ updated: 2026-06-15
 > **Phase 7 的目标不是新增炫酷功能，而是验证并提升真实 `ai_project_template` 项目上的分析质量。**
 > MVP（Phase 0–6 / tag `v0.1.0-mvp`）已在 `/tmp` 手工构造的临时小型样例上证明单阶段理解闭环技术成立，但尚未在真实业务项目上验证分析质量是否可信。Phase 7 把"技术上成立"推进为"在真实项目上可信"。
 >
-> 本文档 status 为 `draft`，待审核通过后转为 `active`，方可作为 Phase 7 编码的需求依据。Phase 7 当前**未开始编码**。
+> 本文档 status 为 `active`，是 Phase 7 编码的需求依据。**Phase 7 编码尚未开始**；允许进入 Phase 7 Batch A（范围仅限 P7-T01~P7-T02）。
 
 ## 1. 用户目标
 
@@ -198,3 +198,4 @@ Phase 7 明确**不做**：
 |------|------|------|
 | 2026-06-15 | 初始 draft：定义 RQ-001~RQ-008、真实项目样本覆盖要求、非目标、安全边界、退出标准。Phase 7 未进入编码。 | Claude |
 | 2026-06-15 | 审核收口修复（status 保持 draft）：RQ-002 阶段识别误判改用 `stage_identification_mismatch`；RQ-007/§6 追溯字段补 `source_path`/`line_range`，并明确正向 guardrail 不计入 backlog。Phase 7 未进入编码。 | Claude |
+| 2026-06-15 | 审核通过，status 从 draft 转为 active，作为 Phase 7 编码依据；Phase 7 编码尚未开始。 | Claude |

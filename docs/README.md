@@ -96,17 +96,17 @@ docs/
 
 ### Post-MVP 路线图 / 后续阶段规划任务
 
-> MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP。下列 Post-MVP 文档当前均为 `draft`，**未进入编码**；进入任一阶段编码前需先编制该阶段详细文档并审核为 active。
+> MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP。下列 Post-MVP 文档中，**Phase 7 详细文档已 `active`（但 Phase 7 编码尚未开始，允许进入 Batch A）**；Phase 7 overview 与 Phase 8~11 overview 仍为 `draft`。进入任一阶段编码前需先编制该阶段详细文档并审核为 active。
 
 1. `docs/planning/post-mvp-roadmap.md`（Post-MVP 总体路线图：Phase 7~11 阶段关系、依赖顺序、进入纪律，draft）
 2. `docs/planning/phase-7-overview-real-project-quality.md`（Phase 7 overview：真实项目质量补强，draft）
-   - Phase 7 详细文档（**均已 draft，Phase 7 编码未开始**）：
-     - `docs/requirements/phase-7-real-project-quality-requirements.md`（需求 RQ-001~RQ-008，draft）
-     - `docs/design/phase-7-real-project-evaluation-model.md`（评估数据模型，draft）
-     - `docs/design/phase-7-evidence-understanding-quality-design.md`（评估与补强设计，draft）
-     - `docs/ui-ux/phase-7-quality-review-view.md`（Quality Review 视图，draft）
-     - `docs/testing/phase-7-real-project-quality-validation.md`（验证与验收，draft）
-     - `docs/planning/phase-7-implementation-plan.md`（编码实施计划，draft）
+   - Phase 7 详细文档（**均已 active；Phase 7 编码尚未开始，允许进入 Batch A（仅 P7-T01~P7-T02）**）：
+     - `docs/requirements/phase-7-real-project-quality-requirements.md`（需求 RQ-001~RQ-008，active）
+     - `docs/design/phase-7-real-project-evaluation-model.md`（评估数据模型，active）
+     - `docs/design/phase-7-evidence-understanding-quality-design.md`（评估与补强设计，active）
+     - `docs/ui-ux/phase-7-quality-review-view.md`（Quality Review 视图，active）
+     - `docs/testing/phase-7-real-project-quality-validation.md`（验证与验收，active）
+     - `docs/planning/phase-7-implementation-plan.md`（编码实施计划，active）
 3. `docs/planning/phase-8-overview-product-ui-workbench.md`（Phase 8 overview：产品级 UI 工作台重构，draft）
 4. `docs/planning/phase-9-overview-real-llm-grounding.md`（Phase 9 overview：真实 LLM 与 grounding 生产化，draft）
 5. `docs/planning/phase-10-overview-cross-stage-python-rtl.md`（Phase 10 overview：跨阶段与 Python-to-RTL 映射，draft）
