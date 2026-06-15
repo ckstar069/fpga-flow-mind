@@ -1,0 +1,156 @@
+# Phase 7 真实项目质量评估验证设计
+
+---
+status: draft
+updated: 2026-06-15
+---
+
+> 本文档定义 Phase 7（真实项目评估与 evidence/understanding 质量补强）的验证与验收设计：Rust 单元/集成测试方向、前端构建与组件验证方向、真实桌面验收步骤、真实样本验收策略、checksum 只读验证、rg 安全回归、以及 Phase 7 完成标准。
+>
+> 验证目标是"工具在真实项目上的分析质量是否可信且未越界"，**不是**验证目标项目是否"正确"。
+>
+> 本文档 status 为 `draft`，待审核通过后转为 `active`。Phase 7 当前**未开始编码**。
+
+## 1. 验证策略总览
+
+Phase 7 验证分四层，层层递进：
+
+| 层 | 方式 | 目的 |
+|----|------|------|
+| 后端单测/集成测试 | Rust `cargo test --lib` | 验证评估模型、evaluator、reporter 的正确性与追溯性 |
+| 前端构建与组件验证 | `npm run build` + 必要组件检查 | 验证 Quality Review 视图类型与渲染、不破坏既有构建 |
+| 真实桌面验收 | 在真实样本上跑完整 Phase 1~6 + 评估链路 | 验证真实项目下分析质量与安全边界 |
+| 安全回归 | checksum + rg | 验证只读、不接 LLM、不运行工具链、不输出审计结论 |
+
+## 2. Rust 单元 / 集成测试方向
+
+计划中的测试模块（具体测试数在实施时收敛，本文给出方向）：
+
+| 模块 | 测试方向 |
+|------|----------|
+| 评估模型（`quality/models`） | 各对象 serde round-trip；`QualityIssue` 必填追溯字段（`stage_id` + `artifact_kind`）校验；`QualityIssueKind`/`QualitySeverity` 枚举完备 |
+| evidence 质量评估 | 覆盖率计算、`line_range` 越界检测、`source_kind`/`language` 不匹配检测、未覆盖文件归类 |
+| understanding 质量评估 | existence check（claim 引用不存在 `evidence_id` → `unsupported_claim`）、hallucination guard 拦截记录（`hallucinated_claim_blocked`）、unknown/gap 表达检测、`weak_summary` 检测 |
+| 视图质量评估 | `trace_refs` 可解析性、孤立节点计数、退化视图检测 |
+| Q&A 质量评估 | citation 有效性、有证据未回答检测、无证据诚实返回检测 |
+| reporter | `QualityRunSummary` 聚合正确、`QualityAcceptanceStatus` 门槛判定 |
+| 追溯性 | 每条 `QualityIssue` 可解析回 `stage_id` + `artifact_kind` + 可选 `evidence_id`/`claim_id`/`node_id` |
+
+> 测试夹具使用真实形态的样本结构（含空阶段、命名异常、噪声、跨语言），但不读取真实业务项目源码副本进仓库；测试样本为构造的等价本地只读夹具。
+
+## 3. 前端构建与组件验证方向
+
+| 项 | 方向 |
+|----|------|
+| 构建 | `npm run build` 通过（TypeScript 编译 + Vite 生产构建） |
+| 类型 | Quality Review 相关 TypeScript 类型与评估模型对齐 |
+| 组件 | Quality Review 面板、issue list、stage quality summary、各面板最小质量提示在空/加载/有数据态下渲染正常 |
+| 文案 | rg 验证前端文案不含"正确/错误""PASS/HOLD""审计结论" |
+| 回归 | 既有 Phase 1~6 面板功能不受 Quality Review 引入影响 |
+
+## 4. 真实桌面验收步骤
+
+在真实样本上执行（步骤编号供 completion review 引用，具体在实施时按实际补强结果细化）：
+
+| 步骤 | 验收内容 | 预期 |
+|------|----------|------|
+| 1 | 打开真实样本项目，workspace 概览、阶段识别（含空/缺失/命名异常）正常 | 识别结果与人工登记一致或差异被记录为 issue |
+| 2 | 对 L0/L1/RTL 阶段执行收集证据 → 生成理解 → 生成视图 → 追踪 → Q&A | 主链路在真实噪声下不崩溃 |
+| 3 | 运行质量评估，Quality Review 面板展示 summary + issue list | issue 可追溯、可分类、可分级 |
+| 4 | evidence 质量提示（覆盖缺口/噪声/source_kind 不符）可见且可定位 | 点击追溯定位到 evidence/源码 |
+| 5 | understanding 质量提示（unsupported_claim/weak_summary）可见 | 标注诚实，不掩盖 |
+| 6 | 视图质量提示（退化视图/孤立节点）可见 | 退化被如实暴露 |
+| 7 | Q&A 质量提示（无效 citation/有证据未回答）可见 | MockProvider 边界被刻画 |
+| 8 | 真实项目验收清单视图可用（评估/验收场景） | checklist 勾选状态仅本地/评估用 |
+| 9 | 评估产物可持久化与再次加载（仅 app-owned storage） | 不写回目标项目 |
+| 10 | 目标项目 checksum 验收前后一致 | 只读验证通过 |
+
+> 步骤数量与具体细节在实施阶段按实际补强发现最终确定；上表为方向性步骤。
+
+## 5. 真实样本验收策略
+
+- **至少 2 个真实 `ai_project_template` 项目样本或等价本地只读样本**进入验收（满足需求文档 §4）。
+- 每个样本须覆盖：完整项目形态、L0/L1/RTL 三类阶段、Python/Verilog/SystemVerilog 与 doc/config/test 若干类型、至少 1 个空/缺失阶段、至少 1 个命名异常阶段。
+- 真实业务项目样本以**只读输入**参与验收；若不便直接读取真实项目，可用结构等价的本地只读副本，但须在 completion review 中说明等价性。
+- 多样本交叉验证补强规则，避免过拟合单一项目。
+
+## 6. checksum 只读验证
+
+```bash
+# 验收前对样本项目源文件计算 checksum 基线
+# 验收后重新计算并比对
+diff checksums.md checksums-recomputed.md   # 期望：Source files checksums MATCH
+```
+
+- 目标项目文件验收前后必须一致。
+- 评估产物只写 app-owned storage，不写回目标项目。
+
+## 7. rg 安全回归
+
+```bash
+# 不运行 Vivado / synthesis / implementation / bitstream
+rg "Vivado|synthesis|implementation|bitstream" src src-tauri/src
+# 期望：仅出现在文档/禁用语境，产品代码无实际调用
+
+# 不调用真实 LLM（不读取 api_key、不调用 OpenAI / Anthropic）
+rg "OpenAI|Anthropic|api_key" src src-tauri/src
+# 期望：无产品代码匹配（仅文档禁用语境）
+
+# 不写目标项目（无对样本项目的写入调用）
+
+# 不输出 PASS/HOLD / 正确性裁决
+rg "PASS|HOLD|正确性裁决|正确/错误|审计结论" src src-tauri/src
+# 期望：仅出现在禁用列表/历史结论/错误码文案，不作为当前用户可见结论
+
+# 无对外部进程的隐式调用
+rg "Command::new|std::process::Command" src src-tauri/src
+# 期望：无匹配（Phase 7 不引入进程调用）
+```
+
+> 安全回归命中点需逐条核对：Vivado/synthesis/implementation/bitstream、OpenAI/Anthropic/api_key、PASS/HOLD 等词只允许出现在**禁止/安全边界语境**，不得出现在产品代码的实际调用或当前用户可见结论中。
+
+## 8. Phase 7 完成标准
+
+Phase 7 视为完成，当且仅当：
+
+| 条件 | 验证方式 |
+|------|----------|
+| P7-T01~P7-T10 全部完成 | 实施计划任务表 |
+| 真实项目验收通过（至少 2 样本，桌面验收步骤通过） | 桌面验收 |
+| 质量问题记录闭环（`QualityIssue` 已 `fixed` 或 `accepted_as_known_limitation`） | `QualityRunSummary` + backlog |
+| `QualityAcceptanceStatus` 达 `meets_gate` | 评估产物 |
+| 目标项目只读 | checksum + rg |
+| 无真实 LLM 默认调用 / 无 PASS-HOLD 审计用语 | rg |
+| 全量 `npm run build` / `cargo test --lib` / `cargo check` 通过 | 命令 |
+| Phase 7 completion review 转 `active` | 文档 |
+
+## 9. 进入 Phase 8 / Phase 9 的条件
+
+Phase 7 完成后，方允许考虑进入：
+
+- **Phase 8（产品 UI 工作台）**：可基于 Phase 7 暴露的"真实理解形态"定型信息架构；需 Phase 8 详细文档 active。
+- **Phase 9（真实 LLM grounding）**：以 Phase 7 产出的"基线缺口清单 + evidence/understanding 质量基线"为输入；需 Phase 9 详细文档 active。
+- **不得**在 Phase 7 未完成（completion review 未 active）时启动 Phase 9 / Phase 10 编码（见 Post-MVP 路线图依赖顺序）。
+
+## 10. 安全边界汇总
+
+- 目标项目只读，checksum 一致。
+- 不运行 Vivado / synthesis / implementation / bitstream。
+- 不调用真实 LLM（不读取 `api_key`、不调用 OpenAI / Anthropic）。
+- 持久化只写 app-owned storage。
+- 不输出 PASS/HOLD/正确性裁决/审计结论。
+
+## 11. 关联文档
+
+- [`../requirements/phase-7-real-project-quality-requirements.md`](../requirements/phase-7-real-project-quality-requirements.md) — 需求（RQ-001~RQ-008、退出标准）
+- [`../design/phase-7-real-project-evaluation-model.md`](../design/phase-7-real-project-evaluation-model.md) — 评估数据模型
+- [`../design/phase-7-evidence-understanding-quality-design.md`](../design/phase-7-evidence-understanding-quality-design.md) — 评估与补强设计
+- [`../ui-ux/phase-7-quality-review-view.md`](../ui-ux/phase-7-quality-review-view.md) — Quality Review 视图
+- [`../planning/phase-7-implementation-plan.md`](../planning/phase-7-implementation-plan.md) — 编码实施计划
+- [`phase-6-mvp-validation.md`](phase-6-mvp-validation.md) — MVP 验证（基线）
+
+## 12. 变更记录
+
+| 日期 | 变更 | 作者 |
+|------|------|------|
+| 2026-06-15 | 初始 draft：定义后端/前端测试方向、桌面验收步骤、≥2 真实样本策略、checksum、rg 安全回归、Phase 7 完成标准与进入 Phase 8/9 条件。Phase 7 未进入编码。 | Claude |

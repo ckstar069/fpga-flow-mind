@@ -5,6 +5,8 @@ status: active
 updated: 2026-06-15
 ---
 
+> 注：本索引的 `status: active` 表示**索引文件本身**为生效文档；下表中 Phase 7 及后续阶段文档的状态以其各自标注为准（当前均为 `draft`）。
+
 ## Planning 目录用途
 
 本目录存放 `fpga-flow-mind` 的实施计划文档。计划文档描述"在什么时间完成什么目标、按什么顺序推进、如何验证"，不描述具体技术方案或产品需求。
@@ -106,6 +108,7 @@ updated: YYYY-MM-DD
 | [`mvp-release-notes.md`](mvp-release-notes.md) | `active` | MVP Release Notes：Phase 0–6 completion 发布说明，已完成能力、验证结果、安全边界、已知限制，对应 tag `v0.1.0-mvp` | MVP 发布审核必读 |
 | [`post-mvp-roadmap.md`](post-mvp-roadmap.md) | `draft` | Post-MVP 总体路线图：明确 v0.1.0-mvp 是技术闭环 MVP，给出 Phase 7~11 阶段关系、依赖顺序、进入纪律 | 进入任何 Post-MVP 阶段前必读 |
 | [`phase-7-overview-real-project-quality.md`](phase-7-overview-real-project-quality.md) | `draft` | Phase 7 overview：真实项目评估与 evidence/understanding 质量补强 | Phase 7 详细文档编制前必读 |
+| [`phase-7-implementation-plan.md`](phase-7-implementation-plan.md) | `draft` | Phase 7 编码实施计划：P7-T01~P7-T10 任务拆解、5 个 Batch（A~E）划分与允许/禁止边界、依赖关系、进入/退出条件、安全边界。**Phase 7 未进入编码** | Phase 7 详细文档审核依据（当前 draft，转 active 后方可编码） |
 | [`phase-8-overview-product-ui-workbench.md`](phase-8-overview-product-ui-workbench.md) | `draft` | Phase 8 overview：产品级 UI/UX 工作台重构 | Phase 8 详细文档编制前必读 |
 | [`phase-9-overview-real-llm-grounding.md`](phase-9-overview-real-llm-grounding.md) | `draft` | Phase 9 overview：真实 LLM Provider 与 grounding 生产化 | Phase 9 详细文档编制前必读 |
 | [`phase-10-overview-cross-stage-python-rtl.md`](phase-10-overview-cross-stage-python-rtl.md) | `draft` | Phase 10 overview：跨阶段理解与 Python-to-RTL 映射 | Phase 10 详细文档编制前必读 |
@@ -115,4 +118,4 @@ updated: YYYY-MM-DD
 >
 > 当前 active 文档：`phase-6-persistence-and-mvp-requirements.md`、`phase-6-persistence-model.md`、`phase-6-persistence-and-replay-design.md`、`phase-6-session-and-mvp-view.md`、`phase-6-mvp-validation.md`、`phase-6-implementation-plan.md`、`phase-6-completion-review.md`、`mvp-release-notes.md`。
 >
-> **Post-MVP（Phase 7 ~ Phase 11）当前仅有总体路线图与各阶段 overview，状态均为 `draft`，尚未编制详细需求/设计/计划文档，未进入编码。** 进入任一 Post-MVP 阶段编码前，必须先编制该阶段详细文档并审核为 active（见 [`post-mvp-roadmap.md`](post-mvp-roadmap.md) §5）。
+> **Post-MVP 阶段状态**：Phase 7 详细文档（requirements/design/ui-ux/testing/implementation-plan）已编制但**均为 `draft`，尚未审核转 active，Phase 7 编码未开始**；Phase 8 ~ Phase 11 当前仅有总体路线图与 overview，均为 `draft`。进入任一 Post-MVP 阶段编码前，必须先编制并审核该阶段详细文档为 active（见 [`post-mvp-roadmap.md`](post-mvp-roadmap.md) §5）。
