@@ -16,6 +16,7 @@ import type {
   QaHistory,
   SessionSummary,
   PersistedUiState,
+  QualityReport,
 } from '../../types/workspace';
 import {
   openWorkspace,
@@ -23,6 +24,7 @@ import {
   collectEvidence,
   generateUnderstanding,
   generateViews,
+  generateQualityReport,
   resolveTraceTarget,
   getSourceExcerpt,
   askGroundedQuestion,
@@ -97,6 +99,11 @@ export default function WorkspacePage() {
   const [loadStatus, setLoadStatus] = useState<LoadSessionStatus | null>(null);
   const [loadError, setLoadError] = useState<UiError | null>(null);
 
+  // Phase 7 Quality Review 状态
+  const [qualityReport, setQualityReport] = useState<QualityReport | null>(null);
+  const [qualityLoading, setQualityLoading] = useState(false);
+  const [qualityError, setQualityError] = useState<UiError | null>(null);
+
   // Phase 6 跨阶段累积映射（用于构造 SessionState）
   const [stageContextsMap, setStageContextsMap] = useState<Record<string, StageContext>>({});
   const [evidenceCollectionsMap, setEvidenceCollectionsMap] = useState<Record<string, EvidenceCollection>>({});
@@ -110,10 +117,11 @@ export default function WorkspacePage() {
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
 
-  // 用于取消旧 trace/excerpt/qa 请求的守卫
+  // 用于取消旧 trace/excerpt/qa/quality 请求的守卫
   const traceGuardRef = useRef<number>(0);
   const excerptGuardRef = useRef<number>(0);
   const qaGuardRef = useRef<number>(0);
+  const qualityGuardRef = useRef<number>(0);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dirtyVersionRef = useRef<number>(0);
@@ -163,12 +171,21 @@ export default function WorkspacePage() {
     }
   }, []);
 
+  // ─── 清空 quality 相关状态 ───
+  const clearQualityState = useCallback(() => {
+    qualityGuardRef.current += 1;
+    setQualityReport(null);
+    setQualityLoading(false);
+    setQualityError(null);
+  }, []);
+
   // ─── 打开项目 ───
   const handleOpen = useCallback(async () => {
     const path = pathInput.trim();
     if (!path) return;
     invalidatePendingSessionSave();
     clearTraceState();
+    clearQualityState();
     setSessionId(null);
     setSaveStatus('unsaved');
     setSaveError(null);
@@ -188,7 +205,7 @@ export default function WorkspacePage() {
     } catch (err) {
       setState({ phase: 'error', error: makeUiError(err) });
     }
-  }, [pathInput, clearTraceState, invalidatePendingSessionSave]);
+  }, [pathInput, clearTraceState, clearQualityState, invalidatePendingSessionSave]);
 
   // ─── 选择阶段 ───
   const handleSelectStage = useCallback(
@@ -207,6 +224,7 @@ export default function WorkspacePage() {
           : null;
       if (!profile || isLoadingSession) return;
       clearTraceState();
+      clearQualityState();
       markUnsaved();
       setState({ phase: 'selecting_stage', profile, stageId });
       try {
@@ -217,7 +235,7 @@ export default function WorkspacePage() {
         setState({ phase: 'stage_error', profile, stageId, error: makeUiError(err) });
       }
     },
-    [state, clearTraceState, isLoadingSession]
+    [state, clearTraceState, clearQualityState, isLoadingSession]
   );
 
   // ─── 收集证据 ───
@@ -239,8 +257,9 @@ export default function WorkspacePage() {
       stageId: string;
       context: StageContext;
     };
-    // 进入 collecting_evidence 时自动清除旧 understanding / views / trace
+    // 进入 collecting_evidence 时自动清除旧 understanding / views / trace / quality
     clearTraceState();
+    clearQualityState();
     markUnsaved();
     setState({ phase: 'collecting_evidence', profile, stageId, context });
     try {
@@ -250,7 +269,7 @@ export default function WorkspacePage() {
     } catch (err) {
       setState({ phase: 'evidence_error', profile, stageId, context, error: makeUiError(err) });
     }
-  }, [state, clearTraceState, isLoadingSession]);
+  }, [state, clearTraceState, clearQualityState, isLoadingSession]);
 
   // ─── 生成理解 ───
   const handleGenerateUnderstanding = useCallback(async () => {
@@ -272,6 +291,7 @@ export default function WorkspacePage() {
     const evidence =
       'evidence' in state ? (state as { evidence?: EvidenceCollection }).evidence : undefined;
     clearTraceState();
+    clearQualityState();
     markUnsaved();
     setState({ phase: 'understanding_loading', profile, stageId, context, evidence });
     try {
@@ -288,7 +308,7 @@ export default function WorkspacePage() {
         understandingError: makeUiError(err),
       });
     }
-  }, [state, clearTraceState, isLoadingSession]);
+  }, [state, clearTraceState, clearQualityState, isLoadingSession]);
 
   // ─── 生成视图 ───
   const handleGenerateViews = useCallback(async () => {
@@ -306,6 +326,7 @@ export default function WorkspacePage() {
       understanding: ImplementationUnderstanding;
     };
     clearTraceState();
+    clearQualityState();
     markUnsaved();
     setState({ phase: 'views_loading', profile, stageId, context, evidence, understanding });
     try {
@@ -323,7 +344,7 @@ export default function WorkspacePage() {
         viewsError: makeUiError(err),
       });
     }
-  }, [state, clearTraceState, isLoadingSession]);
+  }, [state, clearTraceState, clearQualityState, isLoadingSession]);
 
   // ─── 当前 profile 提取 ───
   const currentProfile = useMemo<WorkspaceProfile | null>(() => {
@@ -362,6 +383,61 @@ export default function WorkspacePage() {
     if (state.phase === 'views_error') return state.stageId;
     return null;
   }, [state]);
+
+  // ─── Phase 7: 生成质量评估报告 ───
+  const handleGenerateQualityReport = useCallback(async () => {
+    const stageId = selectedStageId;
+    const profile = currentProfile;
+    if (!profile || !stageId) return;
+    if (
+      state.phase !== 'stage_loaded' &&
+      state.phase !== 'evidence_loaded' &&
+      state.phase !== 'evidence_error' &&
+      state.phase !== 'understanding_loaded' &&
+      state.phase !== 'understanding_error' &&
+      state.phase !== 'views_loaded' &&
+      state.phase !== 'views_error'
+    ) return;
+    if (isLoadingSession) return;
+
+    const { context } = state as { context: StageContext };
+    const recognizedStatus =
+      profile.stages.find((s) => s.stage_id === stageId)?.status ?? 'available';
+    const evidence =
+      'evidence' in state
+        ? (state as { evidence?: EvidenceCollection }).evidence
+        : undefined;
+    const understanding =
+      'understanding' in state
+        ? (state as { understanding?: ImplementationUnderstanding }).understanding
+        : undefined;
+    const views =
+      'views' in state ? (state as { views?: ViewGraph[] }).views : undefined;
+
+    const guard = (qualityGuardRef.current += 1);
+    setQualityReport(null);
+    setQualityError(null);
+    setQualityLoading(true);
+    try {
+      const report = await generateQualityReport(
+        context,
+        recognizedStatus,
+        evidence,
+        understanding,
+        views,
+        groundedAnswer ?? undefined
+      );
+      if (guard === qualityGuardRef.current) {
+        setQualityReport(report);
+        setQualityLoading(false);
+      }
+    } catch (err) {
+      if (guard === qualityGuardRef.current) {
+        setQualityError(makeUiError(err));
+        setQualityLoading(false);
+      }
+    }
+  }, [state, currentProfile, selectedStageId, isLoadingSession, groundedAnswer]);
 
   const isLoadingStage =
     state.phase === 'selecting_stage' ||
@@ -843,6 +919,7 @@ export default function WorkspacePage() {
       if (!profile || !stageId || !evidence || !understanding) return;
 
       qaGuardRef.current += 1;
+      clearQualityState();
       setGroundedAnswer(null);
       setGroundedAnswerError(null);
       setGroundedAnswerLoading(true);
@@ -888,7 +965,7 @@ export default function WorkspacePage() {
         }
       }
     },
-    [currentProfile, selectedStageId, state, selectedTraceTarget, resolvedTraces]
+    [currentProfile, selectedStageId, state, selectedTraceTarget, resolvedTraces, clearQualityState]
   );
 
   // ─── Grounded Q&A citation 点击 ───
@@ -1135,6 +1212,12 @@ export default function WorkspacePage() {
               onEvidenceSelect={handleEvidenceSelect}
               onAskGroundedQuestion={handleAskGroundedQuestion}
               onGroundedCitationClick={handleGroundedCitationClick}
+              qualityReport={qualityReport}
+              qualityLoading={qualityLoading}
+              qualityError={qualityError}
+              canGenerateQualityReport={!isLoadingSession}
+              qualityDisabledReason={isLoadingSession ? '正在加载会话' : undefined}
+              onGenerateQualityReport={handleGenerateQualityReport}
             />
           )}
 

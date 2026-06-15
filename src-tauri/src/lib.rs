@@ -1,16 +1,17 @@
 pub mod commands;
 pub mod evidence;
 pub mod models;
+pub mod persistence;
+pub mod quality;
 pub mod trace;
 pub mod understanding;
 pub mod views;
 pub mod workspace;
-pub mod persistence;
-pub mod quality;
 
 use commands::ask_grounded_question::ask_grounded_question;
 use commands::collect_evidence::collect_evidence;
 use commands::delete_session::delete_session;
+use commands::generate_quality_report::generate_quality_report;
 use commands::generate_understanding::generate_understanding;
 use commands::generate_views::generate_views;
 use commands::get_last_session::get_last_session;
@@ -32,6 +33,7 @@ pub fn run() {
             collect_evidence,
             generate_understanding,
             generate_views,
+            generate_quality_report,
             resolve_trace_target,
             get_source_excerpt,
             ask_grounded_question,

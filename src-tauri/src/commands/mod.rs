@@ -1,6 +1,7 @@
 pub mod ask_grounded_question;
 pub mod collect_evidence;
 pub mod delete_session;
+pub mod generate_quality_report;
 pub mod generate_understanding;
 pub mod generate_views;
 pub mod get_last_session;

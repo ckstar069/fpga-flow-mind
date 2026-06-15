@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { CommandResult, WorkspaceProfile, StageContext, EvidenceCollection, ImplementationUnderstanding, ViewGraph, SelectedTraceTarget, TraceRefResolved, SourceLocation, SourceExcerpt, GroundedQuestion, GroundedAnswer, SessionState, SaveSessionResult, LoadSessionResult, SessionSummary } from '../types/workspace';
+import type { CommandResult, WorkspaceProfile, StageContext, EvidenceCollection, ImplementationUnderstanding, ViewGraph, SelectedTraceTarget, TraceRefResolved, SourceLocation, SourceExcerpt, GroundedQuestion, GroundedAnswer, SessionState, SaveSessionResult, LoadSessionResult, SessionSummary, QualityReport } from '../types/workspace';
 
 export class CommandError extends Error {
   error_code: string;
@@ -123,6 +123,25 @@ export async function deleteSession(sessionId: string): Promise<void> {
     sessionId,
   });
   return handleVoidResult(result);
+}
+
+export async function generateQualityReport(
+  stageContext: StageContext,
+  recognizedStatus: string,
+  evidence?: EvidenceCollection,
+  understanding?: ImplementationUnderstanding,
+  views?: ViewGraph[],
+  groundedAnswer?: GroundedAnswer,
+): Promise<QualityReport> {
+  const result = await invoke<CommandResult<QualityReport>>('generate_quality_report', {
+    stageContext,
+    recognizedStatus,
+    evidence: evidence ?? null,
+    understanding: understanding ?? null,
+    views: views ?? null,
+    groundedAnswer: groundedAnswer ?? null,
+  });
+  return handleResult(result);
 }
 
 export async function getLastSession(): Promise<SessionSummary | null> {

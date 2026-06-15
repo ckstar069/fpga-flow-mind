@@ -10,7 +10,7 @@ updated: 2026-06-15
 > **Phase 7 的目标不是新增炫酷功能，而是验证并提升真实 `ai_project_template` 项目上的分析质量。**
 > MVP（Phase 0–6 / tag `v0.1.0-mvp`）已在 `/tmp` 手工构造的临时小型样例上证明单阶段理解闭环技术成立，但尚未在真实业务项目上验证分析质量是否可信。Phase 7 把"技术上成立"推进为"在真实项目上可信"。
 >
-> 本文档 status 为 `active`，是 Phase 7 编码的需求依据。**Phase 7 Batch A/B 已实现并进入审核收口，Batch C 尚未授权**。
+> 本文档 status 为 `active`，是 Phase 7 编码的需求依据。**Phase 7 Batch A/B/C 已实现并进入审核收口，Batch D/E 仍不得进入**。
 
 ## 1. 用户目标
 

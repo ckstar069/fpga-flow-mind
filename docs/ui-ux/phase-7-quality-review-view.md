@@ -11,7 +11,7 @@ updated: 2026-06-15
 >
 > 所有 UI 文案表达"工具理解质量"与"不确定性"，**不评价目标项目**，避免"正确/错误""PASS/HOLD""审计结论"等用语。
 >
-> 本文档 status 为 `active`，是 Phase 7 前端编码依据（Phase 7 UI 属 Batch C，Batch A/B 不含 UI）。**Phase 7 Batch A/B 已实现并进入审核收口，Batch C 尚未授权**。
+> 本文档 status 为 `active`，是 Phase 7 前端编码依据（Phase 7 UI 属 Batch C，Batch A/B 不含 UI）。**Phase 7 Batch A/B/C 已实现并进入审核收口，Batch D/E 仍不得进入**。
 
 ## 1. 设计目标
 
@@ -111,3 +111,4 @@ Phase 7 UI 仅限以下最小集合，挂在既有布局之上：
 | 2026-06-15 | 初始 draft：定义 Phase 7 仅做质量评估视图、允许/禁止项、视觉语义、文案规范、前后端边界。明确不做工作台重构。Batch A/B 后续已实现，当前进入审核收口。 | Claude |
 | 2026-06-15 | 审核收口修复（status 保持 draft）：修正 §7 Tauri command 归属，指向 P7-T06 并明确不属 Batch A，避免越界。Batch A/B 后续已实现，当前进入审核收口。 | Claude |
 | 2026-06-15 | 审核通过，status 从 draft 转为 active，作为 Phase 7 编码依据；Phase 7 Batch A/B 已实现并进入审核收口，Batch C 未授权。 | Claude |
+| 2026-06-15 | Batch C 实现：`QualityReviewPanel` 完成加载/空/报错/报告态、汇总、分维度概览、可点击 issue 列表；`WorkspacePage` 接入状态机并支持重新收集/切换/生成视图/Q&A 时过期质量报告；文案使用"达到/低于当前质量门槛"，禁用 PASS/HOLD。 | Claude |

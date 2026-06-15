@@ -616,3 +616,152 @@ export interface SessionSummary {
   updated_at: string;
   stage_count: number;
 }
+
+// ─── Phase 7: Quality Review Types ──────────────────────────────────
+
+/** 质量门槛判定结果（不输出 PASS/HOLD） */
+export type QualityAcceptanceStatus = 'below_gate' | 'meets_gate';
+
+/** 被评估产物类型 */
+export type ArtifactKind =
+  | 'workspace'
+  | 'stage'
+  | 'evidence'
+  | 'understanding'
+  | 'view'
+  | 'qa'
+  | 'ui';
+
+/** 发现方式 */
+export type DetectionMethod = 'automated' | 'manual' | 'desktop_acceptance';
+
+/** 问题处置状态 */
+export type IssueStatus = 'open' | 'fixed' | 'accepted_as_known_limitation';
+
+/** 质量记录分类 */
+export type QualityIssueKind =
+  | 'missing_evidence'
+  | 'noisy_evidence'
+  | 'wrong_source_kind'
+  | 'stage_identification_mismatch'
+  | 'weak_summary'
+  | 'unsupported_claim'
+  | 'hallucinated_claim_blocked'
+  | 'empty_or_unhelpful_view'
+  | 'qa_unanswered_when_evidence_exists'
+  | 'qa_answer_without_valid_citation'
+  | 'confusing_ui_state';
+
+/** 严重程度 */
+export type QualitySeverity = 'low' | 'medium' | 'high';
+
+/** 极性：负向问题 / 正向 guardrail */
+export type QualityIssuePolarity = 'problem' | 'positive_guardrail';
+
+/** 指标快照 */
+export interface MetricSnapshot {
+  metric_name: string;
+  stage_id?: string;
+  value: number;
+}
+
+/** 未覆盖文件 */
+export interface UncoveredFile {
+  source_path: string;
+  reason: string;
+}
+
+/** 阶段摘要质量 */
+export interface SummaryQuality {
+  total_summaries: number;
+  weak_summary_count: number;
+}
+
+/** Evidence 维度质量报告 */
+export interface EvidenceQualityReport {
+  sample_id: string;
+  stage_id: string;
+  file_coverage_ratio: number;
+  line_range_accuracy: number;
+  label_sanity_ratio: number;
+  uncovered_files: UncoveredFile[];
+  issue_refs: string[];
+}
+
+/** Understanding 维度质量报告 */
+export interface UnderstandingQualityReport {
+  sample_id: string;
+  stage_id: string;
+  claim_existence_check_ratio: number;
+  uncertainty_expression_ratio: number;
+  confidence_calibration_ratio: number;
+  summary_quality: SummaryQuality;
+  issue_refs: string[];
+}
+
+/** View 维度质量报告 */
+export interface ViewQualityReport {
+  sample_id: string;
+  stage_id: string;
+  view_type: ViewType;
+  trace_resolvable_ratio: number;
+  isolated_node_count: number;
+  suspected_misconnection_count: number;
+  issue_refs: string[];
+}
+
+/** Q&A 维度质量报告 */
+export interface QaQualityReport {
+  sample_id: string;
+  stage_id: string;
+  citation_validity_ratio: number;
+  answerable_hit_ratio: number;
+  unknown_honesty_ratio: number;
+  issue_refs: string[];
+}
+
+/** 单条质量记录 */
+export interface QualityIssue {
+  issue_id: string;
+  sample_id: string;
+  stage_id: string;
+  artifact_kind: ArtifactKind;
+  kind: QualityIssueKind;
+  polarity: QualityIssuePolarity;
+  severity: QualitySeverity;
+  evidence_id?: string;
+  claim_id?: string;
+  node_id?: string;
+  source_path?: string;
+  line_range?: LineRange;
+  description: string;
+  detected_by: DetectionMethod;
+  status: IssueStatus;
+}
+
+/** 一次评估运行汇总 */
+export interface QualityRunSummary {
+  run_id: string;
+  sample_ids: string[];
+  total_issues: number;
+  positive_guardrail_event_count: number;
+  issues_by_kind: Record<string, number>;
+  issues_by_severity: Record<string, number>;
+  issues_by_status: Record<string, number>;
+  metric_snapshots: MetricSnapshot[];
+}
+
+/** Phase 7 质量报告 */
+export interface QualityReport {
+  report_id: string;
+  sample_id: string;
+  stage_ids: string[];
+  generated_at: string;
+  evidence_reports: EvidenceQualityReport[];
+  understanding_reports: UnderstandingQualityReport[];
+  view_reports: ViewQualityReport[];
+  qa_reports: QaQualityReport[];
+  issues: QualityIssue[];
+  summary: QualityRunSummary;
+  acceptance: QualityAcceptanceStatus;
+}

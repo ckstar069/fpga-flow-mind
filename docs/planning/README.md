@@ -5,7 +5,7 @@ status: active
 updated: 2026-06-15
 ---
 
-> 注：本索引的 `status: active` 表示**索引文件本身**为生效文档；下表中 Phase 7 详细文档已 active，Batch A/B 已实现并在审核收口、Batch C 未授权；Phase 8~11 overview 仍为 `draft`。
+> 注：本索引的 `status: active` 表示**索引文件本身**为生效文档；下表中 Phase 7 详细文档已 active，Batch A/B/C 已实现并在审核收口、Batch D/E 仍不得进入；Phase 8~11 overview 仍为 `draft`。
 
 ## Planning 目录用途
 
@@ -34,9 +34,9 @@ updated: 2026-06-15
 | Phase 5 | 证据回链与 grounded Q&A | 支持节点点击追溯证据、用户追问 |
 | Phase 6 | 持久化、回放与 MVP 验收 | 产物可持久化加载，完成 MVP 闭环验收 |
 
-### Post-MVP 阶段（Phase 7 Batch A/B 已实现并在审核收口，Batch C 未授权；Phase 8~11 仍为 draft）
+### Post-MVP 阶段（Phase 7 Batch A/B/C 已实现并在审核收口，Batch D/E 仍不得进入；Phase 8~11 仍为 draft）
 
-> MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP，不等于产品可用性完成。Post-MVP 总体路线图见 [`post-mvp-roadmap.md`](post-mvp-roadmap.md)。**Phase 7 详细文档（requirements/design/ui-ux/testing/implementation-plan）已全部 active**；Phase 7 Batch A/B 已进入实现与审核收口，**Phase 7 Batch C 尚未授权**。Phase 8~11 overview 仍为 draft，进入其编码前需先编制详细文档并审核为 active。Batch A/B 范围仍禁止 Batch C（UI）、Batch D/E、真实 LLM、目标项目写入。
+> MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP，不等于产品可用性完成。Post-MVP 总体路线图见 [`post-mvp-roadmap.md`](post-mvp-roadmap.md)。**Phase 7 详细文档（requirements/design/ui-ux/testing/implementation-plan）已全部 active**；Phase 7 Batch A/B/C 已进入实现与审核收口，**Batch D/E 仍不得进入**。Phase 8~11 overview 仍为 draft，进入其编码前需先编制详细文档并审核为 active。Batch A/B/C 范围仍禁止 Batch D/E、真实 LLM、目标项目写入。
 
 | 阶段 | 名称 | 核心目标 | overview 文档 |
 |------|------|----------|---------------|
@@ -108,7 +108,7 @@ updated: YYYY-MM-DD
 | [`mvp-release-notes.md`](mvp-release-notes.md) | `active` | MVP Release Notes：Phase 0–6 completion 发布说明，已完成能力、验证结果、安全边界、已知限制，对应 tag `v0.1.0-mvp` | MVP 发布审核必读 |
 | [`post-mvp-roadmap.md`](post-mvp-roadmap.md) | `draft` | Post-MVP 总体路线图：明确 v0.1.0-mvp 是技术闭环 MVP，给出 Phase 7~11 阶段关系、依赖顺序、进入纪律 | 进入任何 Post-MVP 阶段前必读 |
 | [`phase-7-overview-real-project-quality.md`](phase-7-overview-real-project-quality.md) | `draft` | Phase 7 overview：真实项目评估与 evidence/understanding 质量补强 | Phase 7 详细文档编制前必读 |
-| [`phase-7-implementation-plan.md`](phase-7-implementation-plan.md) | `active` | Phase 7 编码实施计划：P7-T01~P7-T10 任务拆解、5 个 Batch（A~E）划分与允许/禁止边界、依赖关系、进入/退出条件、安全边界。**Batch A/B 已实现并在审核收口，Batch C 未授权** | Phase 7 编码实施依据（active） |
+| [`phase-7-implementation-plan.md`](phase-7-implementation-plan.md) | `active` | Phase 7 编码实施计划：P7-T01~P7-T10 任务拆解、5 个 Batch（A~E）划分与允许/禁止边界、依赖关系、进入/退出条件、安全边界。**Batch A/B/C 已实现并在审核收口，Batch D/E 仍不得进入** | Phase 7 编码实施依据（active） |
 | [`phase-8-overview-product-ui-workbench.md`](phase-8-overview-product-ui-workbench.md) | `draft` | Phase 8 overview：产品级 UI/UX 工作台重构 | Phase 8 详细文档编制前必读 |
 | [`phase-9-overview-real-llm-grounding.md`](phase-9-overview-real-llm-grounding.md) | `draft` | Phase 9 overview：真实 LLM Provider 与 grounding 生产化 | Phase 9 详细文档编制前必读 |
 | [`phase-10-overview-cross-stage-python-rtl.md`](phase-10-overview-cross-stage-python-rtl.md) | `draft` | Phase 10 overview：跨阶段理解与 Python-to-RTL 映射 | Phase 10 详细文档编制前必读 |
@@ -118,14 +118,12 @@ updated: YYYY-MM-DD
 >
 > 当前 active 文档：`phase-6-persistence-and-mvp-requirements.md`、`phase-6-persistence-model.md`、`phase-6-persistence-and-replay-design.md`、`phase-6-session-and-mvp-view.md`、`phase-6-mvp-validation.md`、`phase-6-implementation-plan.md`、`phase-6-completion-review.md`、`mvp-release-notes.md`，以及 Phase 7 详细文档（requirements/design/ui-ux/testing/implementation-plan，均 active）。
 >
-> **Post-MVP 阶段状态**：Phase 7 详细文档（requirements/design/ui-ux/testing/implementation-plan）**已全部审核转 `active`**；**Phase 7 Batch A/B 已实现并进入审核收口**。Phase 8 ~ Phase 11 当前仅有总体路线图与 overview，均为 `draft`。
+> **Post-MVP 阶段状态**：Phase 7 详细文档（requirements/design/ui-ux/testing/implementation-plan）**已全部审核转 `active`**；**Phase 7 Batch A/B/C 已实现并进入审核收口**。Phase 8 ~ Phase 11 当前仅有总体路线图与 overview，均为 `draft`。
 >
-> **Phase 7 Batch A/B 范围**：
-> - ✅ Batch A/B 已实现并在审核收口（quality models + reporter + stage/evidence/understanding/view/qa evaluators）。
-> - ❌ **Batch C 尚未授权**（待 Batch A/B 审核收口完成后方可申请）。
-> - ❌ 不允许进入 Batch D/E。
+> **Phase 7 Batch A/B/C 范围**：
+> - ✅ Batch A/B/C 已实现并在审核收口（quality models + reporter + stage/evidence/understanding/view/qa evaluators + 最小 Quality Review UI + Tauri command）。
+> - ❌ **Batch D/E 仍不得进入**（待 Batch C 审核收口完成后方可申请）。
 > - ❌ 不允许修改 evidence/understanding/view/qa 既有逻辑。
-> - ❌ 不允许 UI（属 Batch C）。
 > - ❌ 不允许真实 LLM（属 Phase 9）。
 > - ❌ 不允许目标项目写入。
 >

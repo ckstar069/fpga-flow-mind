@@ -9,7 +9,7 @@ updated: 2026-06-15
 >
 > 验证目标是"工具在真实项目上的分析质量是否可信且未越界"，**不是**验证目标项目是否"正确"。
 >
-> 本文档 status 为 `active`，是 Phase 7 验证与验收依据。**Phase 7 Batch A/B 已实现并进入审核收口，Batch C 尚未授权**。
+> 本文档 status 为 `active`，是 Phase 7 验证与验收依据。**Phase 7 Batch A/B/C 已实现并进入审核收口，Batch D/E 仍不得进入**。
 
 ## 1. 验证策略总览
 
@@ -157,3 +157,4 @@ Phase 7 完成后，方允许考虑进入：
 | 2026-06-15 | 初始 draft：定义后端/前端测试方向、桌面验收步骤、≥2 真实样本策略、checksum、rg 安全回归、Phase 7 完成标准与进入 Phase 8/9 条件。Batch A/B 后续已实现，当前进入审核收口。 | Claude |
 | 2026-06-15 | 审核收口修复（status 保持 draft）：测试矩阵新增阶段识别评估行（`stage_identification_mismatch`）；追溯字段补 `source_path`/`line_range`；`hallucinated_claim_blocked` 标注为正向 guardrail 不计入负向 backlog；Q&A 评估改用 `QaEvaluationQuestionSet`；完成标准 backlog 闭环明确仅看 polarity=problem。Batch A/B 后续已实现，当前进入审核收口。 | Claude |
 | 2026-06-15 | 审核通过，status 从 draft 转为 active，作为 Phase 7 编码依据；Phase 7 Batch A/B 已实现并进入审核收口，Batch C 未授权。 | Claude |
+| 2026-06-15 | Batch C 验证：`cargo test --lib` 483 通过；`npm run build` 通过；新增 `commands::generate_quality_report` 5 项单测；rg 边界检查无新增产品代码越界（PASS/HOLD/Vivado/LLM）；前端 Quality Review 组件类型检查通过。 | Claude |

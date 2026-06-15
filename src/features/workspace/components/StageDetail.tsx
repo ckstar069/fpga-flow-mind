@@ -10,6 +10,7 @@ import type {
   SourceExcerpt,
   GroundedAnswer,
   GroundedAnswerCitation,
+  QualityReport,
 } from '../../../types/workspace';
 import type { UiError } from '../workspaceUiTypes';
 import { formatBytes } from '../workspaceUiUtils';
@@ -19,6 +20,7 @@ import MultiViewPanel from './MultiViewPanel';
 import TracePanel from './TracePanel';
 import SourceExcerptPanel from './SourceExcerptPanel';
 import GroundedQAPanel from './GroundedQAPanel';
+import QualityReviewPanel from './QualityReviewPanel';
 
 interface StageDetailProps {
   context: StageContext;
@@ -58,6 +60,12 @@ interface StageDetailProps {
   onEvidenceSelect?: (evidenceId: string) => void;
   onAskGroundedQuestion?: (question: string) => void;
   onGroundedCitationClick?: (citation: GroundedAnswerCitation) => void;
+  qualityReport?: QualityReport | null;
+  qualityLoading?: boolean;
+  qualityError?: UiError | null;
+  canGenerateQualityReport?: boolean;
+  qualityDisabledReason?: string;
+  onGenerateQualityReport?: () => void;
 }
 
 export default function StageDetail({
@@ -93,6 +101,12 @@ export default function StageDetail({
   onEvidenceSelect,
   onAskGroundedQuestion,
   onGroundedCitationClick,
+  qualityReport,
+  qualityLoading,
+  qualityError,
+  canGenerateQualityReport,
+  qualityDisabledReason,
+  onGenerateQualityReport,
 }: StageDetailProps) {
   const canCollect =
     !context.error_code && context.files.length > 0 && !!onCollectEvidence;
@@ -503,6 +517,20 @@ export default function StageDetail({
           error={groundedAnswerError}
           onAsk={onAskGroundedQuestion}
           onCitationClick={onGroundedCitationClick}
+        />
+      )}
+
+      {/* Phase 7 质量评估 */}
+      {onGenerateQualityReport && (
+        <QualityReviewPanel
+          report={qualityReport}
+          loading={qualityLoading}
+          error={qualityError}
+          canGenerate={canGenerateQualityReport ?? true}
+          disabledReason={qualityDisabledReason}
+          onGenerate={onGenerateQualityReport}
+          onEvidenceSelect={onEvidenceSelect}
+          onViewSource={onViewSource}
         />
       )}
 

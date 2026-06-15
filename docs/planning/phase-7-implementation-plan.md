@@ -7,7 +7,7 @@ updated: 2026-06-15
 
 > 本文档定义 Phase 7（真实项目评估与 evidence/understanding 质量补强）的编码实施计划：任务拆解（P7-T01~P7-T10）、依赖关系、Batch 划分（A~E）、进入/退出条件、安全边界。
 >
-> 本文档 status 为 `active`，是 Phase 7 编码的实施依据。6 份 Phase 7 详细文档已全部审核转 `active`；**Phase 7 Batch A/B 已实现并进入审核收口，Batch C 尚未授权**。
+> 本文档 status 为 `active`，是 Phase 7 编码的实施依据。6 份 Phase 7 详细文档已全部审核转 `active`；**Phase 7 Batch A/B/C 已实现并进入审核收口，Batch D/E 仍不得进入**。
 >
 > Phase 7 是质量补强阶段，目标是在真实 `ai_project_template` 项目上验证并提升分析质量，而非新增功能。范围严格收敛于评估与补强，不做 Phase 8/9/10 能力。
 
@@ -22,9 +22,9 @@ updated: 2026-06-15
 | Phase 7 UI/UX 文档 active | ✅ `phase-7-quality-review-view.md`（active） |
 | Phase 7 测试文档 active | ✅ `phase-7-real-project-quality-validation.md`（active） |
 | Phase 7 实施计划 active | ✅ 本文档（active） |
-| **以上 Phase 7 详细文档全部转为 active** | ✅ 已满足，**Phase 7 Batch A/B 已实现并进入审核收口，Batch C 尚未授权** |
+| **以上 Phase 7 详细文档全部转为 active** | ✅ 已满足，**Phase 7 Batch A/B/C 已实现并进入审核收口，Batch D/E 仍不得进入** |
 
-> 纪律（与 Post-MVP 路线图 §5 一致）：Phase 7 详细文档已全部 active，Batch A/B 已实现并进入审核收口（quality models + reporter + stage/evidence/understanding/view/qa evaluators）。**Batch C 尚未授权**；Batch D/E 在 Batch A/B 审核收口前不得开始；Batch A/B 不改 evidence/understanding/view/qa 既有逻辑、不做 UI、不接真实 LLM、不写目标项目。
+> 纪律（与 Post-MVP 路线图 §5 一致）：Phase 7 详细文档已全部 active，Batch A/B/C 已实现并进入审核收口（quality models + reporter + evaluators + 最小 Quality Review UI + Tauri command）。**Batch D/E 在 Batch C 审核收口前不得开始**；Batch A/B/C 不改 evidence/understanding/view/qa 既有逻辑、不接真实 LLM、不写目标项目。
 
 ## 2. 任务拆分
 
@@ -84,7 +84,7 @@ updated: 2026-06-15
 |------|------|
 | **目标** | Quality Review 面板、issue list、stage quality summary、各面板最小质量提示、真实项目验收清单视图；新增读取评估产物的 Tauri command |
 | **输入文档** | `phase-7-quality-review-view.md` |
-| **预计修改文件** | `src/features/quality/`（新增）、`src/lib/tauriCommands.ts`、`src/types/quality.ts`、`src-tauri/src/commands/`（新增只读 command）、既有面板小幅质量提示 |
+| **预计修改文件** | `src/features/workspace/components/QualityReviewPanel.tsx`（新增）、`src/features/workspace/WorkspacePage.tsx`、`src/features/workspace/components/StageDetail.tsx`、`src/lib/tauriCommands.ts`、`src/types/workspace.ts`、`src-tauri/src/commands/generate_quality_report.rs`（新增只读 command） |
 | **验收命令** | `npm run build` + 桌面验收 |
 | **不做什么** | 不重写整体布局；不引入图形库；不做工作台重构；文案禁用审计用语 |
 
@@ -180,14 +180,14 @@ P7-T01 (evaluation model)
 **允许范围**：新增各维度 evaluator，只读评估既有产物，产出 `QualityReport` + `QualityIssue`。
 **禁止越界**：不改 Phase 2/3/4/5 既有实现（补强在 Batch D）；不下主观裁决；不接 LLM。
 
-### 4.3 Batch C：最小 UI
+### 4.3 Batch C：最小 UI（已实现，待审核收口）
 
 | 任务 | 内容 |
 |------|------|
 | P7-T06 | Quality Review UI 最小视图 |
 
-**允许范围**：新增 Quality Review 面板 + 各面板最小质量提示 + 只读 command + 验收清单视图。
-**禁止越界**：不重写整体布局；不引入图形库；不做工作台重构；文案禁用审计用语。
+**允许范围**：新增 Quality Review 面板（`QualityReviewPanel`）+ 只读 Tauri command（`generate_quality_report`）+ `WorkspacePage` 状态机接入；各面板小幅质量提示为后续 Batch D 可选补强。
+**禁止越界**：不重写整体布局；不引入图形库；不做工作台重构；文案禁用审计用语；不接真实 LLM；不写目标项目。
 
 ### 4.4 Batch D：真实项目验收与质量补强
 
@@ -250,3 +250,4 @@ P7-T01 (evaluation model)
 | 2026-06-15 | 初始 draft：定义 P7-T01~P7-T10、5 个 Batch（A~E）划分与允许/禁止边界、依赖关系、进入/退出条件、安全边界、进入 Phase 8/9 条件。**Batch A/B 后续已实现，当前进入审核收口**，详细文档已 active。 | Claude |
 | 2026-06-15 | 审核收口修复（status 保持 draft）：P7-T01/T02 模型范围补 `polarity`/`source_path`/`line_range`/`stage_identification_mismatch`/`QaEvaluationQuestionSet`；P7-T03 扩为 evidence/阶段识别 evaluator；P7-T05 Q&A 改用 `QaEvaluationQuestionSet`；退出条件 backlog 闭环明确仅看 polarity=problem。**Batch A/B 后续已实现，当前进入审核收口**。 | Claude |
 | 2026-06-15 | 审核通过，status 从 draft 转为 active，作为 Phase 7 编码依据；Phase 7 Batch A/B 已实现并进入审核收口，Batch C 未授权。 | Claude |
+| 2026-06-15 | Batch C 实现：新增 `QualityReviewPanel`、`generate_quality_report` Tauri command、`WorkspacePage` 状态机接入；同步更新 P7-T06 与 Batch C 范围；Batch C 进入审核收口，仍禁止 Batch D/E。 | Claude |
