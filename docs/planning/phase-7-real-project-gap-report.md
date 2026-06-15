@@ -18,9 +18,9 @@ updated: 2026-06-15
   - `src/python_model/`：L0_external、L1_prototype、L2_structured、L3_pipeline、L4_cycle_acc、L5_fixedpoint、L6_resource_opt
   - `src/verilog_model/rtl/`：RTL 实现
   - `tests/`、`scripts/`、`vivado/`、`docs/` 等辅助目录
-- **只读验证：** 对 `src/` 下所有 `.py` / `.v` / `.sv` / `.md` 文件在运行前后分别计算 SHA-256；`src/` 校验和完全一致，目标项目未被修改。
+- **只读验证：** 对 `src/` 下所有 `.py` / `.v` / `.sv` / `.md` 文件在运行前后分别计算 SHA-256；`src/` 校验和一致，未发现源文件内容被修改。
+- **⚠️ 验收方法偏差：** 本次为了让当前工具完成评估，曾将真实项目源码**临时复制到目标项目根目录**的 `L0` / `L1` / ... / `RTL` 目录中，评估完成后已删除这些临时副本。该操作**违反了严格意义上的“目标项目目录只读”边界**，即使 `src/` checksum 未变、临时副本已删除，仍属于对目标项目目录的写入。该偏差**不得作为后续验收方法复用**。
 - **扫描限制：** 由于 `fpga-flow-mind` 当前阶段检测器只识别根目录下 `L0` / `L1` / ... / `RTL` 等顶层阶段目录，真实项目源码位于 `src/python_model/L1_prototype` 这类深层路径，导致直接打开真实项目时阶段识别失败（`no_stage_found` / `未识别到阶段目录`）。
-  - 为完成本次基线评估，临时将 `src/python_model/L*` 与 `src/verilog_model/rtl/` 下的文件**复制**到项目根目录的 `L0` / `L1` / ... / `RTL` 目录中，评估完成后已删除这些临时副本。
   - 这一事实本身即是一项关键发现：fpga-flow-mind 的阶段检测策略与 `ai_project_template` 真实目录结构不匹配，真实项目无法直接被工具识别。
 
 ### 1.2 是否等价于 ai_project_template
@@ -158,7 +158,7 @@ updated: 2026-06-15
 
 ## 5. 安全与边界确认
 
-- **目标项目只读：** `src/` 校验和前后一致，未修改真实项目。
+- **目标项目只读：** `src/` 校验和前后一致，未发现源文件内容被修改。但本次验收过程中**曾在目标项目根目录创建并删除临时阶段副本**，属于验收方法偏差，不视为完全合规的只读验收。后续 Batch D 必须避免此类操作。
 - **无真实 LLM：** 当前 understanding/provider 仍为 mock。
 - **无 Vivado / synthesis / implementation / bitstream：** 未运行 Vivado。
 - **无 PASS/HOLD/正确/错误：** quality report 使用“低于当前质量门槛”。
@@ -183,14 +183,115 @@ Phase 7 Batch C 的 UI 接入是通的，但面对真实 `ai_project_template` �
 3. 让 dataflow / timing view 至少能生成非空图。
 4. 优化 scanner，减少 scan_timeout 并提高有效源码覆盖率。
 
+**关于验收方法：** 后续 Batch D 验收必须满足以下二者之一：
+- 直接修复 `stage_detector`，使工具能打开真实项目原目录并识别阶段；或
+- 如需适配当前工具，必须将真实项目**复制到 `/tmp` 或 app-owned 临时目录**形成 normalized mirror，在镜像上操作；不得再向真实项目根目录写入临时阶段目录。
+
 ### 6.3 不建议立即进入 Phase 8/9/10
 
 - Phase 8 的 UI 重构应建立在“分析内容足够丰富”的基础上；当前分析内容稀疏，重构后也无内容可呈现。
 - Phase 9 的真实 LLM 应建立在“确定性理解管道稳定”的基础上；当前 evidence/understanding 不稳定，LLM 会放大噪声。
 - Phase 10 的跨阶段映射应建立在“单阶段理解充分”的基础上；当前单阶段理解本身不足。
 
+## 8. Phase 7 Batch D P0 修复计划
+
+本计划是 Batch D 的下一步动作顺序，聚焦“让真实项目能被识别、被分析、被可视化”，不进入 Phase 8/9/10。
+
+### 8.1 P0-1：stage_detector 支持真实 ai_project_template 目录结构
+
+**目标：** 打开 `/Users/ckstar/Repo/znxt_ofdm/fpga_project_coarse_sync` 原目录时，自动识别以下阶段：
+
+- `src/python_model/L0_external`
+- `src/python_model/L1_prototype`
+- `src/python_model/L2_structured`
+- `src/python_model/L3_pipeline`
+- `src/python_model/L4_cycle_acc`
+- `src/python_model/L5_fixedpoint`
+- `src/python_model/L6_resource_opt`
+- `src/verilog_model/rtl`
+
+**做法方向（二选一，优先方案 A）：**
+
+- **方案 A：扩展命名变体映射**
+  - 将 `L0_external` 映射为 `L0`，`L1_prototype` 映射为 `L1`，依此类推。
+  - `src/verilog_model/rtl` 映射为 `RTL`。
+  - 保留对顶层 `L0` / `RTL` 等目录的支持，确保向后兼容。
+- **方案 B：配置化阶段根目录**
+  - 允许在 workspace profile 中配置阶段根目录，如 `{"python_stages_root": "src/python_model", "rtl_stages_root": "src/verilog_model/rtl"}`。
+  - 适用于更灵活的项目模板，但实现更重。
+
+**验收标准：**
+
+- 对真实项目原目录执行 `build_workspace_profile`，`no_stage_found` 不出现。
+- L0~L6、RTL 至少被识别为阶段，且文件数统计合理。
+- 不修改目标项目目录。
+
+### 8.2 P0-2：scanner 跳过噪声目录
+
+**目标：** 减少 `scan_timeout` 与无效文件扫描，提升有效源码覆盖率。
+
+**默认跳过目录：**
+
+- `.git`
+- `.claude`
+- `__pycache__`
+- `.pytest_cache`
+- `.egg-info`
+- `vivado`
+- `reports`
+- `stage_current`（如果包含生成物）
+- `tests` 子目录中的 cache / sim_build / 生成物（可配置）
+
+**验收标准：**
+
+- 重新扫描真实项目，scan_timeout 警告数量显著下降（目标 < 5 条或完全消除）。
+- 有效源码文件（`.py` / `.v` / `.sv`）仍被完整扫描。
+- 不修改目标项目目录。
+
+### 8.3 P0-3：dataflow / timing 最小非空生成
+
+**目标：** 在 evidence / understanding 已存在时，生成保守但诚实的 dataflow 边和时序/流水边；无证据时输出 `evidence_gap` 或 `empty_reason`，不伪造边。
+
+**做法方向：**
+
+1. **dataflow view：**
+   - 从 understanding 的 `claim` / `processing_step` / `interface` 中提取输入、输出、数据依赖。
+   - 为每个处理步骤创建节点，为有明确数据关系的步骤创建边。
+   - 若缺少接口或信号信息，则创建占位节点并标注 `evidence_gap`。
+2. **timing view：**
+   - 从 processing step 顺序、循环/流水线结构中提取时序阶段。
+   - 生成阶段节点与顺序边；无法推断时序时输出 `empty_reason: 未识别到时序/流水结构`。
+
+**验收标准：**
+
+- 对 L0 / L1 / RTL 生成视图后，dataflow 或 timing 至少其一不再为空。
+- 若为空，必须显示明确的 `empty_reason`（如 `evidence_gap: 未识别到接口/信号`）。
+- 不伪造不存在的边。
+
+### 8.4 P0-4：回归验收
+
+**场景：** 使用真实项目原目录，不再创建临时顶层阶段目录。
+
+**验收清单：**
+
+- [ ] 直接打开真实项目，L0~L6、RTL 均被识别。
+- [ ] 扫描警告显著减少（< 5 条 scan_timeout 或完全消除）。
+- [ ] L0 / L1 / RTL 均可完成收集 evidence → 生成 understanding → 生成视图 → 生成质量报告。
+- [ ] dataflow 或 timing view 至少其一非空，或显示明确 empty_reason。
+- [ ] Quality Report 仍不使用 PASS/HOLD/正确/错误。
+- [ ] 目标项目 `src/` 校验和前后一致，未修改。
+- [ ] 如需 normalized mirror，必须位于 `/tmp` 或 app-owned 目录，并记录来源与 checksum。
+
+### 8.5 本轮不进入的范围
+
+- Phase 8 UI 重构（工作台、导航、美化）。
+- Phase 9 真实 LLM 接入。
+- Phase 10 Python-to-RTL 跨阶段映射。
+- 大规模 understanding schema 重构（可在 P1 中评估，但不在 P0）。
+
 ## 7. 变更记录
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
 | 2026-06-15 | 创建 Phase 7 Batch D 真实项目质量基线报告，基于 `fpga_project_coarse_sync` 运行完整链路，记录 evidence / understanding / view / quality 退化项，提出 Batch D 修复优先级与 Phase 8/9/10 分界。 | Claude |
+| 2026-06-15 | 安全收口修正：明确承认“曾向目标项目根目录写入临时阶段副本”属于验收方法偏差；修正“目标项目未被修改”为“src/ 校验和一致但存在目录写入偏差”；新增后续必须使用 /tmp normalized mirror 或修 stage_detector 的约束；新增 Batch D P0 修复计划（stage_detector 真实目录识别、scanner 噪声跳过、dataflow/timing 非空生成、回归验收）。 | Claude |

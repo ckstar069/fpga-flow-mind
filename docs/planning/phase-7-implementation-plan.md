@@ -197,8 +197,10 @@ P7-T01 (evaluation model)
 | P7-T08 | 补强 Batch A（evidence/summary 规则） |
 | P7-T09 | 补强 Batch B（视图/Q&A，如需要） |
 
-**允许范围**：基于实际发现补强 Phase 2 提取规则、Phase 3 summary 规则、必要时 Phase 4/5 补强；多样本交叉验证。
-**禁止越界**：不接真实 LLM；不做跨阶段映射；不破坏核心契约；不修改目标项目；不运行 Vivado / synthesis / implementation / bitstream。
+**允许范围**：基于实际发现补强 Phase 2 提取规则、Phase 3 summary 规则、必要时 Phase 4/5 补强；多样本交叉验证；允许使用 `/tmp` 或 app-owned normalized mirror 来适配当前工具对阶段目录的识别需求。
+**禁止越界**：不接真实 LLM；不做跨阶段映射；不破坏核心契约；**不修改目标项目，不在目标项目根目录或源码树内创建临时阶段目录/文件**；不运行 Vivado / synthesis / implementation / bitstream。
+
+> **验收方法约束：** P7-T07 真实项目验收必须记录目标项目 `src/` checksum 并保证验收前后一致。若工具无法直接识别真实项目结构，必须将项目复制到 `/tmp` 或 app-owned 临时目录形成 normalized mirror，在镜像上完成所有分析；mirror 须记录来源路径与自身 checksum。禁止以“临时创建顶层阶段目录后删除”的方式在目标项目目录内写入。
 
 ### 4.5 Batch E：completion review
 
@@ -227,7 +229,8 @@ P7-T01 (evaluation model)
 
 ## 6. 安全边界
 
-- 不修改 `fpga_project_*` / 目标样本项目；checksum 一致。
+- 不修改 `fpga_project_*` / 目标样本项目；checksum 一致；若需 normalized mirror，须位于 `/tmp` 或 app-owned 目录，并记录 source 与 mirror checksum。
+- **禁止在目标项目根目录或源码树内创建临时目录/文件**（包括但不限于为适配 `stage_detector` 而临时放置的 `L0` / `L1` / ... / `RTL` 目录）。
 - 不运行 Vivado / synthesis / implementation / bitstream。
 - 不调用真实 LLM API（不读取 `api_key`、不调用 OpenAI / Anthropic）。
 - 持久化只写 app-owned storage。

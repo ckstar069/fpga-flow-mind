@@ -66,6 +66,8 @@ Phase 7 验证分四层，层层递进：
 | 9 | 评估产物可持久化与再次加载（仅 app-owned storage） | 不写回目标项目 |
 | 10 | 目标项目 checksum 验收前后一致 | 只读验证通过 |
 
+> **严格只读约束：** 验收全程不得向目标项目目录写入任何文件或创建临时目录（包括但不限于 `L0`、`L1`、`RTL` 等阶段目录）。若当前工具无法识别目标项目结构，必须先将项目复制到 `/tmp` 或 app-owned 临时目录形成 normalized mirror，在镜像上操作；禁止为适配工具而向目标项目根目录写入临时文件。
+
 > 步骤数量与具体细节在实施阶段按实际补强发现最终确定；上表为方向性步骤。
 
 ## 5. 真实样本验收策略
@@ -74,6 +76,17 @@ Phase 7 验证分四层，层层递进：
 - 每个样本须覆盖：完整项目形态、L0/L1/RTL 三类阶段、Python/Verilog/SystemVerilog 与 doc/config/test 若干类型、至少 1 个空/缺失阶段、至少 1 个命名异常阶段。
 - 真实业务项目样本以**只读输入**参与验收；若不便直接读取真实项目，可用结构等价的本地只读副本，但须在 completion review 中说明等价性。
 - 多样本交叉验证补强规则，避免过拟合单一项目。
+
+### 5.1 硬只读约束（Batch D 起必须遵守）
+
+- **目标项目目录必须保持完全只读。** 验收前、验收后均需对 `src/`（或全部源码目录）计算 SHA-256 并比对；任何差异均视为安全边界破坏。
+- **禁止在目标项目根目录或源码树内创建临时目录/文件。** 包括但不限于为适配 `stage_detector` 而临时创建的 `L0` / `L1` / ... / `RTL` 顶层目录；此类操作即使事后删除，也构成对目标项目的写入偏差。
+- **若工具无法直接识别真实项目结构，必须使用 normalized mirror：**
+  - 将目标项目完整复制到 `/tmp` 或 app-owned 临时目录；
+  - 在 mirror 上执行所有识别、分析、视图生成与质量评估；
+  - 记录 mirror 的 source 路径与 mirror 自身的 checksum，便于追溯。
+- **不得将评估产物写回目标项目。** 持久化仅限 app-owned storage 或 `/tmp` 临时产物。
+- **历史偏差不复用：** Batch D 基线验收中曾出现“向目标项目根目录写入临时阶段副本后删除”的操作，已在基线报告中标记为验收方法偏差；后续验收必须避免。
 
 ## 6. checksum 只读验证
 
@@ -84,6 +97,9 @@ diff checksums.md checksums-recomputed.md   # 期望：Source files checksums MA
 ```
 
 - 目标项目文件验收前后必须一致。
+- 若使用 normalized mirror，须同时记录：
+  - 原始目标项目 checksum（证明源未被修改）；
+  - mirror 的 source 路径与 mirror checksum（证明镜像来源与一致性）。
 - 评估产物只写 app-owned storage，不写回目标项目。
 
 ## 7. rg 安全回归
@@ -135,7 +151,7 @@ Phase 7 完成后，方允许考虑进入：
 
 ## 10. 安全边界汇总
 
-- 目标项目只读，checksum 一致。
+- 目标项目只读，checksum 一致；若无法直接识别结构，使用 `/tmp` 或 app-owned normalized mirror，并记录 source 与 mirror checksum。
 - 不运行 Vivado / synthesis / implementation / bitstream。
 - 不调用真实 LLM（不读取 `api_key`、不调用 OpenAI / Anthropic）。
 - 持久化只写 app-owned storage。
@@ -161,3 +177,4 @@ Phase 7 完成后，方允许考虑进入：
 | 2026-06-15 | Batch C 审核收口修复：空阶段无产物返回错误、有文件无 evidence 构造空 EvidenceCollection 暴露 missing_evidence、加载会话清空 qualityReport、质量报告按钮在加载/无评估产物时禁用并给出原因、"Issues" 标签改为"质量记录"；未进入 Batch D/E。 | Claude |
 | 2026-06-15 | Batch C 桌面验收与轻量收口：修正 `generate_quality_report.rs` 顶部过期注释，使其与当前 StageEmpty 行为一致；准备 `/tmp` 自包含验收样例项目（L0 Python 3 文件、L1 Python 2 文件、L2 空目录、rtl_final Verilog 2 文件、docs/README.md），验收前后 checksum 一致；Tauri app `npm run tauri build` 成功并在本地二进制可启动；自动化验证 `cargo test --lib` 485 通过、`npm run build` 通过、`npx tsc --noEmit` 通过；rg 边界检查未在产品代码中发现新增 PASS/HOLD/审计用语、真实 LLM/外部进程/Vivado、Phase 8+ 或图形库越界；交互式 GUI 桌面验收清单需在可用 GUI 环境中由用户完成。 | Claude |
 | 2026-06-15 | Batch C GUI 验收补充：用户在可用 GUI 环境中完成截图验收，确认 L0 收集 evidence / 生成 understanding / 生成 views / 生成质量报告可显示，Trace / evidence / quality 面板可用；同时观察到 Quality Review 报告暴露 structure view 仅少量节点、dataflow / timing view 为空、`empty_or_unhelpful_view` 等退化项。该结果说明 Batch C UI 可运行，但真实产品可用性与分析价值仍弱，尚不足以支撑 Phase 7 完成结论。 | Claude |
+| 2026-06-15 | Batch D 安全收口修正：在 §4 真实桌面验收步骤中增加严格只读约束（禁止向目标项目写入临时目录/文件，必须使用 `/tmp` 或 app-owned normalized mirror）；§5 新增“硬只读约束”子节，明确原始项目与 mirror 双 checksum 记录要求；§6/§10 同步更新安全边界与 checksum 规则。 | Claude |
