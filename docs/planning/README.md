@@ -34,9 +34,9 @@ updated: 2026-06-15
 | Phase 5 | 证据回链与 grounded Q&A | 支持节点点击追溯证据、用户追问 |
 | Phase 6 | 持久化、回放与 MVP 验收 | 产物可持久化加载，完成 MVP 闭环验收 |
 
-### Post-MVP 阶段（Phase 7 ~ Phase 11，均 `draft`，未开始编码）
+### Post-MVP 阶段（Phase 7 详细文档已 active，Phase 8~11 仍为 draft）
 
-> MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP，不等于产品可用性完成。Post-MVP 总体路线图见 [`post-mvp-roadmap.md`](post-mvp-roadmap.md)。下列阶段 overview 文档当前均为 `draft`，进入任一阶段编码前需先编制详细 requirements/design/ui-ux/testing/implementation-plan 并审核为 active。
+> MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP，不等于产品可用性完成。Post-MVP 总体路线图见 [`post-mvp-roadmap.md`](post-mvp-roadmap.md)。**Phase 7 详细文档（requirements/design/ui-ux/testing/implementation-plan）已全部 active**，但 **Phase 7 编码尚未开始**——仅允许进入 Phase 7 Batch A（范围仅 P7-T01~P7-T02：quality models + reporter）；不允许 Batch B/C/D/E、不允许 UI、不允许真实 LLM、不允许目标项目写入。Phase 8~11 overview 仍为 draft，进入其编码前需先编制详细文档并审核为 active。
 
 | 阶段 | 名称 | 核心目标 | overview 文档 |
 |------|------|----------|---------------|
