@@ -294,4 +294,5 @@ Phase 7 Batch C 的 UI 接入是通的，但面对真实 `ai_project_template` �
 | 日期 | 变更 | 作者 |
 |------|------|------|
 | 2026-06-15 | 创建 Phase 7 Batch D 真实项目质量基线报告，基于 `fpga_project_coarse_sync` 运行完整链路，记录 evidence / understanding / view / quality 退化项，提出 Batch D 修复优先级与 Phase 8/9/10 分界。 | Claude |
-| 2026-06-15 | 安全收口修正：明确承认“曾向目标项目根目录写入临时阶段副本”属于验收方法偏差；修正“目标项目未被修改”为“src/ 校验和一致但存在目录写入偏差”；新增后续必须使用 /tmp normalized mirror 或修 stage_detector 的约束；新增 Batch D P0 修复计划（stage_detector 真实目录识别、scanner 噪声跳过、dataflow/timing 非空生成、回归验收）。 | Claude |
+| 2026-06-15 | 安全收口修正：明确承认”曾向目标项目根目录写入临时阶段副本”属于验收方法偏差；修正”目标项目未被修改”为”src/ 校验和一致但存在目录写入偏差”；新增后续必须使用 /tmp normalized mirror 或修 stage_detector 的约束；新增 Batch D P0 修复计划（stage_detector 真实目录识别、scanner 噪声跳过、dataflow/timing 非空生成、回归验收）。 | Claude |
+| 2026-06-16 | **Batch D P0-1/P0-2 完成**：修复 `stage_detector` 支持 ai_project_template 目录结构（`src/python_model/L0_external` -> L0、`src/verilog_model/rtl` -> RTL）；修复 `scanner` 跳过噪声目录（`.git`、`.claude`、`__pycache__`、`.pytest_cache`、`.mypy_cache`、`.ruff_cache`、`.egg-info`、`reports`、`vivado`、`build`、`dist`、`node_modules`、`target`、`.DS_Store`、`.idea`、`.vscode`、`.venv`、`venv`、`sim_build`、`.tox`、`.coverage`、`htmlcov`）；新增 Rust 单元测试 12 项（stage_detector）+ 7 项（scanner）；真实项目只读验证通过（src/ checksum 前后一致，未创建临时目录）；`cargo test --lib` 494 通过、`cargo check` 通过、`npm run build` 通过、`npx tsc --noEmit` 通过；rg 边界检查无新增产品代码越界。 | Claude |

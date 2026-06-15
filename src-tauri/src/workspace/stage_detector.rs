@@ -5,6 +5,20 @@ use crate::models::enums::{ErrorCode, StageStatus};
 use crate::models::error::WorkspaceWarning;
 use crate::workspace::scanner::ScannedFile;
 
+/// ai_project_template 布局映射：将深层目录名映射到标准阶段
+fn ai_project_template_mapping(name: &str) -> Option<&'static str> {
+    match name.to_ascii_lowercase().as_str() {
+        "l0_external" => Some("L0"),
+        "l1_prototype" => Some("L1"),
+        "l2_structured" => Some("L2"),
+        "l3_pipeline" => Some("L3"),
+        "l4_cycle_acc" => Some("L4"),
+        "l5_fixedpoint" => Some("L5"),
+        "l6_resource_opt" => Some("L6"),
+        _ => None,
+    }
+}
+
 /// 标准阶段集合（按期望顺序）
 const STANDARD_STAGES: &[&str] = &["L0", "L1", "L2", "L3", "L4", "L5", "L6", "RTL"];
 
@@ -55,6 +69,15 @@ pub struct StageInfo {
 }
 
 /// 基于扫描结果识别阶段目录。
+///
+/// 支持两种布局：
+/// 1. 传统顶层布局：根目录下直接存在 L0/L1/.../RTL 目录
+/// 2. ai_project_template 布局：src/python_model/L0_external 等深层目录
+///
+/// 规则：
+/// - 如果顶层与深层同时存在同一阶段，优先使用顶层，并生成重复候选 warning
+/// - 不将 src/python_model 本身当作单个阶段
+/// - 深层识别到的阶段 status 为 Available（有文件时）或 Empty（无文件时）
 pub fn detect_stages(root: &Path, scanned: &[ScannedFile]) -> StageDetectionResult {
     let mut result = StageDetectionResult {
         stages: Vec::new(),
@@ -63,10 +86,11 @@ pub fn detect_stages(root: &Path, scanned: &[ScannedFile]) -> StageDetectionResu
         validity_reasons: Vec::new(),
     };
 
-    let _root_str = root.to_string_lossy();
+    let _root_str = root.to_string_lossy().to_string();
     let mut found_stages: HashMap<String, StageInfo> = HashMap::new();
+    let mut top_level_stages: HashSet<String> = HashSet::new();
 
-    // 扫描根目录下的子目录
+    // === Pass 1: 扫描根目录下的子目录（传统顶层布局）===
     if let Ok(entries) = std::fs::read_dir(root) {
         for entry in entries.flatten() {
             let path = entry.path();
@@ -106,6 +130,7 @@ pub fn detect_stages(root: &Path, scanned: &[ScannedFile]) -> StageDetectionResu
                         file_count: 0,
                     },
                 );
+                top_level_stages.insert(mapped.to_string());
                 continue;
             }
 
@@ -136,6 +161,135 @@ pub fn detect_stages(root: &Path, scanned: &[ScannedFile]) -> StageDetectionResu
                     file_count: count,
                 },
             );
+            top_level_stages.insert(mapped.to_string());
+        }
+    }
+
+    // === Pass 2: 扫描 ai_project_template 深层布局 ===
+    // 检查 src/python_model/L0_external 等路径
+    let src_path = root.join("src");
+    if let Ok(src_entries) = std::fs::read_dir(&src_path) {
+        for src_entry in src_entries.flatten() {
+            let src_sub_path = src_entry.path();
+            let file_type = match src_entry.file_type() {
+                Ok(t) => t,
+                Err(_) => continue,
+            };
+
+            if !file_type.is_dir() || file_type.is_symlink() {
+                continue;
+            }
+
+            let src_sub_name = src_sub_path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("")
+                .to_string();
+
+            // 处理 src/python_model/ 下的 L*_xxx 目录
+            if src_sub_name.eq_ignore_ascii_case("python_model") {
+                if let Ok(py_entries) = std::fs::read_dir(&src_sub_path) {
+                    for py_entry in py_entries.flatten() {
+                        let py_path = py_entry.path();
+                        let py_type = match py_entry.file_type() {
+                            Ok(t) => t,
+                            Err(_) => continue,
+                        };
+
+                        if !py_type.is_dir() || py_type.is_symlink() {
+                            continue;
+                        }
+
+                        let py_dir_name = py_path
+                            .file_name()
+                            .and_then(|n| n.to_str())
+                            .unwrap_or("")
+                            .to_string();
+
+                        if let Some(stage_id) = ai_project_template_mapping(&py_dir_name) {
+                            // 如果顶层已存在该阶段，生成 warning 并跳过
+                            if top_level_stages.contains(stage_id) {
+                                result.warnings.push(WorkspaceWarning {
+                                    error_code: ErrorCode::NoStageFound,
+                                    message: format!(
+                                        "阶段 {} 同时存在顶层目录与 ai_project_template 深层目录 ({})，优先使用顶层",
+                                        stage_id, py_path.display()
+                                    ),
+                                    source_path: Some(py_path.display().to_string()),
+                                    related_stage_id: Some(stage_id.to_string()),
+                                    recoverable: true,
+                                });
+                                continue;
+                            }
+
+                            // 计算文件数
+                            let prefix = format!("src/python_model/{}/", py_dir_name);
+                            let count = scanned
+                                .iter()
+                                .filter(|f| f.rel_path.starts_with(&prefix))
+                                .count() as u64;
+
+                            let status = if count == 0 {
+                                StageStatus::Empty
+                            } else {
+                                StageStatus::Available
+                            };
+
+                            found_stages.insert(
+                                stage_id.to_string(),
+                                StageInfo {
+                                    stage_id: stage_id.to_string(),
+                                    source_path: py_path.display().to_string(),
+                                    status,
+                                    file_count: count,
+                                },
+                            );
+                        }
+                    }
+                }
+            }
+
+            // 处理 src/verilog_model/rtl 目录
+            if src_sub_name.eq_ignore_ascii_case("verilog_model") {
+                let rtl_path = src_sub_path.join("rtl");
+                if rtl_path.is_dir() {
+                    // 如果顶层已存在 RTL，生成 warning 并跳过
+                    if top_level_stages.contains("RTL") {
+                        result.warnings.push(WorkspaceWarning {
+                            error_code: ErrorCode::NoStageFound,
+                            message: format!(
+                                "阶段 RTL 同时存在顶层目录与 ai_project_template 深层目录 ({})，优先使用顶层",
+                                rtl_path.display()
+                            ),
+                            source_path: Some(rtl_path.display().to_string()),
+                            related_stage_id: Some("RTL".to_string()),
+                            recoverable: true,
+                        });
+                    } else {
+                        let prefix = "src/verilog_model/rtl/";
+                        let count = scanned
+                            .iter()
+                            .filter(|f| f.rel_path.starts_with(prefix))
+                            .count() as u64;
+
+                        let status = if count == 0 {
+                            StageStatus::Empty
+                        } else {
+                            StageStatus::Available
+                        };
+
+                        found_stages.insert(
+                            "RTL".to_string(),
+                            StageInfo {
+                                stage_id: "RTL".to_string(),
+                                source_path: rtl_path.display().to_string(),
+                                status,
+                                file_count: count,
+                            },
+                        );
+                    }
+                }
+            }
         }
     }
 
@@ -303,5 +457,170 @@ mod tests {
         assert_eq!(result.stages.len(), 1);
         assert_eq!(result.stages[0].stage_id, "RTL");
         assert_eq!(result.stages[0].status, StageStatus::Available);
+    }
+
+    #[test]
+    fn ai_project_template_layout_detected() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        fs::create_dir_all(root.join("src/python_model/L0_external")).unwrap();
+        fs::create_dir_all(root.join("src/python_model/L1_prototype")).unwrap();
+        fs::create_dir_all(root.join("src/python_model/L2_structured")).unwrap();
+        fs::create_dir_all(root.join("src/verilog_model/rtl")).unwrap();
+
+        let scanned = vec![
+            make_file("src/python_model/L0_external/a.py", Language::Python, crate::models::enums::SourceKind::PythonStage),
+            make_file("src/python_model/L1_prototype/b.py", Language::Python, crate::models::enums::SourceKind::PythonStage),
+            make_file("src/python_model/L2_structured/c.py", Language::Python, crate::models::enums::SourceKind::PythonStage),
+            make_file("src/verilog_model/rtl/top.v", Language::Verilog, crate::models::enums::SourceKind::Rtl),
+        ];
+
+        let result = detect_stages(root, &scanned);
+        assert_eq!(result.stages.len(), 4, "应识别 L0, L1, L2, RTL");
+        assert_eq!(result.stages[0].stage_id, "L0");
+        assert_eq!(result.stages[0].status, StageStatus::Available);
+        assert_eq!(result.stages[0].file_count, 1);
+        assert!(result.stages[0].source_path.contains("L0_external"), "source_path 应指向真实目录 L0_external");
+
+        assert_eq!(result.stages[1].stage_id, "L1");
+        assert_eq!(result.stages[1].status, StageStatus::Available);
+        assert_eq!(result.stages[1].file_count, 1);
+        assert!(result.stages[1].source_path.contains("L1_prototype"));
+
+        assert_eq!(result.stages[2].stage_id, "L2");
+        assert_eq!(result.stages[2].status, StageStatus::Available);
+        assert_eq!(result.stages[2].file_count, 1);
+
+        assert_eq!(result.stages[3].stage_id, "RTL");
+        assert_eq!(result.stages[3].status, StageStatus::Available);
+        assert_eq!(result.stages[3].file_count, 1);
+        assert!(result.stages[3].source_path.contains("verilog_model/rtl"));
+
+        // 缺失 L3~L6
+        assert!(result.missing.contains(&"L3".to_string()));
+        assert!(result.missing.contains(&"L6".to_string()));
+    }
+
+    #[test]
+    fn ai_project_template_empty_stage() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        fs::create_dir_all(root.join("src/python_model/L0_external")).unwrap();
+
+        let scanned: Vec<ScannedFile> = vec![];
+
+        let result = detect_stages(root, &scanned);
+        assert_eq!(result.stages.len(), 1);
+        assert_eq!(result.stages[0].stage_id, "L0");
+        assert_eq!(result.stages[0].status, StageStatus::Empty);
+        assert_eq!(result.stages[0].file_count, 0);
+    }
+
+    #[test]
+    fn top_level_priority_over_ai_project_template() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        // 顶层 L1
+        fs::create_dir(root.join("L1")).unwrap();
+        // 深层 L1_prototype
+        fs::create_dir_all(root.join("src/python_model/L1_prototype")).unwrap();
+
+        let scanned = vec![
+            make_file("L1/top.py", Language::Python, crate::models::enums::SourceKind::PythonStage),
+            make_file("src/python_model/L1_prototype/other.py", Language::Python, crate::models::enums::SourceKind::PythonStage),
+        ];
+
+        let result = detect_stages(root, &scanned);
+        assert_eq!(result.stages.len(), 1, "应只保留顶层 L1");
+        assert_eq!(result.stages[0].stage_id, "L1");
+        assert_eq!(result.stages[0].file_count, 1, "应只统计顶层 L1 文件");
+        assert!(result.stages[0].source_path.contains("L1"));
+        assert!(!result.stages[0].source_path.contains("L1_prototype"), "不应指向深层目录");
+
+        // 应有重复候选 warning
+        assert!(result.warnings.iter().any(|w| {
+            w.message.contains("L1") && w.message.contains("ai_project_template") && w.message.contains("优先使用顶层")
+        }), "应有重复阶段候选 warning");
+    }
+
+    #[test]
+    fn top_level_rtl_priority_over_ai_project_template() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        fs::create_dir(root.join("RTL")).unwrap();
+        fs::create_dir_all(root.join("src/verilog_model/rtl")).unwrap();
+
+        let scanned = vec![
+            make_file("RTL/top.v", Language::Verilog, crate::models::enums::SourceKind::Rtl),
+            make_file("src/verilog_model/rtl/other.v", Language::Verilog, crate::models::enums::SourceKind::Rtl),
+        ];
+
+        let result = detect_stages(root, &scanned);
+        assert_eq!(result.stages.len(), 1);
+        assert_eq!(result.stages[0].stage_id, "RTL");
+        assert_eq!(result.stages[0].file_count, 1);
+        assert!(result.stages[0].source_path.contains("RTL"));
+        assert!(!result.stages[0].source_path.contains("verilog_model"));
+
+        assert!(result.warnings.iter().any(|w| {
+            w.message.contains("RTL") && w.message.contains("ai_project_template") && w.message.contains("优先使用顶层")
+        }));
+    }
+
+    #[test]
+    fn mixed_layout_both_top_and_deep() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        // 顶层 L0
+        fs::create_dir(root.join("L0")).unwrap();
+        // 深层 L1_prototype, L2_structured
+        fs::create_dir_all(root.join("src/python_model/L1_prototype")).unwrap();
+        fs::create_dir_all(root.join("src/python_model/L2_structured")).unwrap();
+        // 深层 RTL
+        fs::create_dir_all(root.join("src/verilog_model/rtl")).unwrap();
+
+        let scanned = vec![
+            make_file("L0/top.py", Language::Python, crate::models::enums::SourceKind::PythonStage),
+            make_file("src/python_model/L1_prototype/b.py", Language::Python, crate::models::enums::SourceKind::PythonStage),
+            make_file("src/python_model/L2_structured/c.py", Language::Python, crate::models::enums::SourceKind::PythonStage),
+            make_file("src/verilog_model/rtl/top.v", Language::Verilog, crate::models::enums::SourceKind::Rtl),
+        ];
+
+        let result = detect_stages(root, &scanned);
+        assert_eq!(result.stages.len(), 4, "L0(顶层), L1(深层), L2(深层), RTL(深层)");
+
+        let l0 = result.stages.iter().find(|s| s.stage_id == "L0").unwrap();
+        assert_eq!(l0.status, StageStatus::Available);
+        assert!(l0.source_path.contains("L0"));
+        assert!(!l0.source_path.contains("python_model"));
+
+        let l1 = result.stages.iter().find(|s| s.stage_id == "L1").unwrap();
+        assert_eq!(l1.status, StageStatus::Available);
+        assert!(l1.source_path.contains("L1_prototype"));
+
+        let l2 = result.stages.iter().find(|s| s.stage_id == "L2").unwrap();
+        assert_eq!(l2.status, StageStatus::Available);
+        assert!(l2.source_path.contains("L2_structured"));
+
+        let rtl = result.stages.iter().find(|s| s.stage_id == "RTL").unwrap();
+        assert_eq!(rtl.status, StageStatus::Available);
+        assert!(rtl.source_path.contains("verilog_model/rtl"));
+    }
+
+    #[test]
+    fn python_model_not_a_stage() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        fs::create_dir_all(root.join("src/python_model")).unwrap();
+
+        let scanned = vec![make_file(
+            "src/python_model/helper.py",
+            Language::Python,
+            crate::models::enums::SourceKind::PythonStage,
+        )];
+
+        let result = detect_stages(root, &scanned);
+        // python_model 本身不是阶段，其子目录 L0_external 等才是
+        assert!(!result.stages.iter().any(|s| s.stage_id == "python_model" || s.stage_id == "PYTHON_MODEL"));
     }
 }

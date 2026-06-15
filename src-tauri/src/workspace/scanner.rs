@@ -60,6 +60,41 @@ pub fn scan_workspace_files(root: &Path) -> ScanOutput {
     output
 }
 
+fn should_skip_dir(name: &str) -> bool {
+    let lower = name.to_lowercase();
+    matches!(
+        lower.as_str(),
+        ".git"
+            | ".claude"
+            | "__pycache__"
+            | ".pytest_cache"
+            | ".mypy_cache"
+            | ".ruff_cache"
+            | ".egg-info"
+            | "reports"
+            | "vivado"
+            | "build"
+            | "dist"
+            | "node_modules"
+            | "target"
+            | ".idea"
+            | ".vscode"
+            | ".venv"
+            | "venv"
+            | "sim_build"
+            | ".tox"
+            | "htmlcov"
+    )
+}
+
+fn should_skip_file(name: &str) -> bool {
+    let lower = name.to_lowercase();
+    matches!(
+        lower.as_str(),
+        ".ds_store" | ".coverage" | ".gitignore" | ".editorconfig"
+    )
+}
+
 fn scan_dir(
     root: &Path,
     dir: &Path,
@@ -158,11 +193,26 @@ fn scan_dir(
         }
 
         if file_type.is_dir() {
+            let dir_name = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("");
+            if should_skip_dir(dir_name) {
+                continue;
+            }
             dirs_to_recurse.push(path);
             continue;
         }
 
         if !file_type.is_file() {
+            continue;
+        }
+
+        let file_name = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("");
+        if should_skip_file(file_name) {
             continue;
         }
 
@@ -324,14 +374,92 @@ mod tests {
     }
 
     #[test]
-    fn depth_limit() {
+    fn skips_noise_directories() {
         let tmp = tempfile::tempdir().unwrap();
         let root = tmp.path();
-        touch(root, "a/b/c/d/deep.py");
+        touch(root, "src/top.py");
+        touch(root, ".git/config");
+        touch(root, ".claude/commands/deep/file.md");
+        touch(root, "__pycache__/module.cpython-311.pyc");
+        touch(root, ".pytest_cache/v/cache/nodeids");
+        touch(root, "vivado/project.xpr");
+        touch(root, "reports/summary.html");
+        touch(root, "build/artifact.o");
+        touch(root, "node_modules/pkg/index.js");
+        touch(root, "target/debug/app");
+        touch(root, "venv/bin/python");
+        touch(root, ".coverage");
 
         let out = scan_workspace_files(root);
-        // depth > 3 被跳过
-        assert_eq!(out.files.len(), 0);
-        assert_eq!(out.warnings.len(), 1);
+        // 只应收集 src/top.py（.DS_Store 不是目录，是文件，会被 is_binary 判定为二进制跳过）
+        assert_eq!(out.files.len(), 1, "应跳过所有噪声目录");
+        assert_eq!(out.files[0].rel_path, "src/top.py");
+        assert!(out.warnings.is_empty(), "跳过噪声目录不应产生 warnings");
+    }
+
+    #[test]
+    fn noise_skip_does_not_hide_valid_src() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        touch(root, "src/python_model/L0_external/a.py");
+        touch(root, "src/python_model/L1_prototype/b.py");
+        touch(root, "src/verilog_model/rtl/top.v");
+        touch(root, "tests/test_l0.py");
+        touch(root, ".claude/commands/deep/cmd.md");
+        touch(root, "__pycache__/cache.pyc");
+        touch(root, "vivado/build.tcl");
+
+        let out = scan_workspace_files(root);
+        // 应收集 4 个有效文件，跳过噪声
+        let rel_paths: Vec<_> = out.files.iter().map(|f| f.rel_path.clone()).collect();
+        assert!(rel_paths.contains(&"src/python_model/L0_external/a.py".to_string()));
+        assert!(rel_paths.contains(&"src/python_model/L1_prototype/b.py".to_string()));
+        assert!(rel_paths.contains(&"src/verilog_model/rtl/top.v".to_string()));
+        assert!(rel_paths.contains(&"tests/test_l0.py".to_string()));
+
+        assert!(!rel_paths.iter().any(|p| p.contains("__pycache__")), "不应包含 __pycache__ 文件");
+        assert!(!rel_paths.iter().any(|p| p.contains(".claude")), "不应包含 .claude 文件");
+        assert!(!rel_paths.iter().any(|p| p.contains("vivado")), "不应包含 vivado 文件");
+    }
+
+    #[test]
+    fn noise_skip_preserves_tests_source_files() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        touch(root, "tests/test_stage.py");
+        touch(root, "tests/__pycache__/test.cpython.pyc");
+        touch(root, "tests/.pytest_cache/v/cache/lastfailed");
+
+        let out = scan_workspace_files(root);
+        let rel_paths: Vec<_> = out.files.iter().map(|f| f.rel_path.clone()).collect();
+        assert!(rel_paths.contains(&"tests/test_stage.py".to_string()), "tests 下的源文件应保留");
+        assert!(!rel_paths.iter().any(|p| p.contains("__pycache__")), "tests 下的 cache 应跳过");
+        assert!(!rel_paths.iter().any(|p| p.contains(".pytest_cache")), "tests 下的 pytest_cache 应跳过");
+    }
+
+    #[test]
+    fn deep_project_with_noise_no_scan_timeout() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        // 创建深层有效源码
+        touch(root, "src/python_model/L0_external/a.py");
+        touch(root, "src/python_model/L1_prototype/b.py");
+        touch(root, "src/python_model/L2_structured/c.py");
+        touch(root, "src/verilog_model/rtl/top.v");
+        // 创建大量噪声目录
+        for i in 0..20 {
+            touch(root, &format!("__pycache__/cache_{}.pyc", i));
+            touch(root, &format!(".pytest_cache/v{}/nodeids", i));
+            touch(root, &format!("vivado/run_{}.tcl", i));
+            touch(root, &format!("reports/report_{}.html", i));
+            touch(root, &format!("build/obj_{}.o", i));
+        }
+
+        let out = scan_workspace_files(root);
+        // 应只收集 4 个有效文件
+        assert_eq!(out.files.len(), 4, "应跳过所有噪声目录，只保留有效源码");
+        // 不应产生大量 scan_timeout warnings
+        let timeout_warnings = out.warnings.iter().filter(|w| w.error_code == ErrorCode::ScanTimeout).count();
+        assert_eq!(timeout_warnings, 0, "噪声目录跳过不应产生 scan_timeout");
     }
 }
