@@ -6,6 +6,7 @@ pub mod understanding;
 pub mod views;
 pub mod workspace;
 pub mod persistence;
+pub mod quality;
 
 use commands::ask_grounded_question::ask_grounded_question;
 use commands::collect_evidence::collect_evidence;
