@@ -9,8 +9,14 @@
 //! - 不修改 evidence/understanding/view/qa 既有逻辑；
 //! - 不接真实 LLM、不写目标项目。
 
+pub mod evidence_evaluator;
+pub mod issue_builder;
 pub mod models;
+pub mod qa_evaluator;
 pub mod reporter;
+pub mod stage_evaluator;
+pub mod understanding_evaluator;
+pub mod view_evaluator;
 
 pub use models::{
     ArtifactKind, DetectionMethod, EvidenceQualityReport, ExpectedStageEntry, FileTypeDistribution,
@@ -19,4 +25,12 @@ pub use models::{
     QualityReport, QualityRunSummary, QualitySeverity, RealProjectSample, SampleScaleMetrics,
     StageEvaluationTarget, SummaryQuality, UnderstandingQualityReport, UncoveredFile, ViewQualityReport,
 };
+pub use issue_builder::{
+    is_label_sane, is_noisy, make_guardrail, make_issue, sanitize_scope, trace_ref_ok,
+};
 pub use reporter::{QualityReportInput, QualityReporter, StageQualityInput};
+pub use stage_evaluator::{StageEvaluator, StageEvaluatorInput};
+pub use evidence_evaluator::{EvidenceEvaluator, EvidenceEvaluatorInput};
+pub use understanding_evaluator::{UnderstandingEvaluator, UnderstandingEvaluatorInput};
+pub use view_evaluator::{ViewEvaluator, ViewEvaluatorInput};
+pub use qa_evaluator::{QaEvaluator, QaEvaluatorInput};
