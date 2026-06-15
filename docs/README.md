@@ -94,6 +94,17 @@ docs/
 13. `docs/requirements/README.md`
 14. 当前阶段应完成的 story 列表
 
+### Post-MVP 路线图 / 后续阶段规划任务
+
+> MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP。下列 Post-MVP 文档当前均为 `draft`，仅描述总体方向与阶段 overview，**未进入编码**；进入任一阶段编码前需先编制该阶段详细文档并审核为 active。
+
+1. `docs/planning/post-mvp-roadmap.md`（Post-MVP 总体路线图：Phase 7~11 阶段关系、依赖顺序、进入纪律，draft）
+2. `docs/planning/phase-7-overview-real-project-quality.md`（Phase 7 overview：真实项目质量补强，draft）
+3. `docs/planning/phase-8-overview-product-ui-workbench.md`（Phase 8 overview：产品级 UI 工作台重构，draft）
+4. `docs/planning/phase-9-overview-real-llm-grounding.md`（Phase 9 overview：真实 LLM 与 grounding 生产化，draft）
+5. `docs/planning/phase-10-overview-cross-stage-python-rtl.md`（Phase 10 overview：跨阶段与 Python-to-RTL 映射，draft）
+6. `docs/planning/phase-11-overview-semantic-memory-and-integration.md`（Phase 11 overview：语义记忆、测试覆盖图与 agent-scope 联动，draft）
+
 ### 测试 / 验收任务
 
 1. `docs/testing/README.md`
