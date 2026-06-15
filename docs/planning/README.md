@@ -89,13 +89,10 @@ updated: YYYY-MM-DD
 | [`phase-5-completion-review.md`](phase-5-completion-review.md) | `active` | Phase 5 完成审查：P5-T01~P5-T11 完成状态、真实 Tauri 桌面验收结果、测试/安全回归结果、进入 Phase 6 条件 | Phase 5 完成后必读 |
 | [`phase-6-implementation-plan.md`](phase-6-implementation-plan.md) | `active` | Phase 6 编码实施计划：进入条件、P6-T01~P6-T10 任务拆解、5 个 Batch 划分、退出条件、安全边界、进入 Phase 7 条件 | Phase 6 编码实施依据 |
 | [`phase-6-completion-review.md`](phase-6-completion-review.md) | `active` | Phase 6 收尾验收与完成审查：P6-T01~P6-T11 全部完成、真实桌面验收通过、checksum 只读验证通过、**允许 Phase 6 / MVP completion** | Phase 6 完成后必读 |
+| [`mvp-release-notes.md`](mvp-release-notes.md) | `active` | MVP Release Notes：Phase 0–6 completion 发布说明，已完成能力、验证结果、安全边界、已知限制，对应 tag `v0.1.0-mvp` | MVP 发布审核必读 |
 
-> **Phase 6 已完成编码、真实桌面验收与 completion review（status=active），允许 Phase 6 / MVP completion。**
+> **MVP / Phase 0–6 已完成（status=active，tag `v0.1.0-mvp`），允许 Phase 6 / MVP completion。**
 >
-> 当前 active 文档：`phase-6-persistence-and-mvp-requirements.md`、`phase-6-persistence-model.md`、`phase-6-persistence-and-replay-design.md`、`phase-6-session-and-mvp-view.md`、`phase-6-mvp-validation.md`、`phase-6-implementation-plan.md`、`phase-6-completion-review.md`。
+> 当前 active 文档：`phase-6-persistence-and-mvp-requirements.md`、`phase-6-persistence-model.md`、`phase-6-persistence-and-replay-design.md`、`phase-6-session-and-mvp-view.md`、`phase-6-mvp-validation.md`、`phase-6-implementation-plan.md`、`phase-6-completion-review.md`、`mvp-release-notes.md`。
 >
-> Batch A 范围限制：
-> - ✅ 允许：P6-T01（Phase 6 Rust/TS 持久化数据模型）、P6-T02（StorageVersionService）、P6-T03（WorkspaceFingerprintService）
-> - ❌ 不允许：Tauri commands（P6-T07）、前端 UI（P6-T08~P6-T09）、save_session / load_session 完整流程（P6-T04~P6-T07）、delete_session（P6-T07）、自动保存（P6-T01/P6-T09 后续）、Phase 6 completion review（P6-T10）、真实 LLM、写目标 workspace、Phase 7+
->
-> 进入 Phase 6 Batch B 及后续前需确认 Batch A 验收通过。
+> Phase 7 及后续阶段需在新需求/设计/计划文档 active 后方可启动，尚未开始。

@@ -39,13 +39,39 @@ L0/L1/L2/... 一直推进到 RTL/硬件实现阶段的 FPGA 业务项目。
 
 ## 当前阶段
 
-当前阶段先建立项目需求、边界和 MVP 技术路线，再进入实现。
+**MVP / Phase 0–6 已完成（tag `v0.1.0-mvp`，2026-06-15）。**
 
-首个可用闭环不追求“大而全”，而是优先支持：
+首个可用闭环已实现并完成真实桌面验收：
 
 - 打开一个真实业务项目；
 - 选择一个阶段；
 - 读取 Python/Verilog/docs/tests/config 相关上下文；
 - 生成结构图、数据流图、时序/流水图等理解视图；
 - 所有主要结论可回链到源码证据；
-- 支持用户继续追问具体节点、公式、信号和映射来源。
+- 支持用户继续追问具体节点、公式、信号和映射来源；
+- session 可保存、加载、从最近项目恢复，目标项目只读。
+
+完整发布说明见 [`docs/planning/mvp-release-notes.md`](docs/planning/mvp-release-notes.md)，Phase 6 完成审查见 [`docs/planning/phase-6-completion-review.md`](docs/planning/phase-6-completion-review.md)。
+
+## 本地运行
+
+```bash
+npm install
+npm run tauri dev
+```
+
+构建与测试：
+
+```bash
+npm run build
+cd src-tauri && cargo test --lib
+cd src-tauri && cargo check
+```
+
+## 安全边界
+
+- 目标项目只读：不修改目标 FPGA 项目源码。
+- 不运行 Vivado / synthesis / implementation / bitstream。
+- 不调用真实 LLM API（当前为 MockProvider）。
+- 持久化只写 app-owned storage。
+- 不输出 PASS/HOLD/正确/错误等审计结论。
