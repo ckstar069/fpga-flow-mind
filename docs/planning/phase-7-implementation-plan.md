@@ -7,7 +7,7 @@ updated: 2026-06-15
 
 > 本文档定义 Phase 7（真实项目评估与 evidence/understanding 质量补强）的编码实施计划：任务拆解（P7-T01~P7-T10）、依赖关系、Batch 划分（A~E）、进入/退出条件、安全边界。
 >
-> 本文档 status 为 `active`，是 Phase 7 编码的实施依据。6 份 Phase 7 详细文档已全部审核转 `active`，**允许进入 Phase 7 Batch A 编码（范围仅限 P7-T01~P7-T02：quality models + reporter）**；**Phase 7 编码尚未开始**。
+> 本文档 status 为 `active`，是 Phase 7 编码的实施依据。6 份 Phase 7 详细文档已全部审核转 `active`；**Phase 7 Batch A/B 已实现并进入审核收口，Batch C 尚未授权**。
 >
 > Phase 7 是质量补强阶段，目标是在真实 `ai_project_template` 项目上验证并提升分析质量，而非新增功能。范围严格收敛于评估与补强，不做 Phase 8/9/10 能力。
 
@@ -22,9 +22,9 @@ updated: 2026-06-15
 | Phase 7 UI/UX 文档 active | ✅ `phase-7-quality-review-view.md`（active） |
 | Phase 7 测试文档 active | ✅ `phase-7-real-project-quality-validation.md`（active） |
 | Phase 7 实施计划 active | ✅ 本文档（active） |
-| **以上 Phase 7 详细文档全部转为 active** | ✅ 已满足，**允许进入 Phase 7 Batch A 编码（范围仅限 P7-T01~P7-T02）**；Phase 7 编码尚未开始 |
+| **以上 Phase 7 详细文档全部转为 active** | ✅ 已满足，**Phase 7 Batch A/B 已实现并进入审核收口，Batch C 尚未授权** |
 
-> 纪律（与 Post-MVP 路线图 §5 一致）：Phase 7 详细文档已全部 active，允许进入 Batch A（P7-T01~P7-T02：quality models + reporter）。Batch B/C/D/E 在 Batch A 验收通过前不得开始；Batch A 不改 evidence/understanding/view/qa 既有逻辑、不做 UI、不接真实 LLM、不写目标项目。
+> 纪律（与 Post-MVP 路线图 §5 一致）：Phase 7 详细文档已全部 active，Batch A/B 已实现并进入审核收口（quality models + reporter + stage/evidence/understanding/view/qa evaluators）。**Batch C 尚未授权**；Batch D/E 在 Batch A/B 审核收口前不得开始；Batch A/B 不改 evidence/understanding/view/qa 既有逻辑、不做 UI、不接真实 LLM、不写目标项目。
 
 ## 2. 任务拆分
 
@@ -165,9 +165,9 @@ P7-T01 (evaluation model)
 | P7-T02 | quality issue + reporter |
 
 **允许范围**：仅新增 `src-tauri/src/quality/` 评估层模型与 reporter，只读消费既有产物。
-**禁止越界**：不实现 evaluator 逻辑（留给 Batch B）；不改既有 evidence/understanding/view/qa 模型；不接 LLM。
+**禁止越界**：Batch A 不实现 evaluator 逻辑（已交给 Batch B 实现）；不改既有 evidence/understanding/view/qa 模型；不接 LLM。
 
-> 边界澄清：P7-T02 的 `QualityReporter` 可在内部实现最小 **baseline reporter checks**（如 trace_refs 存在性、空视图、错误 citation 等），用于在 Batch A 产出最小确定性 `QualityReport`。这些内嵌检查不替代 Batch B 将拆分的正式 `evidence_evaluator` / `stage_evaluator` / `understanding_evaluator` / `view_evaluator` / `qa_evaluator` 模块；Batch B 会在此基础上增强并复用/替换。
+> 边界澄清：P7-T02 的 `QualityReporter` 可在内部实现最小 **baseline reporter checks**（如 trace_refs 存在性、空视图、错误 citation 等），用于在 Batch A 产出最小确定性 `QualityReport`。Batch B 已在此基础上拆分为正式 `evidence_evaluator` / `stage_evaluator` / `understanding_evaluator` / `view_evaluator` / `qa_evaluator` 模块并进入审核收口。
 
 ### 4.2 Batch B：后端 evaluator
 
@@ -247,6 +247,6 @@ P7-T01 (evaluation model)
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
-| 2026-06-15 | 初始 draft：定义 P7-T01~P7-T10、5 个 Batch（A~E）划分与允许/禁止边界、依赖关系、进入/退出条件、安全边界、进入 Phase 8/9 条件。**Phase 7 未开始编码**，详细文档当前均为 draft。 | Claude |
-| 2026-06-15 | 审核收口修复（status 保持 draft）：P7-T01/T02 模型范围补 `polarity`/`source_path`/`line_range`/`stage_identification_mismatch`/`QaEvaluationQuestionSet`；P7-T03 扩为 evidence/阶段识别 evaluator；P7-T05 Q&A 改用 `QaEvaluationQuestionSet`；退出条件 backlog 闭环明确仅看 polarity=problem。**Phase 7 未开始编码**。 | Claude |
-| 2026-06-15 | 审核通过，status 从 draft 转为 active，作为 Phase 7 编码依据；Phase 7 编码尚未开始。 | Claude |
+| 2026-06-15 | 初始 draft：定义 P7-T01~P7-T10、5 个 Batch（A~E）划分与允许/禁止边界、依赖关系、进入/退出条件、安全边界、进入 Phase 8/9 条件。**Batch A/B 后续已实现，当前进入审核收口**，详细文档已 active。 | Claude |
+| 2026-06-15 | 审核收口修复（status 保持 draft）：P7-T01/T02 模型范围补 `polarity`/`source_path`/`line_range`/`stage_identification_mismatch`/`QaEvaluationQuestionSet`；P7-T03 扩为 evidence/阶段识别 evaluator；P7-T05 Q&A 改用 `QaEvaluationQuestionSet`；退出条件 backlog 闭环明确仅看 polarity=problem。**Batch A/B 后续已实现，当前进入审核收口**。 | Claude |
+| 2026-06-15 | 审核通过，status 从 draft 转为 active，作为 Phase 7 编码依据；Phase 7 Batch A/B 已实现并进入审核收口，Batch C 未授权。 | Claude |

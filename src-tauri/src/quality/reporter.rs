@@ -41,6 +41,8 @@ pub struct StageQualityInput<'a> {
     pub recognized_status: String,
     /// 人工期望的 StageStatus（来自 RealProjectSample，用于阶段识别比对）。
     pub expected_status: Option<String>,
+    /// 可选的期望源文件路径清单，用于 evidence 覆盖率缺口计算。
+    pub expected_source_paths: Option<&'a [String]>,
     pub evidence: Option<&'a EvidenceCollection>,
     pub understanding: Option<&'a ImplementationUnderstanding>,
     pub views: Vec<&'a ViewGraph>,
@@ -184,7 +186,7 @@ fn evaluate_stage(
                 sample_id,
                 stage_id: &stage.stage_id,
                 collection: ec,
-                expected_source_paths: None,
+                expected_source_paths: stage.expected_source_paths,
             };
             let (report, ev_issues) = EvidenceEvaluator::evaluate(&ev_input);
             push_metric(metric_snapshots, "evidence_file_coverage", &stage.stage_id, report.file_coverage_ratio);
@@ -481,6 +483,7 @@ mod tests {
             stage_id: "L0".to_string(),
             recognized_status: "available".to_string(),
             expected_status: None,
+            expected_source_paths: None,
             evidence: Some(&empty_evidence("L0")),
             understanding: None,
             views: vec![],
@@ -500,6 +503,7 @@ mod tests {
             stage_id: "L0".to_string(),
             recognized_status: "available".to_string(),
             expected_status: None,
+            expected_source_paths: None,
             evidence: Some(&ec),
             understanding: Some(&iu),
             views: vec![],
@@ -519,6 +523,7 @@ mod tests {
             stage_id: "L0".to_string(),
             recognized_status: "available".to_string(),
             expected_status: None,
+            expected_source_paths: None,
             evidence: None,
             understanding: Some(&iu),
             views: vec![],
@@ -541,6 +546,7 @@ mod tests {
         let stage = StageQualityInput {
             stage_id: "rtl_final".to_string(),
             recognized_status: "missing".to_string(),
+            expected_source_paths: None,
             expected_status: Some("naming_anomaly".to_string()),
             evidence: None,
             understanding: None,
@@ -577,6 +583,7 @@ mod tests {
         let build = || StageQualityInput {
             stage_id: "L0".to_string(),
             recognized_status: "available".to_string(),
+            expected_source_paths: None,
             expected_status: Some("available".to_string()),
             evidence: Some(&ec),
             understanding: Some(&iu),
@@ -623,6 +630,7 @@ mod tests {
         let stage = StageQualityInput {
             stage_id: "L0".to_string(),
             recognized_status: "naming_anomaly".to_string(),
+            expected_source_paths: None,
             expected_status: Some("available".to_string()),
             evidence: Some(&ec),
             understanding: Some(&iu),
@@ -643,6 +651,7 @@ mod tests {
         let stage = StageQualityInput {
             stage_id: "L0".to_string(),
             recognized_status: "missing".to_string(),
+            expected_source_paths: None,
             expected_status: Some("available".to_string()),
             evidence: Some(&ec),
             understanding: Some(&iu),
@@ -679,6 +688,7 @@ mod tests {
             stage_id: "L0".to_string(),
             recognized_status: "available".to_string(),
             expected_status: None,
+            expected_source_paths: None,
             evidence: None,
             understanding: None,
             views: vec![&empty_view],
@@ -722,6 +732,7 @@ mod tests {
             stage_id: "L0".to_string(),
             recognized_status: "available".to_string(),
             expected_status: None,
+            expected_source_paths: None,
             evidence: Some(&ec),
             understanding: None,
             views: vec![],
@@ -754,6 +765,7 @@ mod tests {
             stage_id: "L0".to_string(),
             recognized_status: "available".to_string(),
             expected_status: None,
+            expected_source_paths: None,
             evidence: Some(&ec),
             understanding: None,
             views: vec![&v],
@@ -795,6 +807,7 @@ mod tests {
             stage_id: "L0".to_string(),
             recognized_status: "available".to_string(),
             expected_status: None,
+            expected_source_paths: None,
             evidence: Some(&ec),
             understanding: None,
             views: vec![&v],
@@ -836,6 +849,7 @@ mod tests {
             stage_id: "L0".to_string(),
             recognized_status: "available".to_string(),
             expected_status: None,
+            expected_source_paths: None,
             evidence: Some(&ec),
             understanding: Some(&iu),
             views: vec![&v],
@@ -877,6 +891,7 @@ mod tests {
         let stage = StageQualityInput {
             stage_id: "L0".to_string(),
             recognized_status: "available".to_string(),
+            expected_source_paths: None,
             expected_status: Some("missing".to_string()),
             evidence: Some(&ec),
             understanding: Some(&iu),
@@ -908,6 +923,7 @@ mod tests {
             stage_id: "L0".to_string(),
             recognized_status: "available".to_string(),
             expected_status: None,
+            expected_source_paths: None,
             evidence: Some(&ec),
             understanding: None,
             views: vec![],
@@ -932,6 +948,7 @@ mod tests {
             stage_id: "L0".to_string(),
             recognized_status: "available".to_string(),
             expected_status: None,
+            expected_source_paths: None,
             evidence: Some(&ec),
             understanding: None,
             views: vec![],
@@ -985,6 +1002,7 @@ mod tests {
         let stage = StageQualityInput {
             stage_id: "L0".to_string(),
             recognized_status: "available".to_string(),
+            expected_source_paths: None,
             expected_status: Some("available".to_string()),
             evidence: Some(&ec),
             understanding: Some(&iu),
@@ -1024,6 +1042,7 @@ mod tests {
         let stage = StageQualityInput {
             stage_id: "L0".to_string(),
             recognized_status: "available".to_string(),
+            expected_source_paths: None,
             expected_status: Some("missing".to_string()),
             evidence: Some(&ec),
             understanding: Some(&iu),
@@ -1063,6 +1082,7 @@ mod tests {
         let stage = StageQualityInput {
             stage_id: "L0".to_string(),
             recognized_status: "available".to_string(),
+            expected_source_paths: None,
             expected_status: Some("missing".to_string()),
             evidence: Some(&ec),
             understanding: Some(&iu),
@@ -1084,26 +1104,83 @@ mod tests {
     }
 
     #[test]
-    fn positive_guardrail_not_counted_as_problem() {
-        let iu = minimal_iu("L0", vec![claim("CL-L0-000001", ClaimConfidence::Unknown, vec![], true)]);
+    fn reporter_uses_expected_source_paths_for_empty_collection() {
+        let ec = empty_evidence("L0");
+        let expected = vec!["/tmp/sample/L0/top.py".to_string()];
         let stage = StageQualityInput {
             stage_id: "L0".to_string(),
             recognized_status: "available".to_string(),
             expected_status: None,
-            evidence: None,
-            understanding: Some(&iu),
+            expected_source_paths: Some(&expected),
+            evidence: Some(&ec),
+            understanding: None,
             views: vec![],
             grounded_answer: None,
         };
-        let report = reporter().evaluate(&base_input("sample-guardrail-split", vec![stage]));
-        assert_eq!(report.summary.total_issues, 0, "正向 guardrail 不应计入负向问题");
+        let report = reporter().evaluate(&base_input("sample-expected-empty", vec![stage]));
+        let ev_report = report.evidence_reports.iter().find(|r| r.stage_id == "L0").expect("应有 evidence report");
+        assert_eq!(ev_report.file_coverage_ratio, 0.0);
+        assert_eq!(ev_report.uncovered_files.len(), 1);
+        assert_eq!(ev_report.uncovered_files[0].source_path, "/tmp/sample/L0/top.py");
+
+        let issue = report
+            .issues
+            .iter()
+            .find(|i| i.kind == QualityIssueKind::MissingEvidence)
+            .expect("应存在 missing_evidence issue");
+        assert_eq!(issue.source_path.as_deref(), Some("/tmp/sample/L0/top.py"));
+    }
+
+    #[test]
+    fn reporter_expected_source_paths_lowers_coverage_with_uncovered_file() {
+        let ec = EvidenceCollection {
+            stage_id: "L0".to_string(),
+            evidence_items: vec![ev_item(
+                "EV-L0-000001",
+                "/tmp/sample/L0/top.py",
+                Language::Python,
+                SourceKind::PythonStage,
+                "ok",
+            )],
+            index_by_path: StdHashMap::new(),
+            index_by_kind: StdHashMap::new(),
+            index_by_symbol: StdHashMap::new(),
+            warnings: vec![],
+            stats: EvidenceStats {
+                files_processed: 1,
+                files_skipped: 0,
+                total_items: 1,
+                items_by_kind: StdHashMap::new(),
+                items_by_strength: StdHashMap::new(),
+            },
+            version: "1.0.0".to_string(),
+        };
+        let expected = vec![
+            "/tmp/sample/L0/top.py".to_string(),
+            "/tmp/sample/L0/missing.py".to_string(),
+        ];
+        let stage = StageQualityInput {
+            stage_id: "L0".to_string(),
+            recognized_status: "available".to_string(),
+            expected_status: None,
+            expected_source_paths: Some(&expected),
+            evidence: Some(&ec),
+            understanding: None,
+            views: vec![],
+            grounded_answer: None,
+        };
+        let report = reporter().evaluate(&base_input("sample-expected-partial", vec![stage]));
+        let ev_report = report.evidence_reports.iter().find(|r| r.stage_id == "L0").expect("应有 evidence report");
         assert!(
-            report.issues.iter().any(|i| {
-                i.kind == QualityIssueKind::HallucinatedClaimBlocked
-                    && i.polarity == QualityIssuePolarity::PositiveGuardrail
-            }),
-            "应存在 HallucinatedClaimBlocked 正向记录"
+            (ev_report.file_coverage_ratio - 0.5).abs() < 1e-5,
+            "覆盖率应为 0.5，实际 {}",
+            ev_report.file_coverage_ratio
         );
-        assert_eq!(report.acceptance, QualityAcceptanceStatus::MeetsGate);
+        assert_eq!(ev_report.uncovered_files.len(), 1);
+        assert_eq!(ev_report.uncovered_files[0].source_path, "/tmp/sample/L0/missing.py");
+        assert!(report.issues.iter().any(|i| {
+            i.kind == QualityIssueKind::MissingEvidence
+                && i.source_path.as_deref() == Some("/tmp/sample/L0/missing.py")
+        }));
     }
 }

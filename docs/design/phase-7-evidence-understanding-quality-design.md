@@ -9,7 +9,7 @@ updated: 2026-06-15
 >
 > 本文档描述的是"工具理解质量"的评估与补强，**不是目标项目的正确性审计**。所有 issue 描述"工具是否理解到位"，不描述"目标项目对不对"。
 >
-> 本文档 status 为 `active`，是 Phase 7 编码的设计依据。**Phase 7 编码尚未开始**；允许进入 Phase 7 Batch A（范围仅限 P7-T01~P7-T02）。
+> 本文档 status 为 `active`，是 Phase 7 编码的设计依据。**Phase 7 Batch A/B 已实现并进入审核收口，Batch C 尚未授权**。
 >
 > 数据模型见 [`phase-7-real-project-evaluation-model.md`](phase-7-real-project-evaluation-model.md)；既有能力/类型以 Phase 1~6 active 设计文档为准。
 
@@ -197,6 +197,6 @@ Phase 7 明确区分三种检查方式，避免把主观判断伪装成自动化
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
-| 2026-06-15 | 初始 draft：复用 Phase 1~6 能力、5 维度评估探针、10 类 issue、检查方式分层、补强 backlog 与允许/禁止边界。Phase 7 未进入编码。 | Claude |
-| 2026-06-15 | 审核收口修复（status 保持 draft）：阶段识别误判改用 `stage_identification_mismatch`（不再归入 `confusing_ui_state`）；evidence 类 issue 追溯键补 `source_path`/`line_range`；issue 分类表新增"极性"列并明确 `hallucinated_claim_blocked` 为正向 guardrail；§6.1 backlog 明确仅 polarity=problem 入列、正向 guardrail 不入列。Phase 7 未进入编码。 | Claude |
-| 2026-06-15 | 审核通过，status 从 draft 转为 active，作为 Phase 7 编码依据；Phase 7 编码尚未开始。 | Claude |
+| 2026-06-15 | 初始 draft：复用 Phase 1~6 能力、5 维度评估探针、10 类 issue、检查方式分层、补强 backlog 与允许/禁止边界。Batch A/B 后续已实现，当前进入审核收口。 | Claude |
+| 2026-06-15 | 审核收口修复（status 保持 draft）：阶段识别误判改用 `stage_identification_mismatch`（不再归入 `confusing_ui_state`）；evidence 类 issue 追溯键补 `source_path`/`line_range`；issue 分类表新增"极性"列并明确 `hallucinated_claim_blocked` 为正向 guardrail；§6.1 backlog 明确仅 polarity=problem 入列、正向 guardrail 不入列。Batch A/B 后续已实现，当前进入审核收口。 | Claude |
+| 2026-06-15 | 审核通过，status 从 draft 转为 active，作为 Phase 7 编码依据；Phase 7 Batch A/B 已实现并进入审核收口，Batch C 未授权。 | Claude |

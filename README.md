@@ -55,13 +55,13 @@ L0/L1/L2/... 一直推进到 RTL/硬件实现阶段的 FPGA 业务项目。
 
 完整发布说明见 [`docs/planning/mvp-release-notes.md`](docs/planning/mvp-release-notes.md)，Phase 6 完成审查见 [`docs/planning/phase-6-completion-review.md`](docs/planning/phase-6-completion-review.md)。
 
-## 下一步（Post-MVP，未开始编码）
+## 下一步（Post-MVP）
 
-MVP 是**技术闭环** MVP，不等于产品可用性完成。后续围绕真实项目分析质量、产品级 UI、真实 LLM grounding、跨阶段理解与语义记忆的方向，已建立总体路线图与各阶段 overview（Phase 7 ~ Phase 11），当前均为 `draft`：
+MVP 是**技术闭环** MVP，不等于产品可用性完成。后续围绕真实项目分析质量、产品级 UI、真实 LLM grounding、跨阶段理解与语义记忆的方向，已建立总体路线图与各阶段 overview。
 
 - 总体路线图：[`docs/planning/post-mvp-roadmap.md`](docs/planning/post-mvp-roadmap.md)
 
-进入任一阶段编码前，需先编制该阶段详细需求/设计/计划文档并审核为 active。**Phase 7 及后续阶段尚未开始编码，真实 LLM 尚未接入。**
+**当前状态**：Phase 7 详细文档已 `active`，Phase 7 Batch A（models + reporter）与 Batch B（后端 evaluator）已进入实现与审核收口；Phase 7 Batch C/D/E 尚未授权/尚未开始。Phase 8~11 overview 仍为 `draft`。进入任一阶段编码前，需先编制并审核该阶段详细文档为 active。本阶段及后续阶段仍禁止真实 LLM 默认接入、禁止目标项目写入、禁止输出 PASS/HOLD 等审计裁决。
 
 ## 本地运行
 
