@@ -6,8 +6,11 @@
 ///
 /// 行为：
 /// - 从 `stage_context.files` 构造 `expected_source_paths` 传给 reporter；
-/// - 所有产物均为可选：缺 evidence / understanding / views / qa 时，reporter
-///   仍会对可用产物做评估并返回报告；
+/// - 若阶段有文件或至少提供一个可评估产物（evidence / understanding / views / qa），
+///   reporter 会对可用产物做评估并返回报告；缺 evidence / understanding / views / qa
+///   时仅评估已有维度；
+/// - 若阶段无文件且未提供任何可评估产物，返回 `ErrorCode::StageEmpty`，避免生成空的
+///   `meets_gate` 报告误导用户；
 /// - 不扫描目标项目、不写目标项目、不重新生成产物、不接 LLM。
 use std::collections::HashMap;
 
