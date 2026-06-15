@@ -84,7 +84,7 @@ Phase 7 UI 仅限以下最小集合，挂在既有布局之上：
 
 ## 7. 前后端边界
 
-- Quality Review 面板数据来自 Phase 7 后端评估产物（`QualityReport`/`QualityIssue`/`QualityRunSummary`），通过新增 Tauri command（计划中，见实施计划 P7-T02/P7-T06）读取。
+- Quality Review 面板数据来自 Phase 7 后端评估产物（`QualityReport`/`QualityIssue`/`QualityRunSummary`），通过新增 Tauri command（计划中，见实施计划 P7-T06）读取。该 command 属 Batch C（最小 UI），**不属 Batch A**（Batch A 仅含 P7-T01~P7-T02 模型与 reporter），避免越界。
 - 前端只读展示评估产物，不重新计算质量结论；主观维度不在前端自动裁决。
 - TypeScript 类型从评估模型派生（与 `phase-7-real-project-evaluation-model.md` 对齐）。
 
@@ -109,3 +109,4 @@ Phase 7 UI 仅限以下最小集合，挂在既有布局之上：
 | 日期 | 变更 | 作者 |
 |------|------|------|
 | 2026-06-15 | 初始 draft：定义 Phase 7 仅做质量评估视图、允许/禁止项、视觉语义、文案规范、前后端边界。明确不做工作台重构。Phase 7 未进入编码。 | Claude |
+| 2026-06-15 | 审核收口修复（status 保持 draft）：修正 §7 Tauri command 归属，指向 P7-T06 并明确不属 Batch A，避免越界。Phase 7 未进入编码。 | Claude |

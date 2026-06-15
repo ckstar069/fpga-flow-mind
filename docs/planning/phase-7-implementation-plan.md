@@ -32,7 +32,7 @@ updated: 2026-06-15
 
 | 维度 | 说明 |
 |------|------|
-| **目标** | 定义 Phase 7 评估数据模型（`RealProjectSample`/`StageEvaluationTarget`/4 类 `QualityReport`/`QualityIssue`+Kind+Severity/`QualityRunSummary`/`QualityAcceptanceStatus`）；登记真实样本结构 |
+| **目标** | 定义 Phase 7 评估数据模型（`RealProjectSample`/`StageEvaluationTarget`/4 类 `QualityReport`/`QualityIssue`+Kind+Severity+Polarity/`QualityRunSummary`/`QualityAcceptanceStatus`，含 `source_path`/`line_range` 追溯字段、`stage_identification_mismatch`、`QaEvaluationQuestionSet`）；登记真实样本结构 |
 | **输入文档** | `phase-7-real-project-evaluation-model.md`、`phase-7-real-project-quality-requirements.md` §4 |
 | **预计修改文件** | `src-tauri/src/quality/models.rs`（新增）、`src-tauri/src/quality/mod.rs`（新增） |
 | **验收命令** | `cargo test --lib quality::models` |
@@ -42,21 +42,21 @@ updated: 2026-06-15
 
 | 维度 | 说明 |
 |------|------|
-| **目标** | 实现 `QualityIssue` 记录、追溯字段校验、`QualityRunSummary` 聚合、`QualityAcceptanceStatus` 门槛判定、reporter 输出 |
+| **目标** | 实现 `QualityIssue` 记录（含 `polarity`/`source_path`/`line_range` 追溯字段校验）、`QualityRunSummary` 聚合（负向问题与正向 guardrail 分计）、`QualityAcceptanceStatus` 门槛判定（仅看 polarity=problem）、reporter 输出 |
 | **输入文档** | `phase-7-real-project-evaluation-model.md` §5~§6、`phase-7-evidence-understanding-quality-design.md` §4 |
 | **预计修改文件** | `src-tauri/src/quality/reporter.rs`（新增）、`src-tauri/src/quality/issue.rs`（新增） |
 | **验收命令** | `cargo test --lib quality::reporter` |
 | **不做什么** | 不接 LLM；不做 PASS/HOLD；issue 文案禁用审计用语 |
 
-### P7-T03 evidence quality evaluator
+### P7-T03 evidence / stage 识别 quality evaluator
 
 | 维度 | 说明 |
 |------|------|
-| **目标** | evidence 覆盖率、`line_range` 准确性、`source_kind`/`language`/`strength` 合理性检查；产出 `EvidenceQualityReport` + `missing_evidence`/`noisy_evidence`/`wrong_source_kind` |
-| **输入文档** | `phase-7-evidence-understanding-quality-design.md` §3.2 |
-| **预计修改文件** | `src-tauri/src/quality/evidence_evaluator.rs`（新增） |
-| **验收命令** | `cargo test --lib quality::evidence_evaluator` |
-| **不做什么** | 不做 AST 级深度提取；不改 Phase 2 collector（补强在 P7-T08/T09 按实际发现进行） |
+| **目标** | evidence 覆盖率、`line_range` 准确性、`source_kind`/`language`/`strength` 合理性检查，产出 `EvidenceQualityReport` + `missing_evidence`/`noisy_evidence`/`wrong_source_kind`（携带 `source_path`/`line_range`）；并执行阶段识别比对，产出 `stage_identification_mismatch`（polarity=problem） |
+| **输入文档** | `phase-7-evidence-understanding-quality-design.md` §3.1~§3.2 |
+| **预计修改文件** | `src-tauri/src/quality/evidence_evaluator.rs`、`src-tauri/src/quality/stage_evaluator.rs`（新增） |
+| **验收命令** | `cargo test --lib quality::evidence_evaluator quality::stage_evaluator` |
+| **不做什么** | 不做 AST 级深度提取；不改 Phase 1/2 既有实现（补强在 P7-T08/T09 按实际发现进行） |
 
 ### P7-T04 understanding quality evaluator
 
@@ -72,7 +72,7 @@ updated: 2026-06-15
 
 | 维度 | 说明 |
 |------|------|
-| **目标** | 视图 `trace_refs` 可解析、孤立节点、退化视图检测（`empty_or_unhelpful_view`）；Q&A citation 有效性、有证据未回答、无证据诚实返回检测；产出 `ViewQualityReport` + `QaQualityReport` |
+| **目标** | 视图 `trace_refs` 可解析、孤立节点、退化视图检测（`empty_or_unhelpful_view`）；基于 `QaEvaluationQuestionSet` 做 Q&A citation 有效性、有证据未回答、无证据诚实返回检测；产出 `ViewQualityReport` + `QaQualityReport` |
 | **输入文档** | `phase-7-evidence-understanding-quality-design.md` §3.4~§3.5 |
 | **预计修改文件** | `src-tauri/src/quality/view_evaluator.rs`、`src-tauri/src/quality/qa_evaluator.rs`（新增） |
 | **验收命令** | `cargo test --lib quality::view_evaluator quality::qa_evaluator` |
@@ -171,7 +171,7 @@ P7-T01 (evaluation model)
 
 | 任务 | 内容 |
 |------|------|
-| P7-T03 | evidence evaluator |
+| P7-T03 | evidence / stage 识别 evaluator |
 | P7-T04 | understanding evaluator |
 | P7-T05 | view/trace/Q&A evaluator |
 
@@ -215,7 +215,7 @@ P7-T01 (evaluation model)
 | 前端构建通过 | `npm run build` |
 | 评估模型 serde + 追溯字段校验 | 单元测试 |
 | 各 evaluator 产出可追溯 `QualityIssue` | 单元测试 + 桌面验收 |
-| `QualityIssue` backlog 闭环 | fixed / accepted_as_known_limitation |
+| `QualityIssue` backlog 闭环 | 仅 `polarity=problem` 需 fixed / accepted_as_known_limitation；正向 guardrail（如 `hallucinated_claim_blocked`）不计入 |
 | `QualityAcceptanceStatus` 达 meets_gate | 评估产物 |
 | 真实样本（≥2）桌面验收通过 | 桌面验收 |
 | 目标项目只读 | checksum + rg |
@@ -246,3 +246,4 @@ P7-T01 (evaluation model)
 | 日期 | 变更 | 作者 |
 |------|------|------|
 | 2026-06-15 | 初始 draft：定义 P7-T01~P7-T10、5 个 Batch（A~E）划分与允许/禁止边界、依赖关系、进入/退出条件、安全边界、进入 Phase 8/9 条件。**Phase 7 未开始编码**，详细文档当前均为 draft。 | Claude |
+| 2026-06-15 | 审核收口修复（status 保持 draft）：P7-T01/T02 模型范围补 `polarity`/`source_path`/`line_range`/`stage_identification_mismatch`/`QaEvaluationQuestionSet`；P7-T03 扩为 evidence/阶段识别 evaluator；P7-T05 Q&A 改用 `QaEvaluationQuestionSet`；退出条件 backlog 闭环明确仅看 polarity=problem。**Phase 7 未开始编码**。 | Claude |

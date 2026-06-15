@@ -66,7 +66,7 @@ for sample in RealProjectSample[]:
   - 识别阶段集合与 `expected_stages` 是否一致；
   - 空阶段是否被正确标 `empty`、缺失阶段标 `missing`、命名异常阶段标 `naming_anomaly` 且可参与后续流程；
   - warning 是否合理（非阻塞、可读）。
-- 产出：`StageEvaluationTarget` 与对应 `QualityIssue`（误判记录为 `wrong_source_kind` 之外的 `confusing_ui_state` 或专项缺口，按实际归类）。
+- 产出：`StageEvaluationTarget` 与对应 `QualityIssue`；阶段识别误判（命名异常被判 missing、空阶段误判、阶段漏识别等）记录为 `stage_identification_mismatch`（polarity=problem）。
 
 ### 3.2 evidence 质量探针（RQ-003）
 
@@ -77,7 +77,7 @@ for sample in RealProjectSample[]:
   - `source_kind` / `language` 是否与文件实际匹配；
   - `strength`（`direct`/`indirect`/...）标注是否合理；
   - warnings 中的可疑项是否被降级而非静默丢弃。
-- 产出：`EvidenceQualityReport` + `QualityIssue`（`missing_evidence` / `noisy_evidence` / `wrong_source_kind`）。
+- 产出：`EvidenceQualityReport` + `QualityIssue`（`missing_evidence` / `noisy_evidence` / `wrong_source_kind`，均携带 `source_path` / 可选 `line_range` 源码级追溯，polarity=problem）。
 
 ### 3.3 understanding 质量探针（RQ-004）
 
@@ -85,7 +85,7 @@ for sample in RealProjectSample[]:
 - 检查：
   - 每个 `ImplementationClaim` 的 `evidence_refs` 是否引用真实存在的 `evidence_id`（existence check）；
   - claim 无 `evidence_refs` 且未标注 `evidence_gap` → `unsupported_claim`；
-  - 无证据 claim 被 hallucination guard 拦截 → 记录 `hallucinated_claim_blocked`（正向，守卫生效）；
+  - 无证据 claim 被 hallucination guard 拦截 → 记录 `hallucinated_claim_blocked`（**正向 guardrail**，polarity=positive_guardrail，不计入负向 backlog）；
   - `confidence` 标注与 supporting evidence 强度是否一致（`confirmed`/`supported`/`inferred`/`unknown`/`conflicting`）；
   - 证据不足处是否被表达为 `unknown`/`evidence_gap` 而非强行解释；
   - `StageSummary`（short/detailed）是否空洞 → `weak_summary`。
@@ -112,24 +112,26 @@ for sample in RealProjectSample[]:
 - 产出：`QaQualityReport` + `QualityIssue`（可追溯到 `evidence_id`/`claim_id`）。
 - **定位**：本探针刻画 MockProvider 在真实样本上的能力边界，产出"基线缺口清单"作为 Phase 9 真实 LLM 的输入；Phase 7 **不**接入真实 LLM。
 
-## 4. 质量问题分类（10 类）
+## 4. 质量问题分类（10 类负向 + 1 类正向 guardrail）
 
-评估探针产出的 `QualityIssue` 按 `QualityIssueKind` 分类，全部围绕"工具理解质量"：
+评估探针产出的 `QualityIssue` 按 `QualityIssueKind` 分类，全部围绕"工具理解质量"。`polarity=problem` 为负向问题（进入 backlog），`polarity=positive_guardrail` 为正向守卫生效记录（不计入 backlog）：
 
-| `QualityIssueKind` | 含义 | 典型触发 | 追溯键 |
-|--------------------|------|----------|--------|
-| `missing_evidence` | 应被覆盖的证据未被收集 | 真实文件未进入 `EvidenceCollection` | `source_path`/`evidence_id`(缺) |
-| `noisy_evidence` | 证据含噪声被当主证据 | TODO/注释块/实验代码被提取为 direct | `evidence_id` |
-| `wrong_source_kind` | evidence 标注与实际不符 | Python 文件被标 `rtl`，反之亦然 | `evidence_id` |
-| `weak_summary` | StageSummary 空洞 | summary 未抓住阶段核心 | `stage_id` |
-| `unsupported_claim` | claim 缺真实 evidence | `evidence_refs` 缺失或未过 existence check | `claim_id` |
-| `hallucinated_claim_blocked` | 无证据 claim 被拦截（正向） | hallucination guard 生效 | `claim_id` |
-| `empty_or_unhelpful_view` | 视图退化 | 孤立方块/空图 | `node_id` |
-| `qa_unanswered_when_evidence_exists` | 有证据却未回答 | MockProvider 未命中已有证据 | `evidence_id`/`claim_id` |
-| `qa_answer_without_valid_citation` | 回答引用无效 citation | citation 指向不存在 evidence | `evidence_id`/`claim_id` |
-| `confusing_ui_state` | UI 状态令人困惑 | 空/加载/降级提示不清 | — |
+| `QualityIssueKind` | 极性 | 含义 | 典型触发 | 追溯键 |
+|--------------------|------|------|----------|--------|
+| `missing_evidence` | problem | 应被覆盖的证据未被收集 | 真实文件未进入 `EvidenceCollection` | `source_path`/`line_range`（evidence 缺） |
+| `noisy_evidence` | problem | 证据含噪声被当主证据 | TODO/注释块/实验代码被提取为 direct | `evidence_id`/`source_path`/`line_range` |
+| `wrong_source_kind` | problem | evidence 标注与实际不符 | Python 文件被标 `rtl`，反之亦然 | `evidence_id`/`source_path` |
+| `stage_identification_mismatch` | problem | 阶段识别与人工期望不符 | 命名异常被判 missing、空阶段误判、阶段漏识别 | `stage_id` |
+| `weak_summary` | problem | StageSummary 空洞 | summary 未抓住阶段核心 | `stage_id` |
+| `unsupported_claim` | problem | claim 缺真实 evidence | `evidence_refs` 缺失或未过 existence check | `claim_id` |
+| `hallucinated_claim_blocked` | **positive_guardrail** | 无证据 claim 被拦截（守卫生效） | hallucination guard 生效 | `claim_id` |
+| `empty_or_unhelpful_view` | problem | 视图退化 | 孤立方块/空图 | `node_id` |
+| `qa_unanswered_when_evidence_exists` | problem | 有证据却未回答 | MockProvider 未命中已有证据 | `evidence_id`/`claim_id` |
+| `qa_answer_without_valid_citation` | problem | 回答引用无效 citation | citation 指向不存在 evidence | `evidence_id`/`claim_id` |
+| `confusing_ui_state` | problem | UI 状态令人困惑（仅 UI 状态表达问题） | 空/加载/降级提示不清 | — |
 
 > 所有 issue 文案禁用"正确/错误""PASS/HOLD""审计结论"；只描述客观事实与不确定性。
+> `hallucinated_claim_blocked` 为正向 guardrail，仅作为"守卫工作正常"的证据，不进入补强 backlog、不参与门槛判定。
 
 ## 5. 检查方式分层
 
@@ -148,8 +150,8 @@ Phase 7 明确区分三种检查方式，避免把主观判断伪装成自动化
 
 ### 6.1 backlog 形成
 
-- 每个 `QualityIssue`（`status=open`）即一条补强 backlog 项。
-- 按 `QualitySeverity` 排序：`High` > `Medium` > `Low`。
+- 仅 `polarity=problem` 的 `QualityIssue`（`status=open`）构成补强 backlog 项；`polarity=positive_guardrail`（如 `hallucinated_claim_blocked`）不进入 backlog。
+- 负向问题按 `QualitySeverity` 排序：`High` > `Medium` > `Low`。
 - backlog 驱动 P7-T08 / P7-T09 的"基于实际发现的补强修复 Batch"。
 
 ### 6.2 允许修改范围（Phase 7 内）
@@ -196,3 +198,4 @@ Phase 7 明确区分三种检查方式，避免把主观判断伪装成自动化
 | 日期 | 变更 | 作者 |
 |------|------|------|
 | 2026-06-15 | 初始 draft：复用 Phase 1~6 能力、5 维度评估探针、10 类 issue、检查方式分层、补强 backlog 与允许/禁止边界。Phase 7 未进入编码。 | Claude |
+| 2026-06-15 | 审核收口修复（status 保持 draft）：阶段识别误判改用 `stage_identification_mismatch`（不再归入 `confusing_ui_state`）；evidence 类 issue 追溯键补 `source_path`/`line_range`；issue 分类表新增"极性"列并明确 `hallucinated_claim_blocked` 为正向 guardrail；§6.1 backlog 明确仅 polarity=problem 入列、正向 guardrail 不入列。Phase 7 未进入编码。 | Claude |

@@ -51,8 +51,8 @@ MVP 的真实桌面验收使用的是 `/tmp` 下手工构造的临时小型样�
 |------|------|
 | **目标** | 在真实样本上量化 Phase 1 workspace 扫描与阶段识别（`StageStatus`：`available`/`empty`/`missing`/`naming_anomaly`/`unreadable`）的准确性，刻画空阶段、缺失阶段、命名异常阶段的识别表现 |
 | **输入** | `WorkspaceProfile`、各阶段 `StageStatus`、warnings |
-| **输出** | `StageEvaluationTarget` 与对应的质量度量：阶段命中、误判（如把命名异常阶段判为 missing）、warning 合理性 |
-| **验收标准** | 真实样本上的阶段识别结果与人工登记的阶段清单一致（空阶段标 empty、命名异常可识别、缺失标 missing）；不一致处被记录为 `QualityIssue` 而非被掩盖 |
+| **输出** | `StageEvaluationTarget` 与对应的质量度量：阶段命中、误判（如把命名异常阶段判为 missing，记为 `stage_identification_mismatch`）、warning 合理性 |
+| **验收标准** | 真实样本上的阶段识别结果与人工登记的阶段清单一致（空阶段标 empty、命名异常可识别、缺失标 missing）；不一致处被记录为 `QualityIssue`（kind=`stage_identification_mismatch`）而非被掩盖 |
 | **非目标** | 不替用户裁决阶段实现是否正确；不修改目标项目阶段目录 |
 
 ### RQ-003 evidence 覆盖率与缺口识别
@@ -102,7 +102,7 @@ MVP 的真实桌面验收使用的是 `/tmp` 下手工构造的临时小型样�
 | **目标** | 把 Phase 7 评估中发现的工具理解质量问题统一记录为 `QualityIssue`，按 `QualityIssueKind` 分类、按 `QualitySeverity` 分级，全部可追溯到 `stage_id` + artifact kind + 可选 `evidence_id` / `claim_id` / `node_id` |
 | **输入** | 各 evaluator 的检查结果 + 人工桌面验收发现 |
 | **输出** | `QualityIssue[]` 与 `QualityRunSummary`，形成 Phase 7 质量补强 backlog 的输入 |
-| **验收标准** | 每条 issue 可追溯、可分类、可分级；issue 描述的是"工具理解质量问题"，不描述"目标项目正确/错误" |
+| **验收标准** | 每条 issue 可追溯（`stage_id` + artifact kind + 可选 `evidence_id`/`claim_id`/`node_id`/`source_path`/`line_range`）、可分类、可分级；issue 描述的是"工具理解质量问题"，不描述"目标项目正确/错误"；正向 guardrail（如 `hallucinated_claim_blocked`）不计入负向 backlog |
 | **非目标** | 不输出 PASS/HOLD/正确性裁决/审计结论；不评价目标项目 |
 
 ### RQ-008 Phase 7 质量补强退出标准
@@ -145,7 +145,8 @@ RQ-001 的样本集至少应覆盖以下形态，确保评估覆盖真实项目�
 
 ## 6. 证据与追溯要求
 
-- 评估产物中的每条 `QualityIssue` 必须可追溯到 `stage_id`、artifact kind，并尽可能带上 `evidence_id` / `claim_id` / `node_id`。
+- 评估产物中的每条 `QualityIssue` 必须可追溯到 `stage_id`、artifact kind，并尽可能带上 `evidence_id` / `claim_id` / `node_id`，以及 `missing_evidence` / `noisy_evidence` / `wrong_source_kind` / source excerpt 相关问题所需的 `source_path` / `line_range`。
+- 仅负向问题（`polarity=problem`）进入补强 backlog；正向 guardrail 记录（如 `hallucinated_claim_blocked`）不计入 backlog、不参与门槛判定。
 - 评估过程不得伪造或修改既有 `evidence_id` / `claim_id` / `source_path` / `line_range` 绑定。
 - `QualityReport` 本身是 Phase 7 质量评估产物，**不是用户业务项目的审计结论**；它描述的是"工具理解得怎么样"，不描述"目标项目对不对"。
 - 质量评分（若出现）只用于内部质量门槛，不对目标项目做评价。
@@ -196,3 +197,4 @@ Phase 7 明确**不做**：
 | 日期 | 变更 | 作者 |
 |------|------|------|
 | 2026-06-15 | 初始 draft：定义 RQ-001~RQ-008、真实项目样本覆盖要求、非目标、安全边界、退出标准。Phase 7 未进入编码。 | Claude |
+| 2026-06-15 | 审核收口修复（status 保持 draft）：RQ-002 阶段识别误判改用 `stage_identification_mismatch`；RQ-007/§6 追溯字段补 `source_path`/`line_range`，并明确正向 guardrail 不计入 backlog。Phase 7 未进入编码。 | Claude |

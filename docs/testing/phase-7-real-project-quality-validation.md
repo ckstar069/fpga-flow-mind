@@ -28,13 +28,14 @@ Phase 7 验证分四层，层层递进：
 
 | 模块 | 测试方向 |
 |------|----------|
-| 评估模型（`quality/models`） | 各对象 serde round-trip；`QualityIssue` 必填追溯字段（`stage_id` + `artifact_kind`）校验；`QualityIssueKind`/`QualitySeverity` 枚举完备 |
-| evidence 质量评估 | 覆盖率计算、`line_range` 越界检测、`source_kind`/`language` 不匹配检测、未覆盖文件归类 |
-| understanding 质量评估 | existence check（claim 引用不存在 `evidence_id` → `unsupported_claim`）、hallucination guard 拦截记录（`hallucinated_claim_blocked`）、unknown/gap 表达检测、`weak_summary` 检测 |
+| 评估模型（`quality/models`） | 各对象 serde round-trip；`QualityIssue` 必填追溯字段（`stage_id` + `artifact_kind` + 可选 `source_path`/`line_range`）校验；`QualityIssueKind`/`QualitySeverity`/`QualityIssuePolarity` 枚举完备；`QaEvaluationQuestionSet` 结构 |
+| 阶段识别评估 | 阶段识别与 `expected_stages` 比对；空阶段/缺失阶段/命名异常阶段识别；误判记为 `stage_identification_mismatch`（polarity=problem） |
+| evidence 质量评估 | 覆盖率计算、`line_range` 越界检测、`source_kind`/`language` 不匹配检测、未覆盖文件归类（issue 携带 `source_path`/`line_range`） |
+| understanding 质量评估 | existence check（claim 引用不存在 `evidence_id` → `unsupported_claim`）、hallucination guard 拦截记录（`hallucinated_claim_blocked`，polarity=positive_guardrail，不计入负向 backlog）、unknown/gap 表达检测、`weak_summary` 检测 |
 | 视图质量评估 | `trace_refs` 可解析性、孤立节点计数、退化视图检测 |
-| Q&A 质量评估 | citation 有效性、有证据未回答检测、无证据诚实返回检测 |
-| reporter | `QualityRunSummary` 聚合正确、`QualityAcceptanceStatus` 门槛判定 |
-| 追溯性 | 每条 `QualityIssue` 可解析回 `stage_id` + `artifact_kind` + 可选 `evidence_id`/`claim_id`/`node_id` |
+| Q&A 质量评估 | 基于 `QaEvaluationQuestionSet`（人工准备的评估问题集）逐题比对 MockProvider 实际回答：citation 有效性、有证据未回答检测、无证据诚实返回检测 |
+| reporter | `QualityRunSummary` 聚合正确（负向问题与正向 guardrail 分计）、`QualityAcceptanceStatus` 门槛判定（仅看 polarity=problem） |
+| 追溯性 | 每条 `QualityIssue` 可解析回 `stage_id` + `artifact_kind` + 可选 `evidence_id`/`claim_id`/`node_id`/`source_path`/`line_range`；`polarity=positive_guardrail` 记录不计入负向 backlog |
 
 > 测试夹具使用真实形态的样本结构（含空阶段、命名异常、噪声、跨语言），但不读取真实业务项目源码副本进仓库；测试样本为构造的等价本地只读夹具。
 
@@ -117,7 +118,7 @@ Phase 7 视为完成，当且仅当：
 |------|----------|
 | P7-T01~P7-T10 全部完成 | 实施计划任务表 |
 | 真实项目验收通过（至少 2 样本，桌面验收步骤通过） | 桌面验收 |
-| 质量问题记录闭环（`QualityIssue` 已 `fixed` 或 `accepted_as_known_limitation`） | `QualityRunSummary` + backlog |
+| 质量问题记录闭环（`polarity=problem` 的 `QualityIssue` 已 `fixed` 或 `accepted_as_known_limitation`；正向 guardrail 不计入） | `QualityRunSummary` + backlog |
 | `QualityAcceptanceStatus` 达 `meets_gate` | 评估产物 |
 | 目标项目只读 | checksum + rg |
 | 无真实 LLM 默认调用 / 无 PASS-HOLD 审计用语 | rg |
@@ -154,3 +155,4 @@ Phase 7 完成后，方允许考虑进入：
 | 日期 | 变更 | 作者 |
 |------|------|------|
 | 2026-06-15 | 初始 draft：定义后端/前端测试方向、桌面验收步骤、≥2 真实样本策略、checksum、rg 安全回归、Phase 7 完成标准与进入 Phase 8/9 条件。Phase 7 未进入编码。 | Claude |
+| 2026-06-15 | 审核收口修复（status 保持 draft）：测试矩阵新增阶段识别评估行（`stage_identification_mismatch`）；追溯字段补 `source_path`/`line_range`；`hallucinated_claim_blocked` 标注为正向 guardrail 不计入负向 backlog；Q&A 评估改用 `QaEvaluationQuestionSet`；完成标准 backlog 闭环明确仅看 polarity=problem。Phase 7 未进入编码。 | Claude |

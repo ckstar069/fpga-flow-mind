@@ -11,7 +11,7 @@ updated: 2026-06-15
 >
 > 本文档 status 为 `draft`，待审核通过后转为 `active`。Phase 7 当前**未开始编码**，本文模型为计划中的数据契约，实现以 P7-T01~P7-T05 为准。
 >
-> 既有类型引用（保持稳定，不重定义）：`EvidenceItem`/`EvidenceCollection`/`EvidenceStrength`、`ImplementationUnderstanding`/`ImplementationClaim`/`ClaimConfidence`/`UnknownItem`/`EvidenceGap`、`ViewGraph`/`ViewNode`/`ViewEdge`/`ViewTraceRef`、`GroundedAnswer`/`GroundedAnswerCitation`，以及 `StageStatus`/`SourceKind`/`Language`。
+> 既有类型引用（保持稳定，不重定义）：`EvidenceItem`/`EvidenceCollection`/`EvidenceStrength`、`ImplementationUnderstanding`/`ImplementationClaim`/`ClaimConfidence`/`UnknownItem`/`EvidenceGap`、`ViewGraph`/`ViewNode`/`ViewEdge`/`ViewTraceRef`、`GroundedAnswer`/`GroundedAnswerCitation`，以及 `StageStatus`/`SourceKind`/`Language`/`LineRange`。
 
 ## 1. 设计原则
 
@@ -25,7 +25,8 @@ updated: 2026-06-15
 - 每条 `QualityIssue` 必须可追溯到：
   - `stage_id`（必填，业务项目阶段）；
   - `artifact_kind`（必填，被评估产物类型）；
-  - 可选 `evidence_id` / `claim_id` / `node_id`（指向具体证据/声明/视图节点）。
+  - 可选 `evidence_id` / `claim_id` / `node_id`（指向具体证据/声明/视图节点）；
+  - 可选 `source_path` / `line_range`（复用既有 `LineRange`，1-based 闭区间），用于 `missing_evidence` / `noisy_evidence` / `wrong_source_kind` 及 source excerpt 相关问题的源码级追溯。
 - 评估过程不伪造、不修改既有 `evidence_id` / `claim_id` / `source_path` / `line_range` 绑定。
 
 ### 1.3 评分仅用于内部门槛
@@ -45,7 +46,7 @@ RealProjectSample                     # 评估语料登记
         ├─ UnderstandingQualityReport # understanding claim/unknown 质量
         ├─ ViewQualityReport          # 视图可解释性
         └─ QaQualityReport            # Q&A 可用性
-              └─ QualityIssue[]       # 统一质量问题记录（带 kind/severity/trace）
+              └─ QualityIssue[]       # 统一质量记录（带 kind/polarity/severity/trace）
 
 QualityRunSummary                     # 一次评估运行的汇总
 QualityAcceptanceStatus               # Phase 7 门槛判定
@@ -217,36 +218,84 @@ pub struct QaQualityReport {
 }
 ```
 
+### 4.5 Q&A 评估问题集（MockProvider 基线）
+
+为刻画 Q&A 在真实样本上的能力边界，评估使用一组人工准备的评估问题集（`QaEvaluationQuestionSet`）作为输入，逐条比对 MockProvider 的实际回答与预期。**该问题集只用于评估 MockProvider 基线，不评价目标项目正确性。**
+
+```rust
+/// 单条 Q&A 评估问题。
+///
+/// 仅表达"工具在此问题上预期是否可回答、应引用哪些证据"，不携带目标项目正确性判断。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QaEvaluationQuestion {
+    /// 评估问题文本
+    pub question: String,
+    /// 所属业务阶段
+    pub stage_id: String,
+    /// 预期可答性：answerable（存在证据，应给出带 citation 的回答）/ not_answerable（证据不足，应诚实返回 unknown/gap）
+    pub expected_answerability: QaExpectedAnswerability,
+    /// 预期应引用的 evidence_id（answerable 时填，用于核对 citation 有效性）
+    pub expected_evidence_ids: Vec<String>,
+    /// 预期应引用的 claim_id（可选）
+    pub expected_claim_ids: Vec<String>,
+    pub note: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum QaExpectedAnswerability {
+    Answerable,
+    NotAnswerable,
+}
+
+/// 一组 Q&A 评估问题。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QaEvaluationQuestionSet {
+    pub set_id: String,
+    pub sample_id: String,
+    pub questions: Vec<QaEvaluationQuestion>,
+}
+```
+
+> 用途：`QaQualityReport` 的 `citation_validity_ratio` / `answerable_hit_ratio` / `unknown_honesty_ratio` 由问题集与 MockProvider 实际回答比对得出。问题集是评估输入，不写入目标项目，不外发。
+
 ## 5. 统一质量问题记录
 
 ### 5.1 `QualityIssue`
 
 ```rust
-/// 一条工具理解质量问题记录。
+/// 一条工具理解质量记录。
 ///
 /// 仅描述"工具理解质量"，不描述"目标项目正确/错误"。
-/// 每条必须可追溯到 stage_id + artifact_kind + 可选 evidence_id/claim_id/node_id。
+/// 每条必须可追溯到 stage_id + artifact_kind + 可选 evidence_id/claim_id/node_id/source_path/line_range。
+/// polarity 区分负向问题（problem）与正向守卫生效记录（positive_guardrail）。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QualityIssue {
-    /// issue 唯一标识
+    /// 记录唯一标识
     pub issue_id: String,
     pub sample_id: String,
     pub stage_id: String,
     /// 被评估产物类型
     pub artifact_kind: ArtifactKind,
-    /// 问题分类（见 QualityIssueKind）
+    /// 分类（见 QualityIssueKind）
     pub kind: QualityIssueKind,
-    /// 严重程度（见 QualitySeverity）
+    /// 极性（见 QualityIssuePolarity）：problem 为负向质量问题，positive_guardrail 为正向守卫生效记录
+    pub polarity: QualityIssuePolarity,
+    /// 严重程度（见 QualitySeverity；仅对 polarity=problem 有意义）
     pub severity: QualitySeverity,
     /// 可选追溯到具体证据/声明/视图节点
     pub evidence_id: Option<String>,
     pub claim_id: Option<String>,
     pub node_id: Option<String>,
+    /// 可选源码级追溯：用于 missing_evidence / noisy_evidence / wrong_source_kind 及 source excerpt 相关问题
+    pub source_path: Option<String>,
+    /// 与 source_path 配套的行号范围，复用既有 LineRange（1-based 闭区间）
+    pub line_range: Option<LineRange>,
     /// 问题描述（客观、避免审计用语）
     pub description: String,
     /// 发现方式：automated / manual / desktop_acceptance
     pub detected_by: DetectionMethod,
-    /// 处置状态：open / fixed / accepted_as_known_limitation
+    /// 处置状态：open / fixed / accepted_as_known_limitation（仅对 polarity=problem 适用）
     pub status: IssueStatus,
 }
 
@@ -282,9 +331,10 @@ pub enum IssueStatus {
 ### 5.2 `QualityIssueKind`
 
 ```rust
-/// 工具理解质量问题分类。
+/// 工具理解质量记录分类。
 ///
 /// 全部围绕"工具是否理解到位"，不涉及目标项目正确性。
+/// 其中 HallucinatedClaimBlocked 为正向 guardrail（polarity=PositiveGuardrail），其余为负向问题（polarity=Problem）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum QualityIssueKind {
@@ -294,11 +344,13 @@ pub enum QualityIssueKind {
     NoisyEvidence,
     /// evidence 的 source_kind / language 标注与实际不符
     WrongSourceKind,
+    /// 阶段识别与人工期望不符（如命名异常被判 missing、空阶段误判、阶段漏识别）
+    StageIdentificationMismatch,
     /// StageSummary 过于空洞或未抓住阶段核心
     WeakSummary,
     /// claim 缺少 evidence_refs 或未通过 existence check
     UnsupportedClaim,
-    /// 无证据 claim 被 hallucination guard 拦截（正向记录：守卫生效）
+    /// 无证据 claim 被 hallucination guard 拦截——正向 guardrail 记录（polarity=PositiveGuardrail），不计入负向 backlog
     HallucinatedClaimBlocked,
     /// 视图退化为孤立方块/空图/无信息
     EmptyOrUnhelpfulView,
@@ -306,7 +358,7 @@ pub enum QualityIssueKind {
     QaUnansweredWhenEvidenceExists,
     /// Q&A 回答的 citation 指向不存在/不相关的 evidence
     QaAnswerWithoutValidCitation,
-    /// UI 状态令人困惑（空状态/加载/降级提示不清）
+    /// UI 状态令人困惑（空状态/加载/降级提示不清）；仅用于 UI 状态表达问题，不用于阶段识别误判
     ConfusingUiState,
 }
 ```
@@ -327,19 +379,47 @@ pub enum QualitySeverity {
 }
 ```
 
+> `severity` 仅对 `polarity=Problem` 的负向问题有意义；正向 guardrail 记录不参与严重程度排序与 backlog。
+
+### 5.4 `QualityIssuePolarity`
+
+```rust
+/// 质量记录极性。
+///
+/// 区分负向质量问题与正向守卫生效记录。
+/// positive_guardrail 记录（如 HallucinatedClaimBlocked）不计入负向 backlog、不参与门槛判定，
+/// 因此"守卫生效"不会导致 Phase 7 被判为质量问题未闭环。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum QualityIssuePolarity {
+    /// 负向质量问题：进入补强 backlog，参与门槛判定
+    Problem,
+    /// 正向守卫生效记录：仅作为"守卫工作正常"的证据，不计入 backlog、不参与门槛判定
+    PositiveGuardrail,
+}
+```
+
 ## 6. 运行汇总与门槛判定
 
 ### 6.1 `QualityRunSummary`
 
 ```rust
 /// 一次 Phase 7 评估运行的汇总。
+///
+/// total_issues / issues_by_severity / issues_by_status 仅统计 polarity=Problem 的负向问题；
+/// positive_guardrail_event_count 单独统计正向守卫生效记录，不计入负向 backlog、不参与门槛判定。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QualityRunSummary {
     pub run_id: String,
     pub sample_ids: Vec<String>,
+    /// 负向问题（polarity=Problem）总数；进入 backlog 与门槛判定
     pub total_issues: u32,
+    /// 正向守卫生效记录（polarity=PositiveGuardrail）计数；不进入 backlog、不参与门槛判定
+    pub positive_guardrail_event_count: u32,
     pub issues_by_kind: std::collections::HashMap<String, u32>,
+    /// 仅统计 polarity=Problem 的严重程度分布
     pub issues_by_severity: std::collections::HashMap<String, u32>,
+    /// 仅统计 polarity=Problem 的处置状态分布
     pub issues_by_status: std::collections::HashMap<String, u32>,
     /// 各维度汇总指标（覆盖率/命中率等，内部门槛用）
     pub metric_snapshots: Vec<MetricSnapshot>,
@@ -359,6 +439,8 @@ pub struct MetricSnapshot {
 /// Phase 7 质量门槛判定结果。
 ///
 /// 仅表达"质量补强是否达到 Phase 7 退出门槛"，不输出 PASS/HOLD，不评价目标项目。
+/// 门槛判定只看 polarity=Problem 的负向问题是否闭环（fixed / accepted_as_known_limitation）；
+/// positive_guardrail 记录不计入门槛，因此"守卫生效"不会导致 Phase 7 被判为质量问题未闭环。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum QualityAcceptanceStatus {
@@ -395,3 +477,4 @@ pub enum QualityAcceptanceStatus {
 | 日期 | 变更 | 作者 |
 |------|------|------|
 | 2026-06-15 | 初始 draft：定义 RealProjectSample / StageEvaluationTarget / 4 类 QualityReport / QualityIssue(+Kind+Severity) / QualityRunSummary / QualityAcceptanceStatus。强调评估产物非审计结论、可追溯、评分仅内部门槛。Phase 7 未进入编码。 | Claude |
+| 2026-06-15 | 审核收口修复（status 保持 draft）：QualityIssue 增加 source_path/line_range 源码级追溯与 polarity 字段；QualityIssueKind 新增 stage_identification_mismatch 并限定 confusing_ui_state 仅用于 UI 状态；新增 QualityIssuePolarity（problem/positive_guardrail），hallucinated_claim_blocked 归为正向 guardrail，不计入 backlog/门槛；QualityRunSummary 区分负向问题与正向守卫计数；新增 §4.5 QaEvaluationQuestion/QaEvaluationQuestionSet。Phase 7 未进入编码。 | Claude |
