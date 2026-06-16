@@ -20,11 +20,6 @@ interface QualityReviewPanelProps {
   disabledReason?: string;
   onGenerate: () => void;
   onEvidenceSelect?: (evidenceId: string) => void;
-  onViewSource?: (location: {
-    source_path: string;
-    line_range: { start: number; end: number };
-    evidence_id?: string;
-  }) => void;
   onContextSelection?: (selection: ContextSelection) => void;
 }
 
@@ -36,7 +31,6 @@ export default function QualityReviewPanel({
   disabledReason,
   onGenerate,
   onEvidenceSelect,
-  onViewSource,
   onContextSelection,
 }: QualityReviewPanelProps) {
   const acceptanceLabel = (status: QualityAcceptanceStatus): string => {
@@ -88,13 +82,8 @@ export default function QualityReviewPanel({
     if (issue.evidence_id && onEvidenceSelect) {
       onEvidenceSelect(issue.evidence_id);
     }
-    if (issue.source_path && onViewSource) {
-      onViewSource({
-        source_path: issue.source_path,
-        line_range: issue.line_range ?? { start: 1, end: 1 },
-        evidence_id: issue.evidence_id,
-      });
-    }
+    // 不自动拉起源码片段，避免异步 source_excerpt 覆盖 quality_issue context。
+    // 用户可在 ContextPanel 的 quality_issue 卡片中点击“查看源码片段”显式加载。
     onContextSelection?.({
       kind: 'quality_issue',
       stageId: issue.stage_id,

@@ -231,7 +231,6 @@ export default function StageDetail({
           qualityDisabledReason={qualityDisabledReason}
           onGenerateQualityReport={onGenerateQualityReport}
           onEvidenceSelect={onEvidenceSelect}
-          onViewSource={onViewSource}
           onContextSelectionChange={onContextSelectionChange}
           qualityFilter={qualityFilter}
         />
@@ -760,7 +759,6 @@ function QualityTab({
   qualityDisabledReason,
   onGenerateQualityReport,
   onEvidenceSelect,
-  onViewSource,
   onContextSelectionChange,
   qualityFilter,
 }: {
@@ -771,11 +769,6 @@ function QualityTab({
   qualityDisabledReason?: string;
   onGenerateQualityReport?: () => void;
   onEvidenceSelect?: (evidenceId: string) => void;
-  onViewSource?: (location: {
-    source_path: string;
-    line_range: { start: number; end: number };
-    evidence_id?: string;
-  }) => void;
   onContextSelectionChange?: (selection: ContextSelection | null) => void;
   qualityFilter?: QualityFilter;
 }) {
@@ -792,7 +785,6 @@ function QualityTab({
         disabledReason={qualityDisabledReason}
         onGenerate={onGenerateQualityReport}
         onEvidenceSelect={onEvidenceSelect}
-        onViewSource={onViewSource}
         onContextSelection={onContextSelectionChange}
       />
     </div>

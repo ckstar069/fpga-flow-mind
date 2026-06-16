@@ -282,7 +282,29 @@ Phase 8 完成后，方允许考虑进入：
 | Q&A citation 被 source excerpt 异步覆盖 | `handleGroundedCitationClick` 不再自动调用 `handleViewSource`，citation 点击后 ContextPanel 稳定展示 `qa_citation`；用户可在 ContextPanel 内点击“查看源码片段”手动加载 source excerpt |
 | quality report 失效后 stale `quality_issue` context | `clearQualityState()` 增加仅对 `quality_issue` 的 context 清理，不影响 evidence/trace/source_excerpt/qa_citation |
 | 关闭 source excerpt 后 stale `source_excerpt` context | `handleCloseSourceExcerpt()` 在关闭时同步清空 `source_excerpt` context |
-| QualityReviewPanel issue 点击受限 | 移除 issue 按钮的 `disabled` 与默认光标限制，所有 issue 均可点击进入 ContextPanel；有 evidence/source 时仍保留高亮/查看源码行为 |
+| QualityReviewPanel issue 点击受限 | 移除 issue 按钮的 `disabled` 与默认光标限制，所有 issue 均可点击进入 ContextPanel；有 evidence_id 时保留高亮 |
+
+### 15.5 Batch C 交互收口：quality_issue 不再被异步 source_excerpt 覆盖
+
+> 本轮收口严格限定在 Batch C 范围内，不进入 Batch D/E，不做 warnings 降噪，不接真实 LLM，不改目标项目。
+
+| 问题 | 修复说明 |
+|------|----------|
+| quality_issue 点击后 ContextPanel 最终停留在 source_excerpt | `QualityReviewPanel.handleIssueClick` 不再自动调用 `onViewSource(...)`；仅保留 `evidence_id` 高亮与 `onContextSelection({ kind: 'quality_issue' })`。点击质量记录后右侧稳定展示 quality_issue，不被异步 source_excerpt 覆盖 |
+| 查看源码入口收敛为显式动作 | `ContextPanel` 的 `QualityIssueBody` 中“查看源码片段”按钮作为唯一显式入口；用户点击 quality_issue → 显示 issue 详情 → 再点击“查看源码片段” → 才切换到 source_excerpt。无新增自动跳转逻辑 |
+| 一并清理未使用的 prop | 移除 `QualityReviewPanelProps.onViewSource` 字段、`StageDetail` `QualityTab` 的 `onViewSource` 参数/类型/传参，以及 case 'quality' 的 `onViewSource` 传参（满足 `noUnusedParameters`） |
+
+数据流（链路清晰）：
+
+```text
+QualityReviewPanel.handleIssueClick(issue)
+  -> onEvidenceSelect(issue.evidence_id)  // 仅当存在
+  -> onContextSelection({ kind: 'quality_issue', ... })
+       -> ContextPanel 渲染 QualityIssueBody（稳定展示 quality_issue）
+            -> 用户点击“查看源码片段”按钮（显式动作）
+                 -> ContextPanel.onViewSource -> handleViewSource
+                      -> 异步设置 source_excerpt context（用户预期内的切换）
+```
 
 ## 12. 变更记录
 
@@ -291,4 +313,4 @@ Phase 8 完成后，方允许考虑进入：
 | 2026-06-16 | 初始 draft：验证策略、AgentScope 风格可用性验收、既有能力零回归、视觉语义一致性、真实桌面验收 12 步、安全回归（含重库检查）、完成标准、进入 Phase 9 条件。审核转 active 后方允许编码。 | Claude |
 | 2026-06-16 | 审核通过，status 从 draft 转 active；允许进入 Phase 8 Batch A（P8-T01~P8-T02）；Phase 8 编码尚未开始；Batch B/C/D/E 与 Phase 9/10/11 未开始。 | Claude |
 | 2026-06-16 | 追加 §13 Batch A 验证记录：P8-T01/P8-T02 骨架实现通过 npm build / tsc / cargo test --lib / cargo check / real_project_validation --ignored；边界 rg 与目标项目只读验证通过；Batch B/C/D/E 未开始。 | Claude |
-| 2026-06-16 | 追加 §15.4 Batch C 审核收口修复记录：移除 `.codegraph/.gitignore` 跟踪；修复 citation/source excerpt 竞态；清理 quality_issue/source_excerpt 过期 context；QualityReviewPanel issue 全可点击；验证命令与边界 rg 全通过；Batch D/E 与 Phase 9/10/11 未开始。 | Claude |
+| 2026-06-16 | 追加 §15.5 Batch C 交互收口：quality_issue 点击不再自动拉起源码片段，避免异步 source_excerpt 覆盖；源码查看收敛为 ContextPanel 的显式按钮动作；移除未使用的 `onViewSource` prop 链；验证命令与边界 rg 全通过；Batch D/E 与 Phase 9/10/11 未开始。 | Claude |
