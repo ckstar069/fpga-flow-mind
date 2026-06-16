@@ -9,7 +9,7 @@ updated: 2026-06-16
 >
 > 验证目标是"工作台是否把已有能力组织成用户可高效理解一个阶段的产品级形态，且不发生回归、不越界"，**不是**验证目标项目正确性。
 >
-> 本文 status 为 `active`，是 Phase 8 验证与验收设计的生效文档。**Phase 8 Batch A（P8-T01~P8-T02）已实现/进入审核收口**；Batch B/C/D/E 与 Phase 9/10/11 均未开始。
+> 本文 status 为 `active`，是 Phase 8 验证与验收设计的生效文档。**Phase 8 Batch A（P8-T01~P8-T02）已实现/进入审核收口**；**Phase 8 Batch B（P8-T03~P8-T04）已实现/进入审核收口**；Batch C/D/E 与 Phase 9/10/11 均未开始。
 
 ## 1. 验证策略总览
 
@@ -206,6 +206,38 @@ Phase 8 完成后，方允许考虑进入：
 
 - 修复 `docs/planning/README.md` 中两处 Phase 8 状态说明的 Markdown 加粗未闭合问题。
 - 修正 `src/features/workspace/components/StageWorkspace.tsx` 的 Artifact tabs 占位交互：移除 `activeTab` / `setActiveTab` 状态与点击响应，tab 改为非交互 `<span>` 展示，并新增占位说明"Artifact tabs 内容迁移将在 Batch B 实现；当前主内容区保留原 StageDetail 兼容视图"，避免用户误以为 Batch B 内容迁移已完成。
+
+## 14. Batch B 验证记录（P8-T03~P8-T04）
+
+> 记录 Phase 8 Batch B Artifact tabs 内容迁移与 UI 增强后的实际验证结果。
+
+### 14.1 实现范围
+
+- 新增 `src/features/workspace/components/StageOverviewBar.tsx`：从当前阶段产物前端派生轻量指标（文件数、evidence 数、claim 数、视图数、Q&A 次数、quality issue 数、阶段状态）。
+- 新增 `src/features/workspace/components/StageFilterBar.tsx`：按 active tab 渲染前端筛选控件（evidence 按 source_kind/strength/文本搜索；quality 按 severity/kind/status）。
+- 修改 `src/features/workspace/components/StageWorkspace.tsx`：实现真实 Artifact tabs 切换（Overview/Evidence/Understanding/Views/Trace/Q&A/Quality），集成 StageOverviewBar 与 StageFilterBar，保留右侧 ContextPanel 占位。
+- 修改 `src/features/workspace/components/StageDetail.tsx`：由纵向堆叠改为按 `activeTab` switch 渲染各 tab 内容；保留所有既有入口按钮、回调、trace、Q&A、质量报告能力。
+- 修改 `src/features/workspace/components/EvidencePanel.tsx`：增加按 `source_kind` 分组的可展开列表，支持由 StageFilterBar 传入的前端筛选。
+- 修改 `src/features/workspace/WorkspacePage.tsx`：向 StageWorkspace/StageDetail 透传 stage status、qaHistory、filter 等；保持状态机、guard refs、保存/自动保存逻辑不变。
+- 修改 `src/types/workspace.ts`：`PersistedUiState` 新增可选 `stage_tab?: string` 字段，保持向后兼容；Batch B 不实际读写该字段。
+
+### 14.2 自动化验证结果
+
+| 命令 | 结果 |
+|------|------|
+| `npm run build` | ✅ 通过 |
+| `npx tsc --noEmit` | ✅ 无类型错误 |
+| `cd src-tauri && cargo test --lib` | ✅ 544 passed; 0 failed; 1 ignored |
+| `cd src-tauri && cargo check` | ✅ 无 warning |
+| `cargo test --test real_project_validation -- --ignored` | ✅ 主/副样本 5 项测试通过 |
+| 边界 rg（ReactFlow/D3/Mermaid/OpenAI/Anthropic/api_key/Vivado/synthesis/implementation/bitstream/PASS/HOLD/审计结论） | ✅ 仅既有禁用/守卫/注释语境命中，Batch B 无新增 |
+| 目标项目 checksum 一致性 | ✅ 主样本 `fpga_project_coarse_sync` checksum 一致；目标项目无本次修改 |
+
+### 14.3 当前未完成范围
+
+- P8-T05~P8-T06（ContextPanel 联动、状态隔离）未开始。
+- P8-T07~P8-T09（视觉 polish、warnings 降噪、空/错误/session 恢复）未开始。
+- P8-T10（回归 + 桌面验收 + completion review）未开始。
 
 ## 12. 变更记录
 

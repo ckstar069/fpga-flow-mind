@@ -1168,48 +1168,72 @@ export default function WorkspacePage() {
           profile={currentProfile}
           stageId={selectedStageId}
           context={evidenceState.context}
-        >
-          <StageDetail
-            context={evidenceState.context}
-            evidence={'evidence' in evidenceState ? evidenceState.evidence : undefined}
-            evidenceError={'evidenceError' in evidenceState ? evidenceState.evidenceError : undefined}
-            isCollecting={'isCollecting' in evidenceState ? evidenceState.isCollecting : undefined}
-            onCollectEvidence={handleCollectEvidence}
-            understanding={'understanding' in evidenceState ? evidenceState.understanding : undefined}
-            understandingLoading={'understandingLoading' in evidenceState ? evidenceState.understandingLoading : undefined}
-            understandingError={'understandingError' in evidenceState ? evidenceState.understandingError : undefined}
-            onGenerateUnderstanding={handleGenerateUnderstanding}
-            views={'views' in evidenceState ? evidenceState.views : undefined}
-            viewsLoading={'viewsLoading' in evidenceState ? evidenceState.viewsLoading : undefined}
-            viewsError={'viewsError' in evidenceState ? evidenceState.viewsError : undefined}
-            onGenerateViews={handleGenerateViews}
-            selectedTraceTarget={selectedTraceTarget}
-            resolvedTraces={resolvedTraces}
-            traceLoading={traceLoading}
-            traceError={traceError}
-            sourceExcerpt={sourceExcerpt}
-            excerptError={excerptError}
-            highlightedEvidenceId={highlightedEvidenceId}
-            currentSourceEvidenceId={currentSourceEvidenceId}
-            groundedAnswer={groundedAnswer}
-            groundedAnswerLoading={groundedAnswerLoading}
-            groundedAnswerError={groundedAnswerError}
-            onSelectTraceTarget={handleSelectTraceTarget}
-            onClearTraceTarget={handleClearTraceTarget}
-            onViewSource={handleViewSource}
-            onCloseSourceExcerpt={handleCloseSourceExcerpt}
-            onLocateEvidence={handleLocateEvidence}
-            onEvidenceSelect={handleEvidenceSelect}
-            onAskGroundedQuestion={handleAskGroundedQuestion}
-            onGroundedCitationClick={handleGroundedCitationClick}
-            qualityReport={qualityReport}
-            qualityLoading={qualityLoading}
-            qualityError={qualityError}
-            canGenerateQualityReport={canGenerateQualityReport}
-            qualityDisabledReason={qualityDisabledReason}
-            onGenerateQualityReport={handleGenerateQualityReport}
-          />
-        </StageWorkspace>
+          stageStatus={
+            currentProfile.stages.find((s) => s.stage_id === selectedStageId)?.status ??
+            'available'
+          }
+          evidence={'evidence' in evidenceState ? evidenceState.evidence : undefined}
+          evidenceLoading={'isCollecting' in evidenceState ? evidenceState.isCollecting : undefined}
+          understanding={'understanding' in evidenceState ? evidenceState.understanding : undefined}
+          understandingLoading={
+            'understandingLoading' in evidenceState ? evidenceState.understandingLoading : undefined
+          }
+          views={'views' in evidenceState ? evidenceState.views : undefined}
+          viewsLoading={'viewsLoading' in evidenceState ? evidenceState.viewsLoading : undefined}
+          qaHistory={qaHistoriesMap[selectedStageId]}
+          qaLoading={groundedAnswerLoading}
+          qualityReport={qualityReport}
+          qualityLoading={qualityLoading}
+          renderContent={({ activeTab, evidenceFilter, qualityFilter }) => (
+            <StageDetail
+              activeTab={activeTab}
+              context={evidenceState.context}
+              evidence={'evidence' in evidenceState ? evidenceState.evidence : undefined}
+              evidenceError={'evidenceError' in evidenceState ? evidenceState.evidenceError : undefined}
+              isCollecting={'isCollecting' in evidenceState ? evidenceState.isCollecting : undefined}
+              onCollectEvidence={handleCollectEvidence}
+              understanding={'understanding' in evidenceState ? evidenceState.understanding : undefined}
+              understandingLoading={
+                'understandingLoading' in evidenceState ? evidenceState.understandingLoading : undefined
+              }
+              understandingError={
+                'understandingError' in evidenceState ? evidenceState.understandingError : undefined
+              }
+              onGenerateUnderstanding={handleGenerateUnderstanding}
+              views={'views' in evidenceState ? evidenceState.views : undefined}
+              viewsLoading={'viewsLoading' in evidenceState ? evidenceState.viewsLoading : undefined}
+              viewsError={'viewsError' in evidenceState ? evidenceState.viewsError : undefined}
+              onGenerateViews={handleGenerateViews}
+              selectedTraceTarget={selectedTraceTarget}
+              resolvedTraces={resolvedTraces}
+              traceLoading={traceLoading}
+              traceError={traceError}
+              sourceExcerpt={sourceExcerpt}
+              excerptError={excerptError}
+              highlightedEvidenceId={highlightedEvidenceId}
+              currentSourceEvidenceId={currentSourceEvidenceId}
+              groundedAnswer={groundedAnswer}
+              groundedAnswerLoading={groundedAnswerLoading}
+              groundedAnswerError={groundedAnswerError}
+              onSelectTraceTarget={handleSelectTraceTarget}
+              onClearTraceTarget={handleClearTraceTarget}
+              onViewSource={handleViewSource}
+              onCloseSourceExcerpt={handleCloseSourceExcerpt}
+              onLocateEvidence={handleLocateEvidence}
+              onEvidenceSelect={handleEvidenceSelect}
+              onAskGroundedQuestion={handleAskGroundedQuestion}
+              onGroundedCitationClick={handleGroundedCitationClick}
+              qualityReport={qualityReport}
+              qualityLoading={qualityLoading}
+              qualityError={qualityError}
+              canGenerateQualityReport={canGenerateQualityReport}
+              qualityDisabledReason={qualityDisabledReason}
+              onGenerateQualityReport={handleGenerateQualityReport}
+              evidenceFilter={evidenceFilter}
+              qualityFilter={qualityFilter}
+            />
+          )}
+        />
       )}
 
       {state.phase === 'stage_error' && currentProfile && (

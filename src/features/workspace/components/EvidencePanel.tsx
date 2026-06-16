@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { EvidenceCollection, EvidenceItem, EvidenceStrength } from '../../../types/workspace';
+import type { EvidenceFilter } from './StageFilterBar';
 
 // ─── strength 标签映射 ───
 const STRENGTH_LABEL: Record<EvidenceStrength, string> = {
@@ -18,11 +19,15 @@ const STRENGTH_COLOR: Record<EvidenceStrength, string> = {
   missing: '#9e9e9e',
 };
 
+type GroupBy = 'source_kind' | 'strength';
+
 interface EvidencePanelProps {
   evidence: EvidenceCollection;
   highlightedEvidenceId?: string;
   currentSourceEvidenceId?: string;
   onEvidenceSelect?: (evidenceId: string) => void;
+  evidenceFilter?: EvidenceFilter;
+  groupBy?: GroupBy;
 }
 
 export default function EvidencePanel({
@@ -30,13 +35,47 @@ export default function EvidencePanel({
   highlightedEvidenceId,
   currentSourceEvidenceId,
   onEvidenceSelect,
+  evidenceFilter,
+  groupBy = 'source_kind',
 }: EvidencePanelProps) {
   const { stats, warnings, evidence_items } = evidence;
+
+  const filteredItems = useMemo(() => {
+    if (!evidenceFilter) return evidence_items;
+    const query = (evidenceFilter.textQuery ?? '').trim().toLowerCase();
+    return evidence_items.filter((item) => {
+      if (evidenceFilter.source_kind && item.source_kind !== evidenceFilter.source_kind) return false;
+      if (evidenceFilter.strength && item.strength !== evidenceFilter.strength) return false;
+      if (query) {
+        const haystack = [
+          item.summary,
+          item.symbol ?? '',
+          item.evidence_id,
+          item.source_path,
+        ]
+          .join(' ')
+          .toLowerCase();
+        if (!haystack.includes(query)) return false;
+      }
+      return true;
+    });
+  }, [evidence_items, evidenceFilter]);
+
+  const groups = useMemo<Array<[string, EvidenceItem[]]>>(() => {
+    const map = new Map<string, EvidenceItem[]>();
+    for (const item of filteredItems) {
+      const key = groupBy === 'strength' ? item.strength : item.source_kind;
+      const existing = map.get(key) ?? [];
+      existing.push(item);
+      map.set(key, existing);
+    }
+    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [filteredItems, groupBy]);
 
   return (
     <div style={{ marginBottom: 24 }}>
       <h3 style={{ fontSize: 15, margin: '0 0 12px' }}>
-        证据结果 ({evidence_items.length} 项)
+        证据结果 ({filteredItems.length} / {evidence_items.length} 项)
       </h3>
 
       {/* 统计栏 */}
@@ -136,7 +175,7 @@ export default function EvidencePanel({
       )}
 
       {/* 空状态 */}
-      {evidence_items.length === 0 && (
+      {filteredItems.length === 0 && (
         <div
           style={{
             padding: 32,
@@ -146,20 +185,97 @@ export default function EvidencePanel({
             color: '#999',
           }}
         >
-          <p style={{ margin: '0 0 8px', fontSize: 15 }}>未收集到证据</p>
+          <p style={{ margin: '0 0 8px', fontSize: 15 }}>
+            {evidence_items.length === 0 ? '未收集到证据' : '没有匹配筛选条件的证据'}
+          </p>
           <p style={{ margin: 0, fontSize: 13 }}>
-            该阶段可能无可提取的结构信息。
-            {stats.files_processed > 0 && (
+            {evidence_items.length > 0
+              ? '请调整上方筛选条件。'
+              : '该阶段可能无可提取的结构信息。'}
+            {stats.files_processed > 0 && evidence_items.length === 0 && (
               <>收集了 {stats.files_processed} 个文件，跳过了 {stats.files_skipped} 个文件。</>
             )}
           </p>
         </div>
       )}
 
-      {/* 证据列表 */}
-      {evidence_items.length > 0 && (
+      {/* 分组可展开列表 */}
+      {filteredItems.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {evidence_items.map((item) => (
+          {groups.map(([groupKey, items]) => (
+            <EvidenceGroup
+              key={groupKey}
+              groupKey={groupKey}
+              groupBy={groupBy}
+              items={items}
+              highlightedEvidenceId={highlightedEvidenceId}
+              currentSourceEvidenceId={currentSourceEvidenceId}
+              onEvidenceSelect={onEvidenceSelect}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EvidenceGroup({
+  groupKey,
+  groupBy,
+  items,
+  highlightedEvidenceId,
+  currentSourceEvidenceId,
+  onEvidenceSelect,
+}: {
+  groupKey: string;
+  groupBy: GroupBy;
+  items: EvidenceItem[];
+  highlightedEvidenceId?: string;
+  currentSourceEvidenceId?: string;
+  onEvidenceSelect?: (evidenceId: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const displayLabel =
+    groupBy === 'strength'
+      ? (STRENGTH_LABEL[groupKey as EvidenceStrength] ?? groupKey)
+      : groupKey;
+
+  return (
+    <div
+      style={{
+        border: '1px solid #e2e8f0',
+        borderRadius: 6,
+        overflow: 'hidden',
+      }}
+    >
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '8px 12px',
+          background: '#f1f5f9',
+          border: 'none',
+          borderBottom: expanded ? '1px solid #e2e8f0' : 'none',
+          cursor: 'pointer',
+          fontSize: 13,
+          fontWeight: 600,
+          color: '#1e293b',
+          textAlign: 'left',
+        }}
+      >
+        <span>
+          {displayLabel} ({items.length})
+        </span>
+        <span style={{ fontSize: 11, color: '#64748b' }}>
+          {expanded ? '▼' : '▶'}
+        </span>
+      </button>
+      {expanded && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 10 }}>
+          {items.map((item) => (
             <EvidenceItemCard
               key={item.evidence_id}
               item={item}
@@ -265,3 +381,4 @@ function EvidenceItemCard({
     </div>
   );
 }
+

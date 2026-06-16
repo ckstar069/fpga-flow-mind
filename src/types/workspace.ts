@@ -564,6 +564,8 @@ export interface PersistedUiState {
   current_source_excerpt?: SourceExcerpt;
   highlighted_evidence_id?: string;
   active_view_type?: ViewType;
+  /** 当前 Artifact tab（Batch B 仅类型预留，Batch C 起接入持久化） */
+  stage_tab?: string;
 }
 
 /** 全局 UI 状态 */

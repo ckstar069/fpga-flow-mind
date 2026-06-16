@@ -21,8 +21,19 @@ import TracePanel from './TracePanel';
 import SourceExcerptPanel from './SourceExcerptPanel';
 import GroundedQAPanel from './GroundedQAPanel';
 import QualityReviewPanel from './QualityReviewPanel';
+import type { EvidenceFilter, QualityFilter } from './StageFilterBar';
+
+type ArtifactTab =
+  | 'overview'
+  | 'evidence'
+  | 'understanding'
+  | 'views'
+  | 'trace'
+  | 'qa'
+  | 'quality';
 
 interface StageDetailProps {
+  activeTab: ArtifactTab;
   context: StageContext;
   evidence?: EvidenceCollection;
   evidenceError?: UiError;
@@ -66,9 +77,12 @@ interface StageDetailProps {
   canGenerateQualityReport?: boolean;
   qualityDisabledReason?: string;
   onGenerateQualityReport?: () => void;
+  evidenceFilter?: EvidenceFilter;
+  qualityFilter?: QualityFilter;
 }
 
 export default function StageDetail({
+  activeTab,
   context,
   evidence,
   evidenceError,
@@ -107,11 +121,143 @@ export default function StageDetail({
   canGenerateQualityReport,
   qualityDisabledReason,
   onGenerateQualityReport,
+  evidenceFilter,
+  qualityFilter,
 }: StageDetailProps) {
   const canCollect =
     !context.error_code && context.files.length > 0 && !!onCollectEvidence;
   const canAskGrounded = !!evidence && !!understanding && evidence.evidence_items.length > 0;
 
+  switch (activeTab) {
+    case 'overview':
+      return (
+        <OverviewTab
+          context={context}
+          canCollect={canCollect}
+          isCollecting={isCollecting}
+          evidence={evidence}
+          onCollectEvidence={onCollectEvidence}
+          onGenerateUnderstanding={onGenerateUnderstanding}
+          understanding={understanding}
+          understandingLoading={understandingLoading}
+          viewsLoading={viewsLoading}
+          onGenerateViews={onGenerateViews}
+          views={views}
+        />
+      );
+    case 'evidence':
+      return (
+        <EvidenceTab
+          evidence={evidence}
+          evidenceError={evidenceError}
+          isCollecting={isCollecting}
+          canCollect={canCollect}
+          onCollectEvidence={onCollectEvidence}
+          highlightedEvidenceId={highlightedEvidenceId}
+          currentSourceEvidenceId={currentSourceEvidenceId}
+          onEvidenceSelect={onEvidenceSelect}
+          evidenceFilter={evidenceFilter}
+        />
+      );
+    case 'understanding':
+      return (
+        <UnderstandingTab
+          context={context}
+          understanding={understanding}
+          understandingLoading={understandingLoading}
+          understandingError={understandingError}
+          onGenerateUnderstanding={onGenerateUnderstanding}
+          viewsLoading={viewsLoading}
+        />
+      );
+    case 'views':
+      return (
+        <ViewsTab
+          views={views}
+          viewsLoading={viewsLoading}
+          viewsError={viewsError}
+          onGenerateViews={onGenerateViews}
+          understanding={understanding}
+          understandingLoading={understandingLoading}
+          selectedTraceTarget={selectedTraceTarget}
+          onSelectTraceTarget={onSelectTraceTarget}
+        />
+      );
+    case 'trace':
+      return (
+        <TraceTab
+          selectedTraceTarget={selectedTraceTarget}
+          resolvedTraces={resolvedTraces}
+          traceLoading={traceLoading}
+          traceError={traceError}
+          sourceExcerpt={sourceExcerpt}
+          excerptError={excerptError}
+          views={views}
+          onClearTraceTarget={onClearTraceTarget}
+          onViewSource={onViewSource}
+          onLocateEvidence={onLocateEvidence}
+          onCloseSourceExcerpt={onCloseSourceExcerpt}
+        />
+      );
+    case 'qa':
+      return (
+        <QaTab
+          canAskGrounded={canAskGrounded}
+          evidence={evidence}
+          understanding={understanding}
+          groundedAnswer={groundedAnswer}
+          groundedAnswerLoading={groundedAnswerLoading}
+          groundedAnswerError={groundedAnswerError}
+          onAskGroundedQuestion={onAskGroundedQuestion}
+          onGroundedCitationClick={onGroundedCitationClick}
+        />
+      );
+    case 'quality':
+      return (
+        <QualityTab
+          qualityReport={qualityReport}
+          qualityLoading={qualityLoading}
+          qualityError={qualityError}
+          canGenerateQualityReport={canGenerateQualityReport}
+          qualityDisabledReason={qualityDisabledReason}
+          onGenerateQualityReport={onGenerateQualityReport}
+          onEvidenceSelect={onEvidenceSelect}
+          onViewSource={onViewSource}
+          qualityFilter={qualityFilter}
+        />
+      );
+    default:
+      return null;
+  }
+}
+
+// ─── Overview Tab ───────────────────────────────────────────────────────
+
+function OverviewTab({
+  context,
+  canCollect,
+  isCollecting,
+  evidence,
+  onCollectEvidence,
+  onGenerateUnderstanding,
+  understanding,
+  understandingLoading,
+  viewsLoading,
+  onGenerateViews,
+  views,
+}: {
+  context: StageContext;
+  canCollect: boolean;
+  isCollecting?: boolean;
+  evidence?: EvidenceCollection;
+  onCollectEvidence?: () => void;
+  onGenerateUnderstanding?: () => void;
+  understanding?: ImplementationUnderstanding;
+  understandingLoading?: boolean;
+  viewsLoading?: boolean;
+  onGenerateViews?: () => void;
+  views?: ViewGraph[];
+}) {
   return (
     <div>
       <h2 style={{ margin: '0 0 16px', fontSize: 20 }}>
@@ -191,357 +337,58 @@ export default function StageDetail({
         </div>
       )}
 
-      {/* 证据收集区域 */}
-      {canCollect && (
-        <div style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 15, margin: '0 0 12px' }}>证据收集</h3>
-          <button
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 24 }}>
+        {canCollect && (
+          <ActionButton
             onClick={onCollectEvidence}
             disabled={isCollecting || understandingLoading || viewsLoading}
-            style={{
-              padding: '8px 20px',
-              borderRadius: 6,
-              border: evidence
-                ? '1px solid #4caf50'
-                : '1px solid #1976d2',
-              background: (isCollecting || understandingLoading || viewsLoading)
-                ? '#e0e0e0'
-                : evidence
-                  ? '#4caf50'
-                  : '#1976d2',
-              color: (isCollecting || understandingLoading || viewsLoading) ? '#999' : '#fff',
-              cursor: (isCollecting || understandingLoading || viewsLoading) ? 'not-allowed' : 'pointer',
-              fontSize: 14,
-            }}
-          >
-            {isCollecting
-              ? '收集中...'
-              : understandingLoading
-                ? '生成中，请稍候'
-                : viewsLoading
-                  ? '视图生成中，请稍候'
-                  : evidence
-                    ? `重新收集 (${evidence.evidence_items.length} 项)`
-                    : '收集证据'}
-          </button>
-        </div>
-      )}
-
-      {evidenceError && (
-        <div
-          style={{
-            padding: 16,
-            background: '#fff3e0',
-            borderRadius: 8,
-            marginBottom: 16,
-          }}
-        >
-          <h4 style={{ margin: '0 0 8px', fontSize: 14 }}>证据收集失败</h4>
-          <div style={{ fontSize: 13 }}>
-            {'error_code' in evidenceError && (
-              <div style={{ marginBottom: 4 }}>
-                <span style={{ color: '#666' }}>错误码：</span>
-                <code>{evidenceError.error_code}</code>
-              </div>
-            )}
-            <div style={{ marginBottom: 4 }}>
-              <span style={{ color: '#666' }}>信息：</span>
-              {evidenceError.message}
-            </div>
-            {'source_path' in evidenceError && evidenceError.source_path && (
-              <div style={{ marginBottom: 4 }}>
-                <span style={{ color: '#666' }}>路径：</span>
-                <code style={{ fontSize: 12 }}>{evidenceError.source_path}</code>
-              </div>
-            )}
-            {'details' in evidenceError && evidenceError.details && (
-              <div>
-                <span style={{ color: '#666' }}>详情：</span>
-                {evidenceError.details}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* 理解生成按钮 */}
-      {onGenerateUnderstanding && !context.error_code && (
-        <div style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 15, margin: '0 0 12px' }}>理解生成</h3>
-          {context.error_code === 'stage_empty' ? (
-            <p style={{ fontSize: 13, color: '#999', margin: 0 }}>
-              空阶段无法生成理解
-            </p>
-          ) : (
-            <>
-              <button
-                onClick={onGenerateUnderstanding}
-                disabled={understandingLoading || viewsLoading}
-                style={{
-                  padding: '8px 20px',
-                  borderRadius: 6,
-                  border: understanding
-                    ? '1px solid #2e7d32'
-                    : '1px solid #7b1fa2',
-                  background: (understandingLoading || viewsLoading)
-                    ? '#e0e0e0'
-                    : understanding
-                      ? '#2e7d32'
-                      : '#7b1fa2',
-                  color: (understandingLoading || viewsLoading) ? '#999' : '#fff',
-                  cursor: (understandingLoading || viewsLoading) ? 'not-allowed' : 'pointer',
-                  fontSize: 14,
-                }}
-              >
-                {understandingLoading
-                  ? '生成中...'
+            variant={evidence ? 'success' : 'primary'}
+            label={
+              isCollecting
+                ? '收集中...'
+                : understandingLoading
+                  ? '生成中，请稍候'
                   : viewsLoading
                     ? '视图生成中，请稍候'
-                    : understanding
-                      ? '重新生成'
-                      : '生成理解'}
-              </button>
-              {!understanding && !understandingLoading && !viewsLoading && (
-                <span style={{ fontSize: 12, color: '#999', marginLeft: 12 }}>
-                  基于已收集的证据生成结构化理解
-                </span>
-              )}
-            </>
-          )}
-        </div>
-      )}
+                    : evidence
+                      ? `重新收集 (${evidence.evidence_items.length} 项)`
+                      : '收集证据'
+            }
+          />
+        )}
 
-      {/* 理解生成错误 */}
-      {understandingError && (
-        <div
-          style={{
-            padding: 16,
-            background: '#fce4ec',
-            borderRadius: 8,
-            marginBottom: 16,
-            border: '1px solid #ef9a9a',
-          }}
-        >
-          <h4 style={{ margin: '0 0 8px', fontSize: 14, color: '#c62828' }}>理解生成失败</h4>
-          <div style={{ fontSize: 13 }}>
-            {'error_code' in understandingError && (
-              <div style={{ marginBottom: 4 }}>
-                <span style={{ color: '#666' }}>错误码：</span>
-                <code>{understandingError.error_code}</code>
-              </div>
-            )}
-            <div style={{ marginBottom: 4 }}>
-              <span style={{ color: '#666' }}>信息：</span>
-              {understandingError.message}
-            </div>
-            {'source_path' in understandingError && understandingError.source_path && (
-              <div style={{ marginBottom: 4 }}>
-                <span style={{ color: '#666' }}>路径：</span>
-                <code style={{ fontSize: 12 }}>{understandingError.source_path}</code>
-              </div>
-            )}
-            {'details' in understandingError && understandingError.details && (
-              <div>
-                <span style={{ color: '#666' }}>详情：</span>
-                {understandingError.details}
-              </div>
-            )}
-            {'recoverable' in understandingError && (
-              <div style={{ marginTop: 4 }}>
-                <span style={{ fontSize: 12, color: understandingError.recoverable ? '#f57c00' : '#c62828' }}>
-                  {understandingError.recoverable ? '可重试' : '不可恢复'}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+        {onGenerateUnderstanding && !context.error_code && (
+          <ActionButton
+            onClick={onGenerateUnderstanding}
+            disabled={understandingLoading || viewsLoading}
+            variant={understanding ? 'success' : 'secondary'}
+            label={
+              understandingLoading
+                ? '生成中...'
+                : viewsLoading
+                  ? '视图生成中，请稍候'
+                  : understanding
+                    ? '重新生成理解'
+                    : '生成理解'
+            }
+          />
+        )}
 
-      {/* 理解生成 loading */}
-      {understandingLoading && (
-        <div
-          style={{
-            padding: 24,
-            background: '#f3e5f5',
-            borderRadius: 8,
-            textAlign: 'center',
-            marginBottom: 16,
-            border: '1px solid #ce93d8',
-          }}
-        >
-          <p style={{ margin: 0, color: '#7b1fa2', fontSize: 14 }}>正在生成理解...</p>
-          <p style={{ margin: '8px 0 0', color: '#999', fontSize: 12 }}>正在调用后端处理，请稍候</p>
-        </div>
-      )}
-
-      {/* 理解面板 */}
-      {understanding && (
-        <div style={{ marginBottom: 24 }}>
-          <UnderstandingPanel understanding={understanding} />
-        </div>
-      )}
-
-      {/* 视图生成区域 */}
-      {onGenerateViews && !context.error_code && (
-        <div style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 15, margin: '0 0 12px' }}>视图生成</h3>
-          {!understanding ? (
-            <p style={{ fontSize: 13, color: '#999', margin: 0 }}>
-              请先生成理解
-            </p>
-          ) : (
-            <>
-              <button
-                onClick={onGenerateViews}
-                disabled={viewsLoading || understandingLoading}
-                style={{
-                  padding: '8px 20px',
-                  borderRadius: 6,
-                  border: views
-                    ? '1px solid #2e7d32'
-                    : '1px solid #1976d2',
-                  background: (viewsLoading || understandingLoading)
-                    ? '#e0e0e0'
-                    : views
-                      ? '#2e7d32'
-                      : '#1976d2',
-                  color: (viewsLoading || understandingLoading) ? '#999' : '#fff',
-                  cursor: (viewsLoading || understandingLoading) ? 'not-allowed' : 'pointer',
-                  fontSize: 14,
-                }}
-              >
-                {viewsLoading
-                  ? '生成视图中...'
-                  : views
-                    ? '重新生成视图'
-                    : '生成视图'}
-              </button>
-              {!views && !viewsLoading && (
-                <span style={{ fontSize: 12, color: '#999', marginLeft: 12 }}>
-                  基于理解结果生成结构图、数据流和时序流水视图
-                </span>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
-      {/* 视图错误 */}
-      {viewsError && !viewsLoading && (
-        <div
-          style={{
-            padding: 16,
-            background: '#fce4ec',
-            borderRadius: 8,
-            marginBottom: 16,
-            border: '1px solid #ef9a9a',
-          }}
-        >
-          <h4 style={{ margin: '0 0 8px', fontSize: 14, color: '#c62828' }}>视图生成失败</h4>
-          <div style={{ fontSize: 13 }}>
-            {'error_code' in viewsError && (
-              <div style={{ marginBottom: 4 }}>
-                <span style={{ color: '#666' }}>错误码：</span>
-                <code>{viewsError.error_code}</code>
-              </div>
-            )}
-            <div style={{ marginBottom: 4 }}>
-              <span style={{ color: '#666' }}>信息：</span>
-              {viewsError.message}
-            </div>
-            {'source_path' in viewsError && viewsError.source_path && (
-              <div style={{ marginBottom: 4 }}>
-                <span style={{ color: '#666' }}>路径：</span>
-                <code style={{ fontSize: 12 }}>{viewsError.source_path}</code>
-              </div>
-            )}
-            {'details' in viewsError && viewsError.details && (
-              <div>
-                <span style={{ color: '#666' }}>详情：</span>
-                {viewsError.details}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* 视图面板 — 当 views / viewsLoading / viewsError 任一存在时渲染 */}
-      {(views || viewsLoading || (!viewsLoading && viewsError)) && (
-        <MultiViewPanel
-          views={views ?? []}
-          loading={viewsLoading}
-          error={!viewsLoading ? viewsError : undefined}
-          selectedTarget={selectedTraceTarget}
-          onSelectTarget={onSelectTraceTarget}
-        />
-      )}
-
-      {/* TracePanel */}
-      {selectedTraceTarget && (
-        <TracePanel
-          selectedTargetLabel={getSelectedTargetLabel(selectedTraceTarget, views)}
-          selectedTargetType={getSelectedTargetTypeLabel(selectedTraceTarget)}
-          resolvedTraces={resolvedTraces ?? []}
-          loading={traceLoading}
-          error={traceError}
-          onClear={onClearTraceTarget ?? (() => {})}
-          onViewSource={onViewSource ?? (() => {})}
-          onLocateEvidence={onLocateEvidence ?? (() => {})}
-        />
-      )}
-
-      {/* SourceExcerptPanel */}
-      {(sourceExcerpt || excerptError) && (
-        <SourceExcerptPanel
-          excerpt={sourceExcerpt}
-          onClose={onCloseSourceExcerpt ?? (() => {})}
-          error={excerptError}
-        />
-      )}
-
-      {/* Grounded Q&A */}
-      {onAskGroundedQuestion && (
-        <GroundedQAPanel
-          canAsk={canAskGrounded}
-          disabledReason={
-            !evidence
-              ? '请先收集证据'
-              : !understanding
-                ? '请先生成理解'
-                : evidence.evidence_items.length === 0
-                  ? '当前阶段无 evidence，无法提问'
-                  : undefined
-          }
-          answer={groundedAnswer}
-          loading={groundedAnswerLoading}
-          error={groundedAnswerError}
-          onAsk={onAskGroundedQuestion}
-          onCitationClick={onGroundedCitationClick}
-        />
-      )}
-
-      {/* Phase 7 质量评估 */}
-      {onGenerateQualityReport && (
-        <QualityReviewPanel
-          report={qualityReport}
-          loading={qualityLoading}
-          error={qualityError}
-          canGenerate={canGenerateQualityReport ?? true}
-          disabledReason={qualityDisabledReason}
-          onGenerate={onGenerateQualityReport}
-          onEvidenceSelect={onEvidenceSelect}
-          onViewSource={onViewSource}
-        />
-      )}
-
-      {evidence && (
-        <EvidencePanel
-          evidence={evidence}
-          highlightedEvidenceId={highlightedEvidenceId ?? undefined}
-          currentSourceEvidenceId={currentSourceEvidenceId ?? undefined}
-          onEvidenceSelect={onEvidenceSelect}
-        />
-      )}
+        {onGenerateViews && !context.error_code && understanding && (
+          <ActionButton
+            onClick={onGenerateViews}
+            disabled={viewsLoading || understandingLoading}
+            variant={views ? 'success' : 'primary'}
+            label={
+              viewsLoading
+                ? '生成视图中...'
+                : views
+                  ? '重新生成视图'
+                  : '生成视图'
+            }
+          />
+        )}
+      </div>
 
       {context.external_deps.length > 0 && (
         <div style={{ marginBottom: 24 }}>
@@ -584,14 +431,515 @@ export default function StageDetail({
                     {ref.interface_file_path}
                   </span>
                 )}
-                <span style={{ fontSize: 11, color: '#999', marginLeft: 8 }}>
-                  (推断)
-                </span>
+                <span style={{ fontSize: 11, color: '#999', marginLeft: 8 }}>(推断)</span>
               </div>
             ))}
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Evidence Tab ───────────────────────────────────────────────────────
+
+function EvidenceTab({
+  evidence,
+  evidenceError,
+  isCollecting,
+  canCollect,
+  onCollectEvidence,
+  highlightedEvidenceId,
+  currentSourceEvidenceId,
+  onEvidenceSelect,
+  evidenceFilter,
+}: {
+  evidence?: EvidenceCollection;
+  evidenceError?: UiError;
+  isCollecting?: boolean;
+  canCollect: boolean;
+  onCollectEvidence?: () => void;
+  highlightedEvidenceId?: string | null;
+  currentSourceEvidenceId?: string | null;
+  onEvidenceSelect?: (evidenceId: string) => void;
+  evidenceFilter?: EvidenceFilter;
+}) {
+  return (
+    <div>
+      {canCollect && (
+        <div style={{ marginBottom: 16 }}>
+          <ActionButton
+            onClick={onCollectEvidence}
+            disabled={isCollecting}
+            variant={evidence ? 'success' : 'primary'}
+            label={isCollecting ? '收集中...' : evidence ? '重新收集' : '收集证据'}
+          />
+        </div>
+      )}
+
+      {evidenceError && <ErrorBlock title="证据收集失败" error={evidenceError} />}
+
+      {evidence && (
+        <EvidencePanel
+          evidence={evidence}
+          highlightedEvidenceId={highlightedEvidenceId ?? undefined}
+          currentSourceEvidenceId={currentSourceEvidenceId ?? undefined}
+          onEvidenceSelect={onEvidenceSelect}
+          evidenceFilter={evidenceFilter}
+        />
+      )}
+
+      {!evidence && !evidenceError && !isCollecting && (
+        <EmptyState message="尚未收集证据，请点击上方按钮开始收集。" />
+      )}
+    </div>
+  );
+}
+
+// ─── Understanding Tab ──────────────────────────────────────────────────
+
+function UnderstandingTab({
+  context,
+  understanding,
+  understandingLoading,
+  understandingError,
+  onGenerateUnderstanding,
+  viewsLoading,
+}: {
+  context: StageContext;
+  understanding?: ImplementationUnderstanding;
+  understandingLoading?: boolean;
+  understandingError?: UiError;
+  onGenerateUnderstanding?: () => void;
+  viewsLoading?: boolean;
+}) {
+  return (
+    <div>
+      {onGenerateUnderstanding && !context.error_code && (
+        <div style={{ marginBottom: 16 }}>
+          {context.error_code === 'stage_empty' ? (
+            <p style={{ fontSize: 13, color: '#999', margin: 0 }}>空阶段无法生成理解</p>
+          ) : (
+            <ActionButton
+              onClick={onGenerateUnderstanding}
+              disabled={understandingLoading || viewsLoading}
+              variant={understanding ? 'success' : 'secondary'}
+              label={
+                understandingLoading
+                  ? '生成中...'
+                  : viewsLoading
+                    ? '视图生成中，请稍候'
+                    : understanding
+                      ? '重新生成理解'
+                      : '生成理解'
+              }
+            />
+          )}
+        </div>
+      )}
+
+      {understandingError && <ErrorBlock title="理解生成失败" error={understandingError} />}
+
+      {understandingLoading && (
+        <LoadingBlock
+          title="正在生成理解..."
+          subtitle="正在调用后端处理，请稍候"
+          color="#7b1fa2"
+        />
+      )}
+
+      {understanding && (
+        <UnderstandingPanel understanding={understanding} />
+      )}
+
+      {!understanding && !understandingLoading && !understandingError && (
+        <EmptyState message="尚未生成理解，请点击上方按钮开始生成。" />
+      )}
+    </div>
+  );
+}
+
+// ─── Views Tab ──────────────────────────────────────────────────────────
+
+function ViewsTab({
+  views,
+  viewsLoading,
+  viewsError,
+  onGenerateViews,
+  understanding,
+  understandingLoading,
+  selectedTraceTarget,
+  onSelectTraceTarget,
+}: {
+  views?: ViewGraph[];
+  viewsLoading?: boolean;
+  viewsError?: UiError;
+  onGenerateViews?: () => void;
+  understanding?: ImplementationUnderstanding;
+  understandingLoading?: boolean;
+  selectedTraceTarget?: SelectedTraceTarget | null;
+  onSelectTraceTarget?: (target: SelectedTraceTarget) => void;
+}) {
+  return (
+    <div>
+      {onGenerateViews && (
+        <div style={{ marginBottom: 16 }}>
+          {!understanding ? (
+            <p style={{ fontSize: 13, color: '#999', margin: 0 }}>请先生成理解</p>
+          ) : (
+            <ActionButton
+              onClick={onGenerateViews}
+              disabled={viewsLoading || understandingLoading}
+              variant={views ? 'success' : 'primary'}
+              label={
+                viewsLoading
+                  ? '生成视图中...'
+                  : views
+                    ? '重新生成视图'
+                    : '生成视图'
+              }
+            />
+          )}
+        </div>
+      )}
+
+      {viewsError && !viewsLoading && <ErrorBlock title="视图生成失败" error={viewsError} />}
+
+      {(views || viewsLoading || (!viewsLoading && viewsError)) && (
+        <MultiViewPanel
+          views={views ?? []}
+          loading={viewsLoading}
+          error={!viewsLoading ? viewsError : undefined}
+          selectedTarget={selectedTraceTarget}
+          onSelectTarget={onSelectTraceTarget}
+        />
+      )}
+
+      {!views && !viewsLoading && !viewsError && (
+        <EmptyState message="尚未生成视图，请先生成理解再生成视图。" />
+      )}
+    </div>
+  );
+}
+
+// ─── Trace Tab ──────────────────────────────────────────────────────────
+
+function TraceTab({
+  selectedTraceTarget,
+  resolvedTraces,
+  traceLoading,
+  traceError,
+  sourceExcerpt,
+  excerptError,
+  views,
+  onClearTraceTarget,
+  onViewSource,
+  onLocateEvidence,
+  onCloseSourceExcerpt,
+}: {
+  selectedTraceTarget?: SelectedTraceTarget | null;
+  resolvedTraces?: TraceRefResolved[];
+  traceLoading?: boolean;
+  traceError?: UiError | null;
+  sourceExcerpt?: SourceExcerpt | null;
+  excerptError?: UiError | null;
+  views?: ViewGraph[];
+  onClearTraceTarget?: () => void;
+  onViewSource?: (location: {
+    source_path: string;
+    line_range: { start: number; end: number };
+    evidence_id?: string;
+  }) => void;
+  onLocateEvidence?: (evidenceId: string) => void;
+  onCloseSourceExcerpt?: () => void;
+}) {
+  return (
+    <div>
+      {!selectedTraceTarget && !sourceExcerpt && !excerptError && (
+        <EmptyState message="请在视图分区选择一个节点或边以开始追溯。" />
+      )}
+
+      {selectedTraceTarget && (
+        <TracePanel
+          selectedTargetLabel={getSelectedTargetLabel(selectedTraceTarget, views)}
+          selectedTargetType={getSelectedTargetTypeLabel(selectedTraceTarget)}
+          resolvedTraces={resolvedTraces ?? []}
+          loading={traceLoading}
+          error={traceError}
+          onClear={onClearTraceTarget ?? (() => {})}
+          onViewSource={onViewSource ?? (() => {})}
+          onLocateEvidence={onLocateEvidence ?? (() => {})}
+        />
+      )}
+
+      {(sourceExcerpt || excerptError) && (
+        <SourceExcerptPanel
+          excerpt={sourceExcerpt}
+          onClose={onCloseSourceExcerpt ?? (() => {})}
+          error={excerptError}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Q&A Tab ────────────────────────────────────────────────────────────
+
+function QaTab({
+  canAskGrounded,
+  evidence,
+  understanding,
+  groundedAnswer,
+  groundedAnswerLoading,
+  groundedAnswerError,
+  onAskGroundedQuestion,
+  onGroundedCitationClick,
+}: {
+  canAskGrounded: boolean;
+  evidence?: EvidenceCollection;
+  understanding?: ImplementationUnderstanding;
+  groundedAnswer?: GroundedAnswer | null;
+  groundedAnswerLoading?: boolean;
+  groundedAnswerError?: UiError | null;
+  onAskGroundedQuestion?: (question: string) => void;
+  onGroundedCitationClick?: (citation: GroundedAnswerCitation) => void;
+}) {
+  if (!onAskGroundedQuestion) return null;
+  return (
+    <div>
+      <GroundedQAPanel
+        canAsk={canAskGrounded}
+        disabledReason={
+          !evidence
+            ? '请先收集证据'
+            : !understanding
+              ? '请先生成理解'
+              : evidence.evidence_items.length === 0
+                ? '当前阶段无 evidence，无法提问'
+                : undefined
+        }
+        answer={groundedAnswer}
+        loading={groundedAnswerLoading}
+        error={groundedAnswerError}
+        onAsk={onAskGroundedQuestion}
+        onCitationClick={onGroundedCitationClick}
+      />
+    </div>
+  );
+}
+
+// ─── Quality Tab ────────────────────────────────────────────────────────
+
+function QualityTab({
+  qualityReport,
+  qualityLoading,
+  qualityError,
+  canGenerateQualityReport,
+  qualityDisabledReason,
+  onGenerateQualityReport,
+  onEvidenceSelect,
+  onViewSource,
+  qualityFilter,
+}: {
+  qualityReport?: QualityReport | null;
+  qualityLoading?: boolean;
+  qualityError?: UiError | null;
+  canGenerateQualityReport?: boolean;
+  qualityDisabledReason?: string;
+  onGenerateQualityReport?: () => void;
+  onEvidenceSelect?: (evidenceId: string) => void;
+  onViewSource?: (location: {
+    source_path: string;
+    line_range: { start: number; end: number };
+    evidence_id?: string;
+  }) => void;
+  qualityFilter?: QualityFilter;
+}) {
+  const filteredReport = useFilteredQualityReport(qualityReport, qualityFilter);
+
+  if (!onGenerateQualityReport) return null;
+  return (
+    <div>
+      <QualityReviewPanel
+        report={filteredReport}
+        loading={qualityLoading}
+        error={qualityError}
+        canGenerate={canGenerateQualityReport ?? true}
+        disabledReason={qualityDisabledReason}
+        onGenerate={onGenerateQualityReport}
+        onEvidenceSelect={onEvidenceSelect}
+        onViewSource={onViewSource}
+      />
+    </div>
+  );
+}
+
+function useFilteredQualityReport(
+  report: QualityReport | null | undefined,
+  filter: QualityFilter | undefined
+): QualityReport | null | undefined {
+  if (!report || !filter) return report;
+  const severity = filter.severity;
+  const kind = filter.kind;
+  const status = filter.status;
+  if (!severity && !kind && !status) return report;
+
+  const filteredIssues = report.issues.filter((issue) => {
+    if (severity && issue.severity !== severity) return false;
+    if (kind && issue.kind !== kind) return false;
+    if (status && issue.status !== status) return false;
+    return true;
+  });
+
+  return {
+    ...report,
+    issues: filteredIssues,
+    summary: {
+      ...report.summary,
+      total_issues: filteredIssues.length,
+      issues_by_severity: countBy(filteredIssues, (i) => i.severity),
+      issues_by_status: countBy(filteredIssues, (i) => i.status),
+      issues_by_kind: countBy(filteredIssues, (i) => i.kind),
+    },
+  };
+}
+
+function countBy<T>(items: T[], keyFn: (item: T) => string): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const item of items) {
+    const key = keyFn(item);
+    result[key] = (result[key] ?? 0) + 1;
+  }
+  return result;
+}
+
+// ─── 通用辅助组件 ───────────────────────────────────────────────────────
+
+function ActionButton({
+  onClick,
+  disabled,
+  variant,
+  label,
+}: {
+  onClick?: () => void;
+  disabled?: boolean;
+  variant: 'primary' | 'secondary' | 'success';
+  label: string;
+}) {
+  const colors = {
+    primary: { border: '#1976d2', bg: '#1976d2' },
+    secondary: { border: '#7b1fa2', bg: '#7b1fa2' },
+    success: { border: '#2e7d32', bg: '#2e7d32' },
+  };
+  const c = colors[variant];
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        padding: '8px 20px',
+        borderRadius: 6,
+        border: `1px solid ${c.border}`,
+        background: disabled ? '#e0e0e0' : c.bg,
+        color: disabled ? '#999' : '#fff',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        fontSize: 14,
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function ErrorBlock({ title, error }: { title: string; error: UiError }) {
+  return (
+    <div
+      style={{
+        padding: 16,
+        background: '#fff3e0',
+        borderRadius: 8,
+        marginBottom: 16,
+      }}
+    >
+      <h4 style={{ margin: '0 0 8px', fontSize: 14 }}>{title}</h4>
+      <div style={{ fontSize: 13 }}>
+        {'error_code' in error && (
+          <div style={{ marginBottom: 4 }}>
+            <span style={{ color: '#666' }}>错误码：</span>
+            <code>{error.error_code}</code>
+          </div>
+        )}
+        <div style={{ marginBottom: 4 }}>
+          <span style={{ color: '#666' }}>信息：</span>
+          {error.message}
+        </div>
+        {'source_path' in error && error.source_path && (
+          <div style={{ marginBottom: 4 }}>
+            <span style={{ color: '#666' }}>路径：</span>
+            <code style={{ fontSize: 12 }}>{error.source_path}</code>
+          </div>
+        )}
+        {'details' in error && error.details && (
+          <div>
+            <span style={{ color: '#666' }}>详情：</span>
+            {error.details}
+          </div>
+        )}
+        {'recoverable' in error && (
+          <div style={{ marginTop: 4 }}>
+            <span
+              style={{
+                fontSize: 12,
+                color: error.recoverable ? '#f57c00' : '#c62828',
+              }}
+            >
+              {error.recoverable ? '可重试' : '不可恢复'}
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LoadingBlock({
+  title,
+  subtitle,
+  color,
+}: {
+  title: string;
+  subtitle: string;
+  color: string;
+}) {
+  return (
+    <div
+      style={{
+        padding: 24,
+        background: `${color}15`,
+        borderRadius: 8,
+        textAlign: 'center',
+        marginBottom: 16,
+        border: `1px solid ${color}40`,
+      }}
+    >
+      <p style={{ margin: 0, color, fontSize: 14 }}>{title}</p>
+      <p style={{ margin: '8px 0 0', color: '#999', fontSize: 12 }}>{subtitle}</p>
+    </div>
+  );
+}
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div
+      style={{
+        padding: 32,
+        background: '#fafafa',
+        borderRadius: 8,
+        textAlign: 'center',
+        color: '#999',
+      }}
+    >
+      <p style={{ margin: 0, fontSize: 14 }}>{message}</p>
     </div>
   );
 }

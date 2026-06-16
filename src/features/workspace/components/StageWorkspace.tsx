@@ -1,36 +1,94 @@
-import type { ReactNode } from 'react';
-import type { WorkspaceProfile, StageContext } from '../../../types/workspace';
+import { useEffect, useState, type ReactNode } from 'react';
+import type {
+  WorkspaceProfile,
+  StageContext,
+  StageStatus,
+  EvidenceCollection,
+  ImplementationUnderstanding,
+  ViewGraph,
+  QaHistory,
+  QualityReport,
+} from '../../../types/workspace';
+import StageOverviewBar from './StageOverviewBar';
+import StageFilterBar, { type EvidenceFilter, type QualityFilter } from './StageFilterBar';
+
+const INITIAL_EVIDENCE_FILTER: EvidenceFilter = {};
+const INITIAL_QUALITY_FILTER: QualityFilter = {};
+
+type ArtifactTab =
+  | 'overview'
+  | 'evidence'
+  | 'understanding'
+  | 'views'
+  | 'trace'
+  | 'qa'
+  | 'quality';
+
+const ARTIFACT_TAB_LABELS: { key: ArtifactTab; label: string }[] = [
+  { key: 'overview', label: '概览' },
+  { key: 'evidence', label: '证据' },
+  { key: 'understanding', label: '理解' },
+  { key: 'views', label: '视图' },
+  { key: 'trace', label: '追溯' },
+  { key: 'qa', label: 'Q&A' },
+  { key: 'quality', label: '质量' },
+];
 
 interface StageWorkspaceProps {
   profile: WorkspaceProfile;
   stageId: string;
   context: StageContext;
-  children: ReactNode;
+  stageStatus: StageStatus;
+  evidence?: EvidenceCollection;
+  evidenceLoading?: boolean;
+  understanding?: ImplementationUnderstanding;
+  understandingLoading?: boolean;
+  views?: ViewGraph[];
+  viewsLoading?: boolean;
+  qaHistory?: QaHistory;
+  qaLoading?: boolean;
+  qualityReport?: QualityReport | null;
+  qualityLoading?: boolean;
+  renderContent: (state: {
+    activeTab: ArtifactTab;
+    evidenceFilter: EvidenceFilter;
+    qualityFilter: QualityFilter;
+  }) => ReactNode;
 }
-
-const ARTIFACT_TAB_LABELS = [
-  '概览',
-  '证据',
-  '理解',
-  '视图',
-  '追溯',
-  'Q&A',
-  '质量',
-];
 
 /**
  * StageWorkspace: 阶段工作区骨架
- * Batch A 仅搭建占位容器：顶部标题/概览条、筛选条、Artifact tabs、
- * 主内容区（继续渲染 StageDetail 作为 legacy content）、右侧 ContextPanel 占位。
- *
- * 当前 Artifact tabs 仅为视觉占位，点击不切换内容；真实内容迁移将在 Batch B 实现。
+ * Batch B 实现真实的 Artifact tabs 切换、顶部概览条与中部筛选条。
+ * 右侧 ContextPanel 仍为占位容器（Batch C 实现真实联动）。
  */
 export default function StageWorkspace({
   profile,
   stageId,
   context,
-  children,
+  stageStatus,
+  evidence,
+  evidenceLoading,
+  understanding,
+  understandingLoading,
+  views,
+  viewsLoading,
+  qaHistory,
+  qaLoading,
+  qualityReport,
+  qualityLoading,
+  renderContent,
 }: StageWorkspaceProps) {
+  const [activeTab, setActiveTab] = useState<ArtifactTab>('overview');
+  const [evidenceFilter, setEvidenceFilter] = useState<EvidenceFilter>(INITIAL_EVIDENCE_FILTER);
+  const [qualityFilter, setQualityFilter] = useState<QualityFilter>(INITIAL_QUALITY_FILTER);
+
+  // 切换阶段后自动回到概览 tab 并清空筛选
+  useEffect(() => {
+    setActiveTab('overview');
+    setEvidenceFilter(INITIAL_EVIDENCE_FILTER);
+    setQualityFilter(INITIAL_QUALITY_FILTER);
+  }, [stageId]);
+
   return (
     <div
       className="stage-workspace"
@@ -73,7 +131,7 @@ export default function StageWorkspace({
         </div>
       </div>
 
-      {/* StageOverviewBar 占位 */}
+      {/* StageOverviewBar */}
       <div
         className="stage-overview-bar"
         style={{
@@ -83,10 +141,24 @@ export default function StageWorkspace({
           flexShrink: 0,
         }}
       >
-        <span style={{ fontSize: 12, color: '#94a3b8' }}>概览指标占位（Batch B 实现）</span>
+        <StageOverviewBar
+          stageId={stageId}
+          context={context}
+          stageStatus={stageStatus}
+          evidence={evidence}
+          evidenceLoading={evidenceLoading}
+          understanding={understanding}
+          understandingLoading={understandingLoading}
+          views={views}
+          viewsLoading={viewsLoading}
+          qaHistory={qaHistory}
+          qaLoading={qaLoading}
+          qualityReport={qualityReport}
+          qualityLoading={qualityLoading}
+        />
       </div>
 
-      {/* StageFilterBar 占位 */}
+      {/* StageFilterBar */}
       <div
         className="stage-filter-bar"
         style={{
@@ -96,10 +168,18 @@ export default function StageWorkspace({
           flexShrink: 0,
         }}
       >
-        <span style={{ fontSize: 12, color: '#94a3b8' }}>筛选 / 分组 / 视图切换占位（Batch B 实现）</span>
+        <StageFilterBar
+          activeTab={activeTab}
+          evidence={evidence}
+          qualityReport={qualityReport}
+          evidenceFilter={evidenceFilter}
+          onEvidenceFilterChange={setEvidenceFilter}
+          qualityFilter={qualityFilter}
+          onQualityFilterChange={setQualityFilter}
+        />
       </div>
 
-      {/* Artifact tabs 占位：仅视觉展示，不响应点击 */}
+      {/* Artifact tabs */}
       <div
         className="artifact-tabs"
         style={{
@@ -112,40 +192,29 @@ export default function StageWorkspace({
           overflowX: 'auto',
         }}
       >
-        {ARTIFACT_TAB_LABELS.map((label) => (
-          <span
-            key={label}
-            style={{
-              padding: '8px 14px',
-              borderRadius: '6px 6px 0 0',
-              border: '1px solid transparent',
-              borderBottom: '2px solid transparent',
-              background: 'transparent',
-              color: '#94a3b8',
-              fontSize: 13,
-              fontWeight: 400,
-              whiteSpace: 'nowrap',
-              userSelect: 'none',
-            }}
-          >
-            {label}
-          </span>
-        ))}
-      </div>
-
-      {/* Artifact tabs 占位说明 */}
-      <div
-        className="artifact-tabs-placeholder-notice"
-        style={{
-          padding: '6px 20px',
-          background: '#f1f5f9',
-          borderBottom: '1px solid #e2e8f0',
-          flexShrink: 0,
-        }}
-      >
-        <span style={{ fontSize: 11, color: '#64748b' }}>
-          Artifact tabs 内容迁移将在 Batch B 实现；当前主内容区保留原 StageDetail 兼容视图。
-        </span>
+        {ARTIFACT_TAB_LABELS.map(({ key, label }) => {
+          const isActive = activeTab === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key)}
+              style={{
+                padding: '8px 14px',
+                borderRadius: '6px 6px 0 0',
+                border: isActive ? '1px solid #e2e8f0' : '1px solid transparent',
+                borderBottom: isActive ? '2px solid #1976d2' : '2px solid transparent',
+                background: isActive ? '#fff' : 'transparent',
+                color: isActive ? '#1976d2' : '#64748b',
+                fontSize: 13,
+                fontWeight: isActive ? 600 : 400,
+                whiteSpace: 'nowrap',
+                cursor: 'pointer',
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
 
       {/* 主内容区 + ContextPanel */}
@@ -166,7 +235,7 @@ export default function StageWorkspace({
             minWidth: 0,
           }}
         >
-          {children}
+          {renderContent({ activeTab, evidenceFilter, qualityFilter })}
         </div>
 
         {/* ContextPanel 占位 */}

@@ -96,7 +96,7 @@ docs/
 
 ### Post-MVP 路线图 / 后续阶段规划任务
 
-> MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP，不等于产品可用性完成。下列 Post-MVP 文档中，**Phase 7 详细文档已 `active`**；**Phase 7 已全部完成（Batch A/B/C/D，[completion review](planning/phase-7-completion-review.md) active）**；Phase 7 overview 与 Phase 9~11 overview 仍为 `draft`。**Phase 8 详细文档均已 `active`；Phase 8 Batch A（P8-T01~P8-T02）已实现/进入审核收口；Batch B/C/D/E 与 Phase 9/10/11 未开始。**
+> MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP，不等于产品可用性完成。下列 Post-MVP 文档中，**Phase 7 详细文档已 `active`**；**Phase 7 已全部完成（Batch A/B/C/D，[completion review](planning/phase-7-completion-review.md) active）**；Phase 7 overview 与 Phase 9~11 overview 仍为 `draft`。**Phase 8 详细文档均已 `active`；Phase 8 Batch A（P8-T01~P8-T02）与 Batch B（P8-T03~P8-T04）已实现/进入审核收口；Batch C/D/E 与 Phase 9/10/11 未开始。**
 
 1. `docs/planning/post-mvp-roadmap.md`（Post-MVP 总体路线图：Phase 7~11 阶段关系、依赖顺序、进入纪律，draft）
 2. `docs/planning/phase-7-overview-real-project-quality.md`（Phase 7 overview：真实项目质量补强，draft）
@@ -108,7 +108,7 @@ docs/
      - `docs/testing/phase-7-real-project-quality-validation.md`（验证与验收，active）
      - `docs/planning/phase-7-implementation-plan.md`（编码实施计划，active）
 3. `docs/planning/phase-8-overview-product-ui-workbench.md`（Phase 8 overview：产品级 UI 工作台重构，draft）
-   - Phase 8 详细文档（**均已 `active`；Phase 8 Batch A（P8-T01~P8-T02）已实现/进入审核收口；Batch B/C/D/E 与 Phase 9/10/11 未开始**）：
+   - Phase 8 详细文档（**均已 `active`；Phase 8 Batch A（P8-T01~P8-T02）与 Batch B（P8-T03~P8-T04）已实现/进入审核收口；Batch C/D/E 与 Phase 9/10/11 未开始**）：
      - `docs/requirements/phase-8-product-workbench-requirements.md`（需求 R8-001~R8-010，active）
      - `docs/design/phase-8-workbench-architecture.md`（工作台架构，active）
      - `docs/design/phase-8-ui-state-and-navigation-design.md`（UI 状态与导航，active）
