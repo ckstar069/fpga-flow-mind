@@ -257,10 +257,14 @@ export default function WorkspacePage() {
       stageId: string;
       context: StageContext;
     };
-    // 进入 collecting_evidence 时自动清除旧 understanding / views / trace / quality
+    // 进入 collecting_evidence 时自动清除旧 understanding / views / trace / QA / quality
     clearTraceState();
     clearQualityState();
     markUnsaved();
+    // 清除 maps 中当前阶段的 stale downstream data
+    setUnderstandingsMap((prev) => { const { [stageId]: _, ...rest } = prev; return rest; });
+    setViewGraphsMap((prev) => { const { [stageId]: _, ...rest } = prev; return rest; });
+    setQaHistoriesMap((prev) => { const { [stageId]: _, ...rest } = prev; return rest; });
     setState({ phase: 'collecting_evidence', profile, stageId, context });
     try {
       const evidence = await collectEvidence(profile.root_path, stageId);
@@ -293,6 +297,9 @@ export default function WorkspacePage() {
     clearTraceState();
     clearQualityState();
     markUnsaved();
+    // 清除当前阶段的 stale views / QA（基于旧 understanding 的产物应失效）
+    setViewGraphsMap((prev) => { const { [stageId]: _, ...rest } = prev; return rest; });
+    setQaHistoriesMap((prev) => { const { [stageId]: _, ...rest } = prev; return rest; });
     setState({ phase: 'understanding_loading', profile, stageId, context, evidence });
     try {
       const understanding = await generateUnderstanding(profile.root_path, stageId);
@@ -328,6 +335,8 @@ export default function WorkspacePage() {
     clearTraceState();
     clearQualityState();
     markUnsaved();
+    // 清除当前阶段的 stale QA（基于旧视图的 Q&A 应失效）
+    setQaHistoriesMap((prev) => { const { [stageId]: _, ...rest } = prev; return rest; });
     setState({ phase: 'views_loading', profile, stageId, context, evidence, understanding });
     try {
       const views = await generateViews(understanding);

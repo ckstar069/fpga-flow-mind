@@ -648,6 +648,10 @@ export type QualityIssueKind =
   | 'unsupported_claim'
   | 'hallucinated_claim_blocked'
   | 'empty_or_unhelpful_view'
+  | 'expected_empty_timing'
+  | 'isolated_or_unconnected_view'
+  | 'traceability_gap'
+  | 'low_semantic_diversity'
   | 'qa_unanswered_when_evidence_exists'
   | 'qa_answer_without_valid_citation'
   | 'confusing_ui_state';

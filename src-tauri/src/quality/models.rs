@@ -63,6 +63,10 @@ impl IssueStatus {
 /// 全部围绕"工具是否理解到位"，不涉及目标项目正确性。
 /// 其中 `HallucinatedClaimBlocked` 为正向 guardrail（polarity=PositiveGuardrail），
 /// 其余为负向问题（polarity=Problem）。
+///
+/// **P2 校准说明：** 新增 `ExpectedEmptyTiming` / `IsolatedOrUnconnectedView` /
+/// `TraceabilityGap` / `LowSemanticDiversity` 四个更细分类，用于区分"诚实空图"
+/// 与"应生成但为空图"，以及 node/edge 追溯缺失和语义多样性不足等不同退化模式。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum QualityIssueKind {
@@ -82,6 +86,14 @@ pub enum QualityIssueKind {
     HallucinatedClaimBlocked,
     /// 视图退化为孤立方块/空图/无信息
     EmptyOrUnhelpfulView,
+    /// 【P2 新增】timing 视图为空但属于预期行为（如 Python 阶段无 cycle/latency/clock 等时序证据）
+    ExpectedEmptyTiming,
+    /// 【P2 新增】非空视图但大部分节点孤立或缺少合理边
+    IsolatedOrUnconnectedView,
+    /// 【P2 新增】node/edge 缺 trace_refs 或 trace_refs 不完整
+    TraceabilityGap,
+    /// 【P2 新增】多个节点标签/类型高度重复，信息价值低
+    LowSemanticDiversity,
     /// 有证据支持的问题，Q&A 未能给出回答
     QaUnansweredWhenEvidenceExists,
     /// Q&A 回答的 citation 指向不存在/不相关的 evidence
@@ -99,6 +111,12 @@ impl QualityIssueKind {
         }
     }
 
+    /// 区分"诚实空图"（expected）与"应生成但为空"（problematic）。
+    /// 仅对视图类 issue 有效，返回 true 表示该 issue 属于预期行为而非质量退化。
+    pub fn is_expected_empty_or_signal(&self) -> bool {
+        matches!(self, QualityIssueKind::ExpectedEmptyTiming)
+    }
+
     /// 稳定的 snake_case 字符串 key（与 serde 一致，无运行时分配）。
     pub fn as_str(&self) -> &'static str {
         match self {
@@ -110,6 +128,10 @@ impl QualityIssueKind {
             QualityIssueKind::UnsupportedClaim => "unsupported_claim",
             QualityIssueKind::HallucinatedClaimBlocked => "hallucinated_claim_blocked",
             QualityIssueKind::EmptyOrUnhelpfulView => "empty_or_unhelpful_view",
+            QualityIssueKind::ExpectedEmptyTiming => "expected_empty_timing",
+            QualityIssueKind::IsolatedOrUnconnectedView => "isolated_or_unconnected_view",
+            QualityIssueKind::TraceabilityGap => "traceability_gap",
+            QualityIssueKind::LowSemanticDiversity => "low_semantic_diversity",
             QualityIssueKind::QaUnansweredWhenEvidenceExists => "qa_unanswered_when_evidence_exists",
             QualityIssueKind::QaAnswerWithoutValidCitation => "qa_answer_without_valid_citation",
             QualityIssueKind::ConfusingUiState => "confusing_ui_state",
@@ -374,6 +396,10 @@ impl QualityIssue {
                 | QualityIssueKind::MissingEvidence
                 | QualityIssueKind::EmptyOrUnhelpfulView
                 | QualityIssueKind::ConfusingUiState
+                | QualityIssueKind::ExpectedEmptyTiming
+                | QualityIssueKind::IsolatedOrUnconnectedView
+                | QualityIssueKind::TraceabilityGap
+                | QualityIssueKind::LowSemanticDiversity
         );
         inherently_gap || self.has_specific_trace()
     }
@@ -509,6 +535,10 @@ mod tests {
             QualityIssueKind::UnsupportedClaim,
             QualityIssueKind::HallucinatedClaimBlocked,
             QualityIssueKind::EmptyOrUnhelpfulView,
+            QualityIssueKind::ExpectedEmptyTiming,
+            QualityIssueKind::IsolatedOrUnconnectedView,
+            QualityIssueKind::TraceabilityGap,
+            QualityIssueKind::LowSemanticDiversity,
             QualityIssueKind::QaUnansweredWhenEvidenceExists,
             QualityIssueKind::QaAnswerWithoutValidCitation,
             QualityIssueKind::ConfusingUiState,
@@ -543,6 +573,10 @@ mod tests {
             QualityIssueKind::WeakSummary,
             QualityIssueKind::UnsupportedClaim,
             QualityIssueKind::EmptyOrUnhelpfulView,
+            QualityIssueKind::ExpectedEmptyTiming,
+            QualityIssueKind::IsolatedOrUnconnectedView,
+            QualityIssueKind::TraceabilityGap,
+            QualityIssueKind::LowSemanticDiversity,
             QualityIssueKind::QaUnansweredWhenEvidenceExists,
             QualityIssueKind::QaAnswerWithoutValidCitation,
             QualityIssueKind::ConfusingUiState,
@@ -579,6 +613,36 @@ mod tests {
         // None 字段被 skip
         assert!(!json.contains("\"evidence_id\""));
         assert!(!json.contains("\"line_range\""));
+    }
+
+    #[test]
+    fn new_p2_kinds_serialize_snake_case() {
+        assert_eq!(
+            serde_json::to_string(&QualityIssueKind::ExpectedEmptyTiming).unwrap(),
+            "\"expected_empty_timing\""
+        );
+        assert_eq!(
+            serde_json::to_string(&QualityIssueKind::IsolatedOrUnconnectedView).unwrap(),
+            "\"isolated_or_unconnected_view\""
+        );
+        assert_eq!(
+            serde_json::to_string(&QualityIssueKind::TraceabilityGap).unwrap(),
+            "\"traceability_gap\""
+        );
+        assert_eq!(
+            serde_json::to_string(&QualityIssueKind::LowSemanticDiversity).unwrap(),
+            "\"low_semantic_diversity\""
+        );
+    }
+
+    #[test]
+    fn is_expected_empty_or_signal_only_expected_empty_timing() {
+        assert!(QualityIssueKind::ExpectedEmptyTiming.is_expected_empty_or_signal());
+        assert!(!QualityIssueKind::EmptyOrUnhelpfulView.is_expected_empty_or_signal());
+        assert!(!QualityIssueKind::TraceabilityGap.is_expected_empty_or_signal());
+        assert!(!QualityIssueKind::IsolatedOrUnconnectedView.is_expected_empty_or_signal());
+        assert!(!QualityIssueKind::LowSemanticDiversity.is_expected_empty_or_signal());
+        assert!(!QualityIssueKind::MissingEvidence.is_expected_empty_or_signal());
     }
 
     #[test]

@@ -24,9 +24,9 @@ use crate::views::models::ViewGraph;
 use super::evidence_evaluator::{EvidenceEvaluator, EvidenceEvaluatorInput};
 use super::issue_builder::sanitize_scope;
 use super::models::{
-    EvidenceQualityReport, IssueStatus, MetricSnapshot, QaQualityReport, QualityAcceptanceStatus,
-    QualityIssue, QualityIssueKind, QualityIssuePolarity, QualityReport, QualityRunSummary,
-    UnderstandingQualityReport, ViewQualityReport,
+    ArtifactKind, EvidenceQualityReport, IssueStatus, MetricSnapshot, QaQualityReport,
+    QualityAcceptanceStatus, QualityIssue, QualityIssueKind, QualityIssuePolarity, QualityReport,
+    QualityRunSummary, QualitySeverity, UnderstandingQualityReport, ViewQualityReport,
 };
 use super::qa_evaluator::{QaEvaluator, QaEvaluatorInput};
 use super::stage_evaluator::{StageEvaluator, StageEvaluatorInput};
@@ -150,7 +150,13 @@ const UNDERSTANDING_KINDS: [QualityIssueKind; 3] = [
     QualityIssueKind::UnsupportedClaim,
     QualityIssueKind::HallucinatedClaimBlocked,
 ];
-const VIEW_KINDS: [QualityIssueKind; 1] = [QualityIssueKind::EmptyOrUnhelpfulView];
+const VIEW_KINDS: [QualityIssueKind; 5] = [
+    QualityIssueKind::EmptyOrUnhelpfulView,
+    QualityIssueKind::ExpectedEmptyTiming,
+    QualityIssueKind::IsolatedOrUnconnectedView,
+    QualityIssueKind::TraceabilityGap,
+    QualityIssueKind::LowSemanticDiversity,
+];
 const QA_KINDS: [QualityIssueKind; 2] = [
     QualityIssueKind::QaUnansweredWhenEvidenceExists,
     QualityIssueKind::QaAnswerWithoutValidCitation,
@@ -228,8 +234,38 @@ fn evaluate_stage(
             evidence_id_set: &evidence_id_set,
             claim_id_set: &claim_id_set,
         };
-        let (report, v_issues) = ViewEvaluator::evaluate(&v_input);
+        let (report, mut v_issues) = ViewEvaluator::evaluate(&v_input);
         push_metric(metric_snapshots, "view_trace_resolvable", &stage.stage_id, report.trace_resolvable_ratio);
+
+        // P2: structure 退化检测 — understanding 有多个 summary 但 view 节点很少
+        if let Some(iu) = stage.understanding {
+            if view.view_type == crate::views::models::ViewType::Structure {
+                let total_summaries = iu.module_summaries.len()
+                    + iu.signal_summaries.len()
+                    + iu.interface_summaries.len()
+                    + iu.processing_steps.len();
+                let node_count = view.nodes.len();
+                if total_summaries > 3 && node_count <= 1 {
+                    v_issues.push(crate::quality::issue_builder::make_issue(
+                        sample_id,
+                        &stage.stage_id,
+                        ArtifactKind::View,
+                        QualityIssueKind::LowSemanticDiversity,
+                        QualitySeverity::Medium,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        &format!(
+                            "structure view 有 {} 个 summary 但仅 {} 个节点，存在结构未展开退化",
+                            total_summaries, node_count
+                        ),
+                    ));
+                }
+            }
+        }
+
         view_reports.push(report);
         issues.extend(v_issues);
     }
@@ -781,8 +817,8 @@ mod tests {
         let node_issue = report
             .issues
             .iter()
-            .find(|i| i.kind == QualityIssueKind::EmptyOrUnhelpfulView && i.description.contains("node_id=N1"));
-        assert!(node_issue.is_some(), "应生成针对 N1 节点缺 trace_refs 的 issue");
+            .find(|i| i.kind == QualityIssueKind::TraceabilityGap && i.description.contains("node_id=N1"));
+        assert!(node_issue.is_some(), "应生成针对 N1 节点缺 trace_refs 的 TraceabilityGap issue");
     }
 
     #[test]
@@ -823,8 +859,8 @@ mod tests {
         let edge_issue = report
             .issues
             .iter()
-            .find(|i| i.kind == QualityIssueKind::EmptyOrUnhelpfulView && i.description.contains("edge=E1"));
-        assert!(edge_issue.is_some(), "应生成针对 E1 边缺 trace_refs 的 issue");
+            .find(|i| i.kind == QualityIssueKind::TraceabilityGap && i.description.contains("edge=E1"));
+        assert!(edge_issue.is_some(), "应生成针对 E1 边缺 trace_refs 的 TraceabilityGap issue");
     }
 
     #[test]

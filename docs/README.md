@@ -96,11 +96,11 @@ docs/
 
 ### Post-MVP 路线图 / 后续阶段规划任务
 
-> MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP。下列 Post-MVP 文档中，**Phase 7 详细文档已 `active`**；Phase 7 Batch A/B/C 已实现并进入审核收口，**Batch D/E 仍不得进入**；Phase 7 overview 与 Phase 8~11 overview 仍为 `draft`。进入任一阶段编码前需先编制该阶段详细文档并审核为 active。
+> MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP。下列 Post-MVP 文档中，**Phase 7 详细文档已 `active`**；Phase 7 Batch A/B/C 已完成；Batch D P0/P1 已完成；**当前允许进入 Batch D P2**；Phase 7 overview 与 Phase 8~11 overview 仍为 `draft`。进入任一阶段编码前需先编制该阶段详细文档并审核为 active。
 
 1. `docs/planning/post-mvp-roadmap.md`（Post-MVP 总体路线图：Phase 7~11 阶段关系、依赖顺序、进入纪律，draft）
 2. `docs/planning/phase-7-overview-real-project-quality.md`（Phase 7 overview：真实项目质量补强，draft）
-   - Phase 7 详细文档（**均已 active；Batch A/B/C 已实现并在审核收口，Batch D/E 仍不得进入**）：
+   - Phase 7 详细文档（**均已 active；Batch A/B/C 已完成；Batch D P0/P1 已完成；当前允许进入 Batch D P2**）：
      - `docs/requirements/phase-7-real-project-quality-requirements.md`（需求 RQ-001~RQ-008，active）
      - `docs/design/phase-7-real-project-evaluation-model.md`（评估数据模型，active）
      - `docs/design/phase-7-evidence-understanding-quality-design.md`（评估与补强设计，active）

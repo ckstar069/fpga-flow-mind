@@ -15,6 +15,7 @@ updated: 2026-06-16
 ### 0.1 已收口项（Batch D P0-1~P0-4 + P1）
 
 - **P0-1/P0-2/P0-3/P0-4** 已验收通过（见下方各子节）。
+- **P2 质量信号校准 + 阶段状态隔离**（2026-06-16 完成）：引入 4 个更细 `QualityIssueKind`（`ExpectedEmptyTiming`/`IsolatedOrUnconnectedView`/`TraceabilityGap`/`LowSemanticDiversity`）；`view_evaluator` 校准分类与严重度；`reporter` 新增 structure 降解检测；前端 `WorkspacePage` 状态隔离补强（maps 清除 + guard）。详见 §4.5。
 - **P1 evidence/understanding 丰富度补强**（2026-06-16 完成）：
   - **Python evidence extractor 粒度提升：** 新增 imports（`import X` / `from Y import Z`）、顶层常量（全大写 `NAME = value`）、`@dataclass` 字段、返回类型注释（`-> Type`）、`self.field` 赋值、函数内关键调用站等 6 类提取。单文件 evidence 数从粗放 def/class 级别提升到涵盖模块依赖、配置参数、数据结构、函数关系的细粒度级别。
   - **Verilog / SystemVerilog evidence extractor 粒度提升：** 新增端口（input/output/inout）、信号声明（wire/reg/logic）、assign 语句、always/always_ff/always_comb 块、模块实例化、parameter/localparam 等 6 类提取。单 module 不再只有 1 条粗 evidence，而是拆分为端口、信号、组合/时序逻辑、子模块、参数等多条可追溯 evidence。
@@ -51,7 +52,7 @@ updated: 2026-06-16
 - **不得** 视为 Phase 7 完成。
 - **不得** 进入 Phase 8 / 9 / 10。
 - 不修改目标项目目录；不运行 Vivado / synthesis / implementation / bitstream；不接真实 LLM；不输出 PASS/HOLD/正确性裁决。
-- 后续 P1（evidence 粒度细化、understanding 接口/信号语义补强）需单独授权。
+- Batch D P2 已完成。后续 P3（completion review）需单独授权。
 
 ## 1. 样本项目来源与结构
 
@@ -187,8 +188,7 @@ updated: 2026-06-16
 | P1 | structure view 节点过少 | understanding + view generator | **P1 已修**（多模块/信号/接口节点 + evidence_id 匹配边） |
 | P1 | evidence 粒度过粗 | evidence extractors | **P1 已修**（Python 6 类 + HDL 6 类行级提取） |
 | P1 | understanding 丰富度不足 | understanding generator | **P1 已修**（claims 无封顶、多个 module/interface/signal 派生） |
-| P2 | 阶段切换状态隔离 | frontend state | 待进入 |
-| P2 | 视图退化检测与诚实报告 | quality evaluator | 待进入（P0-3 已有部分） |
+| P2 | 质量信号校准：4 新分类 + 前端状态隔离 | quality evaluator + frontend | **P2 已修**（ExpectedEmptyTiming/TraceabilityGap/IsolatedOrUnconnectedView/LowSemanticDiversity；前端 maps 清除 + 守卫） |
 
 ### 4.2 应留给 Phase 8 的问题
 
@@ -344,10 +344,28 @@ Phase 7 Batch C 的 UI 接入是通的，但面对真实 `ai_project_template` �
 - Phase 10 Python-to-RTL 跨阶段映射。
 - 大规模 understanding schema 重构（可在 P1 中评估，但不在 P0）。
 
+### 4.5 P2 质量信号校准结果
+
+P2 校准（2026-06-16 完成）：
+
+| 校准项 | P1 行为 | P2 行为 | 评估 |
+|--------|---------|---------|------|
+| Python L0/L1 timing 空图 | `EmptyOrUnhelpfulView（Medium）` | `ExpectedEmptyTiming（Low）` | **已校准**：诚实空图不再触发高严重度问题 |
+| RTL 有 clk/rst evidence timing | 非空 → 无 issue（正确） | 非空 → 无 issue（不变） | ✅ 延续 P0-3 行为 |
+| node/edge 缺 trace_refs | `EmptyOrUnhelpfulView（Medium）` | `TraceabilityGap（Medium）` | **已校准**：分类标识更精准 |
+| 孤立节点 | `EmptyOrUnhelpfulView（Low）` | `IsolatedOrUnconnectedView（Low/Medium）` | **已校准**：单独分类；>50% 孤立升 Medium |
+| structure 多 summary 但单节点 | 无检测 | `LowSemanticDiversity（Medium）` | **新增**：reporter 级退化检测 |
+| 标签高度重复 | 无检测 | `LowSemanticDiversity（Low）` | **新增**：view_evaluator 重复标签检测 |
+| dataflow 非空 traceable | 无 issue（正确） | 无 issue（不变） | ✅ 延续 P0-3 行为 |
+| 空视图（非 timing） | `EmptyOrUnhelpfulView（Medium）` | `EmptyOrUnhelpfulView（Medium）` | ✅ 未变：正常退化检测 |
+
+**前端状态隔离**：全部通过验收。切换阶段、重新收集/生成/视图时，上一阶段 quality/trace/QA/understanding/views maps 正确清除；加载 session 后仅恢复当前阶段可持久化 UI state；所有异步请求使用 guard/version 防旧请求回写。
+
 ## 7. 变更记录
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
+| 2026-06-16 | **Batch D P2 质量信号校准完成**：新增 4 个 QualityIssueKind（ExpectedEmptyTiming/TraceabilityGap/IsolatedOrUnconnectedView/LowSemanticDiversity）；view_evaluator 校准——Python timing 仅预期空图不触发高严重度；frontend 状态隔离——maps/downstream 清除 + guard。文档 §4.1/§4.5 对应更新。未进入 Phase 8/9/10。 | Claude |
 | 2026-06-15 | 创建 Phase 7 Batch D 真实项目质量基线报告，基于 `fpga_project_coarse_sync` 运行完整链路，记录 evidence / understanding / view / quality 退化项，提出 Batch D 修复优先级与 Phase 8/9/10 分界。 | Claude |
 | 2026-06-15 | 安全收口修正：明确承认”曾向目标项目根目录写入临时阶段副本”属于验收方法偏差；修正”目标项目未被修改”为”src/ 校验和一致但存在目录写入偏差”；新增后续必须使用 /tmp normalized mirror 或修 stage_detector 的约束；新增 Batch D P0 修复计划（stage_detector 真实目录识别、scanner 噪声跳过、dataflow/timing 非空生成、回归验收）。 | Claude |
 | 2026-06-16 | **Batch D P0-1/P0-2 完成**：修复 `stage_detector` 支持 ai_project_template 目录结构（`src/python_model/L0_external` -> L0、`src/verilog_model/rtl` -> RTL）；修复 `scanner` 跳过噪声目录（`.git`、`.claude`、`__pycache__`、`.pytest_cache`、`.mypy_cache`、`.ruff_cache`、`.egg-info`、`reports`、`vivado`、`build`、`dist`、`node_modules`、`target`、`.DS_Store`、`.idea`、`.vscode`、`.venv`、`venv`、`sim_build`、`.tox`、`.coverage`、`htmlcov`）；新增 Rust 单元测试 12 项（stage_detector）+ 7 项（scanner）；真实项目只读验证通过（src/ checksum 前后一致，未创建临时目录）；`cargo test --lib` 494 通过、`cargo check` 通过、`npm run build` 通过、`npx tsc --noEmit` 通过；rg 边界检查无新增产品代码越界。 | Claude |
