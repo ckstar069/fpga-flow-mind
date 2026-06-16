@@ -9,7 +9,7 @@ updated: 2026-06-16
 >
 > 验证目标是"工作台是否把已有能力组织成用户可高效理解一个阶段的产品级形态，且不发生回归、不越界"，**不是**验证目标项目正确性。
 >
-> 本文 status 为 `active`，是 Phase 8 验证与验收设计的生效文档。**当前仅允许进入 Phase 8 Batch A（P8-T01~P8-T02）**；Batch B/C/D/E 与 Phase 9/10/11 均未开始。Phase 8 编码尚未开始。
+> 本文 status 为 `active`，是 Phase 8 验证与验收设计的生效文档。**Phase 8 Batch A（P8-T01~P8-T02）已实现/进入审核收口**；Batch B/C/D/E 与 Phase 9/10/11 均未开始。
 
 ## 1. 验证策略总览
 
@@ -162,9 +162,50 @@ Phase 8 完成后，方允许考虑进入：
 - [`../planning/phase-8-implementation-plan.md`](../planning/phase-8-implementation-plan.md) — 编码实施计划（draft）
 - [`phase-7-real-project-quality-validation.md`](phase-7-real-project-quality-validation.md) — Phase 7 验证（active，回归基线）
 
+## 13. Batch A 验证记录（P8-T01~P8-T02）
+
+> 记录 Phase 8 Batch A 工作台骨架实现后的实际验证结果，作为 Batch B/C/D/E 的基线。
+
+### 13.1 实现范围
+
+- 新增 `src/features/workspace/components/AppShell.tsx`：外层 flex 布局容器（header + leftNav + main + footer）。
+- 新增 `src/features/workspace/components/AppHeader.tsx`：顶部标题、项目路径输入、打开项目按钮、SessionStatusIndicator。
+- 新增 `src/features/workspace/components/LeftNav.tsx`：深色固定左侧导航（项目信息、阶段列表、最近项目、加载错误）。
+- 新增 `src/features/workspace/components/StageWorkspace.tsx`：浅色主工作区 + StageOverviewBar/StageFilterBar/Artifact tabs/ContextPanel 占位容器；主内容区继续渲染 `StageDetail`。
+- 修改 `src/features/workspace/WorkspacePage.tsx`：接线以上组件，保留所有状态机、回调、guard 逻辑与底部 warnings footer。
+
+### 13.2 自动化验证结果
+
+| 命令 | 结果 |
+|------|------|
+| `npm run build` | ✅ 通过 |
+| `npx tsc --noEmit` | ✅ 无类型错误 |
+| `cd src-tauri && cargo test --lib` | ✅ 全通过 |
+| `cd src-tauri && cargo check` | ✅ 无 warning |
+| `cargo test --test real_project_validation -- --ignored` | ✅ 主/副样本 5 项测试通过 |
+| 边界 rg（ReactFlow/D3/Mermaid/OpenAI/Anthropic/api_key/Vivado/synthesis/implementation/bitstream/PASS/HOLD/审计结论） | ✅ 仅既有禁用/守卫/注释语境命中，Batch A 无新增 |
+| 目标项目 checksum 一致性 | ✅ 主样本 `fpga_project_coarse_sync` checksum 一致；目标项目仅含既有未跟踪文件，无本次修改 |
+
+### 13.3 手工验证（无头环境可执行部分）
+
+- 启动 `npm run tauri dev`，前端 dev server 在 `http://localhost:1420/` 正常响应，Rust 后端编译运行无崩溃。
+- `open_workspace` 命令单元测试 4/4 通过。
+- 真实项目验证测试 5/5 通过，阶段识别与 checksum 一致。
+- 目标项目 `fpga_project_coarse_sync`、`fpga_project_fft` 未被修改（git status 无修改项）。
+
+> 注：完整桌面 UI 交互（点击、布局可视、响应式宽度）需在真实桌面环境进行；本 Batch A 已通过构建/类型/后端/样本测试保证骨架无回归，待 Batch E 做最终桌面验收 12 步。
+
+### 13.4 当前未完成范围
+
+- P8-T03~P8-T04（Artifact tabs 内容迁移、概览/筛选/可展开列表）未开始。
+- P8-T05~P8-T06（ContextPanel 联动、状态隔离）未开始。
+- P8-T07~P8-T09（视觉 polish、warnings 降噪、空/错误/session 恢复）未开始。
+- P8-T10（回归 + 桌面验收 + completion review）未开始。
+
 ## 12. 变更记录
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
 | 2026-06-16 | 初始 draft：验证策略、AgentScope 风格可用性验收、既有能力零回归、视觉语义一致性、真实桌面验收 12 步、安全回归（含重库检查）、完成标准、进入 Phase 9 条件。审核转 active 后方允许编码。 | Claude |
 | 2026-06-16 | 审核通过，status 从 draft 转 active；允许进入 Phase 8 Batch A（P8-T01~P8-T02）；Phase 8 编码尚未开始；Batch B/C/D/E 与 Phase 9/10/11 未开始。 | Claude |
+| 2026-06-16 | 追加 §13 Batch A 验证记录：P8-T01/P8-T02 骨架实现通过 npm build / tsc / cargo test --lib / cargo check / real_project_validation --ignored；边界 rg 与目标项目只读验证通过；Batch B/C/D/E 未开始。 | Claude |

@@ -42,9 +42,12 @@ import ErrorPanel from './components/ErrorPanel';
 import WorkspaceSummary from './components/WorkspaceSummary';
 import StageList from './components/StageList';
 import StageDetail from './components/StageDetail';
-import SessionStatusIndicator from './components/SessionStatusIndicator';
 import RecentProjectsPanel from './components/RecentProjectsPanel';
 import LoadStatusBanner from './components/LoadStatusBanner';
+import AppShell from './components/AppShell';
+import AppHeader from './components/AppHeader';
+import LeftNav from './components/LeftNav';
+import StageWorkspace from './components/StageWorkspace';
 
 // ─── 状态机 ───
 type AppState =
@@ -1030,282 +1033,252 @@ export default function WorkspacePage() {
   );
 
   // ─── 渲染 ───
-  return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100vh',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-        background: '#f5f5f5',
-      }}
-    >
-      {/* 顶部工具栏 */}
-      <header
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 16,
-          padding: '12px 24px',
-          background: '#fff',
-          borderBottom: '1px solid #ddd',
-        }}
-      >
-        <h1 style={{ fontSize: 18, margin: 0 }}>fpga-flow-mind</h1>
-        <div style={{ display: 'flex', gap: 8, flex: 1 }}>
-          <input
-            id="workspace-path-input"
-            type="text"
-            placeholder="输入项目路径..."
-            value={pathInput}
-            onChange={(e) => setPathInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleOpen()}
-            disabled={isLoadingSession}
-            style={{
-              flex: 1,
-              padding: '6px 12px',
-              border: '1px solid #ccc',
-              borderRadius: 4,
-              fontSize: 14,
-              background: isLoadingSession ? '#f5f5f5' : '#fff',
-            }}
+  const header = (
+    <AppHeader
+      pathInput={pathInput}
+      setPathInput={setPathInput}
+      onOpen={handleOpen}
+      isOpening={state.phase === 'opening'}
+      isLoadingSession={isLoadingSession}
+      saveStatus={saveStatus}
+      saveError={saveError}
+      lastSavedAt={lastSavedAt}
+      onSave={handleSaveSession}
+    />
+  );
+
+  const leftNav = (
+    <LeftNav
+      projectInfo={
+        state.phase === 'initial' ? (
+          <div style={{ color: '#94a3b8', textAlign: 'center', marginTop: 40 }}>
+            <p>请输入项目路径并点击"打开项目"</p>
+          </div>
+        ) : state.phase === 'opening' ? (
+          <div style={{ color: '#94a3b8', textAlign: 'center', marginTop: 40 }}>
+            <p>正在扫描 workspace...</p>
+          </div>
+        ) : state.phase === 'error' ? (
+          <ErrorPanel error={state.error} />
+        ) : currentProfile ? (
+          <WorkspaceSummary profile={currentProfile} />
+        ) : null
+      }
+      stageList={
+        currentProfile ? (
+          <StageList
+            stages={currentProfile.stages}
+            selectedStageId={selectedStageId}
+            isLoading={isLoadingStage || isLoadingSession}
+            onSelect={handleSelectStage}
           />
-          <button
-            onClick={handleOpen}
-            disabled={state.phase === 'opening' || isLoadingSession}
+        ) : null
+      }
+      recentProjects={
+        <RecentProjectsPanel
+          sessions={sessions}
+          loading={sessionsLoading}
+          disabled={isLoadingSession || isLoadingStage}
+          loadingSessionId={loadingSessionId}
+          onLoad={handleLoadSession}
+          onDelete={handleDeleteSession}
+          onOpenOtherProject={() => {
+            const input = document.getElementById('workspace-path-input') as HTMLInputElement | null;
+            input?.focus();
+          }}
+        />
+      }
+      loadError={
+        loadError ? (
+          <div
             style={{
-              padding: '6px 16px',
-              borderRadius: 4,
-              border: '1px solid #ccc',
-              cursor: state.phase === 'opening' || isLoadingSession ? 'not-allowed' : 'pointer',
-              background: '#fff',
+              padding: 12,
+              background: 'rgba(239, 68, 68, 0.15)',
+              borderRadius: 8,
+              border: '1px solid rgba(239, 68, 68, 0.3)',
             }}
           >
-            {state.phase === 'opening' ? '扫描中...' : '打开项目'}
-          </button>
-        </div>
-        <SessionStatusIndicator
-          status={saveStatus}
-          error={saveError}
-          lastSavedAt={lastSavedAt}
-          onSave={handleSaveSession}
-          onRetry={handleSaveSession}
-        />
-      </header>
-
-      {/* 主内容 */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        {/* 左栏 */}
-        <aside
-          style={{
-            width: 320,
-            minWidth: 280,
-            background: '#fff',
-            borderRight: '1px solid #ddd',
-            overflowY: 'auto',
-            padding: 16,
-          }}
-        >
-          {state.phase === 'initial' && (
-            <div style={{ color: '#666', textAlign: 'center', marginTop: 40 }}>
-              <p>请输入项目路径并点击"打开项目"</p>
-            </div>
-          )}
-
-          {state.phase === 'opening' && (
-            <div style={{ color: '#666', textAlign: 'center', marginTop: 40 }}>
-              <p>正在扫描 workspace...</p>
-            </div>
-          )}
-
-          {state.phase === 'error' && <ErrorPanel error={state.error} />}
-
-          {currentProfile && (
-            <>
-              <WorkspaceSummary profile={currentProfile} />
-              <StageList
-                stages={currentProfile.stages}
-                selectedStageId={selectedStageId}
-                isLoading={isLoadingStage || isLoadingSession}
-                onSelect={handleSelectStage}
-              />
-            </>
-          )}
-
-          <RecentProjectsPanel
-            sessions={sessions}
-            loading={sessionsLoading}
-            disabled={isLoadingSession || isLoadingStage}
-            loadingSessionId={loadingSessionId}
-            onLoad={handleLoadSession}
-            onDelete={handleDeleteSession}
-            onOpenOtherProject={() => {
-              const input = document.getElementById('workspace-path-input') as HTMLInputElement | null;
-              input?.focus();
-            }}
-          />
-
-          {loadError && (
-            <div
-              style={{
-                marginTop: 16,
-                padding: 12,
-                background: '#ffebee',
-                borderRadius: 8,
-                border: '1px solid #ef9a9a',
-              }}
-            >
-              <h4 style={{ margin: '0 0 8px', fontSize: 14, color: '#c62828' }}>加载失败</h4>
-              <p style={{ margin: '0 0 4px', fontSize: 13, color: '#333' }}>{loadError.message}</p>
-              {'error_code' in loadError && (
-                <code style={{ fontSize: 12, color: '#666' }}>{loadError.error_code}</code>
-              )}
-            </div>
-          )}
-        </aside>
-
-        {/* 右栏 */}
-        <main style={{ flex: 1, padding: 24, overflowY: 'auto' }}>
-          {loadStatus && (
-            <LoadStatusBanner
-              status={loadStatus}
-              onClose={() => setLoadStatus(null)}
-              onReanalyze={() => {
-                setLoadStatus(null);
-                if (selectedStageId) {
-                  handleCollectEvidence();
-                }
-              }}
-              onDelete={() => {
-                if (sessionId) handleDeleteSession(sessionId);
-              }}
-            />
-          )}
-
-          {state.phase === 'initial' && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100%',
-                color: '#999',
-              }}
-            >
-              <p>请从左侧打开一个项目</p>
-            </div>
-          )}
-
-          {state.phase === 'selecting_stage' && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100%',
-                color: '#666',
-              }}
-            >
-              <p>
-                正在加载阶段详情：
-                {state.stageId}
-              </p>
-            </div>
-          )}
-
-          {evidenceState && (
-            <StageDetail
-              context={evidenceState.context}
-              evidence={'evidence' in evidenceState ? evidenceState.evidence : undefined}
-              evidenceError={'evidenceError' in evidenceState ? evidenceState.evidenceError : undefined}
-              isCollecting={'isCollecting' in evidenceState ? evidenceState.isCollecting : undefined}
-              onCollectEvidence={handleCollectEvidence}
-              understanding={'understanding' in evidenceState ? evidenceState.understanding : undefined}
-              understandingLoading={'understandingLoading' in evidenceState ? evidenceState.understandingLoading : undefined}
-              understandingError={'understandingError' in evidenceState ? evidenceState.understandingError : undefined}
-              onGenerateUnderstanding={handleGenerateUnderstanding}
-              views={'views' in evidenceState ? evidenceState.views : undefined}
-              viewsLoading={'viewsLoading' in evidenceState ? evidenceState.viewsLoading : undefined}
-              viewsError={'viewsError' in evidenceState ? evidenceState.viewsError : undefined}
-              onGenerateViews={handleGenerateViews}
-              selectedTraceTarget={selectedTraceTarget}
-              resolvedTraces={resolvedTraces}
-              traceLoading={traceLoading}
-              traceError={traceError}
-              sourceExcerpt={sourceExcerpt}
-              excerptError={excerptError}
-              highlightedEvidenceId={highlightedEvidenceId}
-              currentSourceEvidenceId={currentSourceEvidenceId}
-              groundedAnswer={groundedAnswer}
-              groundedAnswerLoading={groundedAnswerLoading}
-              groundedAnswerError={groundedAnswerError}
-              onSelectTraceTarget={handleSelectTraceTarget}
-              onClearTraceTarget={handleClearTraceTarget}
-              onViewSource={handleViewSource}
-              onCloseSourceExcerpt={handleCloseSourceExcerpt}
-              onLocateEvidence={handleLocateEvidence}
-              onEvidenceSelect={handleEvidenceSelect}
-              onAskGroundedQuestion={handleAskGroundedQuestion}
-              onGroundedCitationClick={handleGroundedCitationClick}
-              qualityReport={qualityReport}
-              qualityLoading={qualityLoading}
-              qualityError={qualityError}
-              canGenerateQualityReport={canGenerateQualityReport}
-              qualityDisabledReason={qualityDisabledReason}
-              onGenerateQualityReport={handleGenerateQualityReport}
-            />
-          )}
-
-          {state.phase === 'stage_error' && (
-            <div style={{ padding: 24, background: '#fff3e0', borderRadius: 8 }}>
-              <h3 style={{ margin: '0 0 8px' }}>阶段加载失败</h3>
-              <p style={{ margin: 0 }}>{state.error.message}</p>
-            </div>
-          )}
-
-          {!['selecting_stage', 'stage_loaded', 'stage_error', 'collecting_evidence', 'evidence_loaded', 'evidence_error', 'understanding_loading', 'understanding_loaded', 'understanding_error', 'views_loading', 'views_loaded', 'views_error'].includes(state.phase) &&
-            !currentProfile && (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  height: '100%',
-                  color: '#999',
-                }}
-              >
-                <p>请从左侧选择一个阶段查看详情</p>
-              </div>
+            <h4 style={{ margin: '0 0 8px', fontSize: 14, color: '#fca5a5' }}>加载失败</h4>
+            <p style={{ margin: '0 0 4px', fontSize: 13, color: '#e2e8f0' }}>{loadError.message}</p>
+            {'error_code' in loadError && (
+              <code style={{ fontSize: 12, color: '#94a3b8' }}>{loadError.error_code}</code>
             )}
-        </main>
-      </div>
+          </div>
+        ) : null
+      }
+    />
+  );
 
-      {/* 底部 warnings */}
-      {currentWarnings.length > 0 && (
-        <footer
+  const main = (
+    <main
+      style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        background: '#f8fafc',
+      }}
+    >
+      {loadStatus && (
+        <LoadStatusBanner
+          status={loadStatus}
+          onClose={() => setLoadStatus(null)}
+          onReanalyze={() => {
+            setLoadStatus(null);
+            if (selectedStageId) {
+              handleCollectEvidence();
+            }
+          }}
+          onDelete={() => {
+            if (sessionId) handleDeleteSession(sessionId);
+          }}
+        />
+      )}
+
+      {state.phase === 'initial' && (
+        <div
           style={{
-            maxHeight: 200,
-            overflowY: 'auto',
-            background: '#fff8e1',
-            borderTop: '1px solid #ddd',
-            padding: '8px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flex: 1,
+            color: '#94a3b8',
           }}
         >
-          <h4 style={{ margin: '0 0 8px', fontSize: 14 }}>
-            警告 ({currentWarnings.length})
-          </h4>
-          <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13 }}>
-            {currentWarnings.map((w, i) => (
-              <li key={i} style={{ marginBottom: 4 }}>
-                <code>{w.error_code}</code>: {w.message}
-                {w.source_path && (
-                  <span style={{ color: '#666' }}> ({w.source_path})</span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </footer>
+          <p>请从左侧打开一个项目</p>
+        </div>
       )}
-    </div>
+
+      {state.phase === 'selecting_stage' && currentProfile && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flex: 1,
+            color: '#64748b',
+          }}
+        >
+          <p>正在加载阶段详情：{state.stageId}</p>
+        </div>
+      )}
+
+      {evidenceState && currentProfile && selectedStageId && (
+        <StageWorkspace
+          profile={currentProfile}
+          stageId={selectedStageId}
+          context={evidenceState.context}
+        >
+          <StageDetail
+            context={evidenceState.context}
+            evidence={'evidence' in evidenceState ? evidenceState.evidence : undefined}
+            evidenceError={'evidenceError' in evidenceState ? evidenceState.evidenceError : undefined}
+            isCollecting={'isCollecting' in evidenceState ? evidenceState.isCollecting : undefined}
+            onCollectEvidence={handleCollectEvidence}
+            understanding={'understanding' in evidenceState ? evidenceState.understanding : undefined}
+            understandingLoading={'understandingLoading' in evidenceState ? evidenceState.understandingLoading : undefined}
+            understandingError={'understandingError' in evidenceState ? evidenceState.understandingError : undefined}
+            onGenerateUnderstanding={handleGenerateUnderstanding}
+            views={'views' in evidenceState ? evidenceState.views : undefined}
+            viewsLoading={'viewsLoading' in evidenceState ? evidenceState.viewsLoading : undefined}
+            viewsError={'viewsError' in evidenceState ? evidenceState.viewsError : undefined}
+            onGenerateViews={handleGenerateViews}
+            selectedTraceTarget={selectedTraceTarget}
+            resolvedTraces={resolvedTraces}
+            traceLoading={traceLoading}
+            traceError={traceError}
+            sourceExcerpt={sourceExcerpt}
+            excerptError={excerptError}
+            highlightedEvidenceId={highlightedEvidenceId}
+            currentSourceEvidenceId={currentSourceEvidenceId}
+            groundedAnswer={groundedAnswer}
+            groundedAnswerLoading={groundedAnswerLoading}
+            groundedAnswerError={groundedAnswerError}
+            onSelectTraceTarget={handleSelectTraceTarget}
+            onClearTraceTarget={handleClearTraceTarget}
+            onViewSource={handleViewSource}
+            onCloseSourceExcerpt={handleCloseSourceExcerpt}
+            onLocateEvidence={handleLocateEvidence}
+            onEvidenceSelect={handleEvidenceSelect}
+            onAskGroundedQuestion={handleAskGroundedQuestion}
+            onGroundedCitationClick={handleGroundedCitationClick}
+            qualityReport={qualityReport}
+            qualityLoading={qualityLoading}
+            qualityError={qualityError}
+            canGenerateQualityReport={canGenerateQualityReport}
+            qualityDisabledReason={qualityDisabledReason}
+            onGenerateQualityReport={handleGenerateQualityReport}
+          />
+        </StageWorkspace>
+      )}
+
+      {state.phase === 'stage_error' && currentProfile && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flex: 1,
+            padding: 24,
+          }}
+        >
+          <div style={{ padding: 24, background: '#fff3e0', borderRadius: 8, maxWidth: 720 }}>
+            <h3 style={{ margin: '0 0 8px' }}>阶段加载失败</h3>
+            <p style={{ margin: 0 }}>{state.error.message}</p>
+          </div>
+        </div>
+      )}
+
+      {!['selecting_stage', 'stage_loaded', 'stage_error', 'collecting_evidence', 'evidence_loaded', 'evidence_error', 'understanding_loading', 'understanding_loaded', 'understanding_error', 'views_loading', 'views_loaded', 'views_error'].includes(state.phase) &&
+        !currentProfile && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flex: 1,
+              color: '#94a3b8',
+            }}
+          >
+            <p>请从左侧打开一个项目</p>
+          </div>
+        )}
+    </main>
+  );
+
+  const footer = currentWarnings.length > 0 ? (
+    <footer
+      style={{
+        maxHeight: 200,
+        overflowY: 'auto',
+        background: '#fff8e1',
+        borderTop: '1px solid #e2e8f0',
+        padding: '8px 24px',
+        flexShrink: 0,
+      }}
+    >
+      <h4 style={{ margin: '0 0 8px', fontSize: 14 }}>
+        警告 ({currentWarnings.length})
+      </h4>
+      <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13 }}>
+        {currentWarnings.map((w, i) => (
+          <li key={i} style={{ marginBottom: 4 }}>
+            <code>{w.error_code}</code>: {w.message}
+            {w.source_path && (
+              <span style={{ color: '#64748b' }}> ({w.source_path})</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </footer>
+  ) : null;
+
+  return (
+    <AppShell
+      header={header}
+      leftNav={leftNav}
+      main={main}
+      footer={footer}
+    />
   );
 }
