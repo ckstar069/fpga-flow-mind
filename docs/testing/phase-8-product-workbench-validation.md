@@ -9,7 +9,7 @@ updated: 2026-06-16
 >
 > 验证目标是"工作台是否把已有能力组织成用户可高效理解一个阶段的产品级形态，且不发生回归、不越界"，**不是**验证目标项目正确性。
 >
-> 本文 status 为 `active`，是 Phase 8 验证与验收设计的生效文档。**Phase 8 Batch A（P8-T01~P8-T02）已实现/进入审核收口**；**Phase 8 Batch B（P8-T03~P8-T04）已实现/进入审核收口**；Batch C/D/E 与 Phase 9/10/11 均未开始。
+> 本文 status 为 `active`，是 Phase 8 验证与验收设计的生效文档。**Phase 8 Batch A（P8-T01~P8-T02）已实现/进入审核收口**；**Phase 8 Batch B（P8-T03~P8-T04）已实现/进入审核收口**；**Phase 8 Batch C（P8-T05~P8-T06）已实现/进入审核收口**；Batch D/E 与 Phase 9/10/11 均未开始。
 
 ## 1. 验证策略总览
 
@@ -235,7 +235,40 @@ Phase 8 完成后，方允许考虑进入：
 
 ### 14.3 当前未完成范围
 
-- P8-T05~P8-T06（ContextPanel 联动、状态隔离）未开始。
+- P8-T07~P8-T09（视觉 polish、warnings 降噪、空/错误/session 恢复）未开始。
+- P8-T10（回归 + 桌面验收 + completion review）未开始。
+
+## 15. Batch C 验证记录（P8-T05~P8-T06）
+
+> 记录 Phase 8 Batch C ContextPanel 真实联动与状态隔离实现后的实际验证结果。
+
+### 15.1 实现范围
+
+- 新增 `src/features/workspace/components/contextPanelTypes.ts`：定义前端局部 `ContextSelection` 类型（kind/stageId/payload tag union），不进入 `PersistedUiState` / Rust 持久化契约。
+- 新增 `src/features/workspace/components/contextPanelUtils.ts`：`ContextPanel` 中文标签、颜色映射等辅助函数。
+- 新增 `src/features/workspace/components/ContextPanel.tsx`：右侧只读上下文面板，支持 evidence / trace_target / source_excerpt / quality_issue / view_node / view_edge / qa_citation 七种对象类型，提供空状态、查看源码片段、定位 evidence 动作入口。
+- 修改 `src/features/workspace/components/StageWorkspace.tsx`：接收 `contextSelection` / `onContextSelectionChange` / `onViewSource` / `onLocateEvidence` props；右侧从占位容器替换为真实 `ContextPanel`；`renderContent` 扩展 `onContextSelectionChange` 透传。
+- 修改 `src/features/workspace/components/StageDetail.tsx`：新增 `stageId` / `onContextSelectionChange` props，并向下透传给 `EvidenceTab` / `ViewsTab` / `QualityTab`。
+- 修改 `src/features/workspace/components/EvidencePanel.tsx`：点击 evidence 时先保持原高亮逻辑，再调用 `onContextSelection` 更新 ContextPanel。
+- 修改 `src/features/workspace/components/MultiViewPanel.tsx`：点击 node/edge 时先调用 `onSelectTarget`，再调用 `onContextSelection` 设置 `view_node` / `view_edge`。
+- 修改 `src/features/workspace/components/QualityReviewPanel.tsx`：点击 issue 时调用 `onContextSelection` 设置 `quality_issue`。
+- 修改 `src/features/workspace/WorkspacePage.tsx`：新增 `contextSelection` 状态；在 `handleSelectTraceTarget` / `handleViewSource` / `handleGroundedCitationClick` 中设置对应上下文；在 `clearTraceState` / `handleGenerateQualityReport` 中清空上下文（覆盖打开项目、选阶段、加载 session、重新收集/生成、清空 trace target 等隔离路径）。
+
+### 15.2 自动化验证结果
+
+| 命令 | 结果 |
+|------|------|
+| `npm run build` | ✅ 通过 |
+| `npx tsc --noEmit` | ✅ 无类型错误 |
+| `cd src-tauri && cargo test --lib` | ✅ 544 passed; 0 failed; 1 ignored |
+| `cd src-tauri && cargo check` | ✅ 无 warning |
+| 边界 rg（stage_tab / stageTab / active_stage_tab） | ✅ 无新增匹配 |
+| 边界 rg（ReactFlow/D3/Mermaid/OpenAI/Anthropic/api_key/Vivado/synthesis/implementation/bitstream/PASS/HOLD/审计结论） | ✅ 仅既有禁用/守卫/注释语境命中，Batch C 无新增 |
+| 边界 rg（warnings 降噪 / Batch D / Batch E / Phase 9 / Phase 10 / Phase 11） | ✅ `src/features/workspace` 无匹配 |
+| 目标项目 checksum 一致性 | ✅ 主样本 `fpga_project_coarse_sync` checksum 一致；目标项目无本次修改 |
+
+### 15.3 当前未完成范围
+
 - P8-T07~P8-T09（视觉 polish、warnings 降噪、空/错误/session 恢复）未开始。
 - P8-T10（回归 + 桌面验收 + completion review）未开始。
 
@@ -246,4 +279,4 @@ Phase 8 完成后，方允许考虑进入：
 | 2026-06-16 | 初始 draft：验证策略、AgentScope 风格可用性验收、既有能力零回归、视觉语义一致性、真实桌面验收 12 步、安全回归（含重库检查）、完成标准、进入 Phase 9 条件。审核转 active 后方允许编码。 | Claude |
 | 2026-06-16 | 审核通过，status 从 draft 转 active；允许进入 Phase 8 Batch A（P8-T01~P8-T02）；Phase 8 编码尚未开始；Batch B/C/D/E 与 Phase 9/10/11 未开始。 | Claude |
 | 2026-06-16 | 追加 §13 Batch A 验证记录：P8-T01/P8-T02 骨架实现通过 npm build / tsc / cargo test --lib / cargo check / real_project_validation --ignored；边界 rg 与目标项目只读验证通过；Batch B/C/D/E 未开始。 | Claude |
-| 2026-06-16 | 追加 §13.5 审核收口修复：闭合 docs/planning/README.md Markdown 加粗；StageWorkspace Artifact tabs 改为非交互占位，明确提示 Batch B 才迁移内容。 | Claude |
+| 2026-06-16 | 追加 §15 Batch C 验证记录：ContextPanel 真实联动 + 状态隔离实现通过 `npm run build`、`npx tsc --noEmit`、`cargo test --lib`、`cargo check` 与边界 rg；P8-T05/P8-T06 进入审核收口；Batch D/E 与 Phase 9/10/11 未开始。 | Claude |

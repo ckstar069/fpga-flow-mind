@@ -48,6 +48,7 @@ import AppShell from './components/AppShell';
 import AppHeader from './components/AppHeader';
 import LeftNav from './components/LeftNav';
 import StageWorkspace from './components/StageWorkspace';
+import type { ContextSelection } from './components/contextPanelTypes';
 
 // ─── 状态机 ───
 type AppState =
@@ -106,6 +107,9 @@ export default function WorkspacePage() {
   const [qualityReport, setQualityReport] = useState<QualityReport | null>(null);
   const [qualityLoading, setQualityLoading] = useState(false);
   const [qualityError, setQualityError] = useState<UiError | null>(null);
+
+  // Phase 8 Batch C 右侧 ContextPanel 前端局部选中态（不持久化）
+  const [contextSelection, setContextSelection] = useState<ContextSelection | null>(null);
 
   // Phase 6 跨阶段累积映射（用于构造 SessionState）
   const [stageContextsMap, setStageContextsMap] = useState<Record<string, StageContext>>({});
@@ -168,6 +172,7 @@ export default function WorkspacePage() {
     setGroundedAnswer(null);
     setGroundedAnswerLoading(false);
     setGroundedAnswerError(null);
+    setContextSelection(null);
     if (highlightTimerRef.current) {
       clearTimeout(highlightTimerRef.current);
       highlightTimerRef.current = null;
@@ -427,6 +432,7 @@ export default function WorkspacePage() {
       'views' in state ? (state as { views?: ViewGraph[] }).views : undefined;
 
     const guard = (qualityGuardRef.current += 1);
+    setContextSelection(null);
     setQualityReport(null);
     setQualityError(null);
     setQualityLoading(true);
@@ -821,6 +827,15 @@ export default function WorkspacePage() {
       setHighlightedEvidenceId(null);
       setCurrentSourceEvidenceId(null);
 
+      const stageId = selectedStageId;
+      if (stageId) {
+        setContextSelection({
+          kind: 'trace_target',
+          stageId,
+          payload: { kind: 'trace_target', target, resolvedTraces: [] },
+        });
+      }
+
       if (
         state.phase !== 'views_loaded' ||
         !state.views ||
@@ -843,6 +858,13 @@ export default function WorkspacePage() {
         // 仅在请求仍属于当前状态时更新结果
         if (guard === traceGuardRef.current) {
           setResolvedTraces(traces);
+          if (stageId) {
+            setContextSelection((prev) =>
+              prev?.kind === 'trace_target' && prev.stageId === stageId
+                ? { ...prev, payload: { ...prev.payload, resolvedTraces: traces } }
+                : prev
+            );
+          }
           markUnsaved();
           setTraceLoading(false);
         }
@@ -853,7 +875,7 @@ export default function WorkspacePage() {
         }
       }
     },
-    [state]
+    [state, selectedStageId]
   );
 
   // ─── 清空选择 ───
@@ -867,6 +889,7 @@ export default function WorkspacePage() {
     setExcerptError(null);
     setHighlightedEvidenceId(null);
     setCurrentSourceEvidenceId(null);
+    setContextSelection(null);
   }, []);
 
   // ─── 查看源码片段 ───
@@ -892,6 +915,13 @@ export default function WorkspacePage() {
         const excerpt = await getSourceExcerpt(location, profile.root_path);
         if (guard === excerptGuardRef.current) {
           setSourceExcerpt(excerpt);
+          if (currentStageIdForTrace) {
+            setContextSelection({
+              kind: 'source_excerpt',
+              stageId: currentStageIdForTrace,
+              payload: { kind: 'source_excerpt', excerpt },
+            });
+          }
           markUnsaved();
         }
       } catch (err) {
@@ -1028,8 +1058,15 @@ export default function WorkspacePage() {
           evidence_id: citation.evidence_id,
         });
       }
+      if (selectedStageId) {
+        setContextSelection({
+          kind: 'qa_citation',
+          stageId: selectedStageId,
+          payload: { kind: 'qa_citation', citation },
+        });
+      }
     },
-    [handleViewSource]
+    [handleViewSource, selectedStageId]
   );
 
   // ─── 渲染 ───
@@ -1184,9 +1221,14 @@ export default function WorkspacePage() {
           qaLoading={groundedAnswerLoading}
           qualityReport={qualityReport}
           qualityLoading={qualityLoading}
-          renderContent={({ activeTab, evidenceFilter, qualityFilter }) => (
+          contextSelection={contextSelection}
+          onContextSelectionChange={setContextSelection}
+          onViewSource={handleViewSource}
+          onLocateEvidence={handleLocateEvidence}
+          renderContent={({ activeTab, evidenceFilter, qualityFilter, onContextSelectionChange }) => (
             <StageDetail
               activeTab={activeTab}
+              stageId={selectedStageId}
               context={evidenceState.context}
               evidence={'evidence' in evidenceState ? evidenceState.evidence : undefined}
               evidenceError={'evidenceError' in evidenceState ? evidenceState.evidenceError : undefined}
@@ -1223,6 +1265,7 @@ export default function WorkspacePage() {
               onEvidenceSelect={handleEvidenceSelect}
               onAskGroundedQuestion={handleAskGroundedQuestion}
               onGroundedCitationClick={handleGroundedCitationClick}
+              onContextSelectionChange={onContextSelectionChange}
               qualityReport={qualityReport}
               qualityLoading={qualityLoading}
               qualityError={qualityError}

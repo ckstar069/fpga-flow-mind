@@ -11,6 +11,8 @@ import type {
 } from '../../../types/workspace';
 import StageOverviewBar from './StageOverviewBar';
 import StageFilterBar, { type EvidenceFilter, type QualityFilter } from './StageFilterBar';
+import ContextPanel from './ContextPanel';
+import type { ContextSelection } from './contextPanelTypes';
 
 const INITIAL_EVIDENCE_FILTER: EvidenceFilter = {};
 const INITIAL_QUALITY_FILTER: QualityFilter = {};
@@ -49,10 +51,19 @@ interface StageWorkspaceProps {
   qaLoading?: boolean;
   qualityReport?: QualityReport | null;
   qualityLoading?: boolean;
+  contextSelection?: ContextSelection | null;
+  onContextSelectionChange?: (selection: ContextSelection | null) => void;
+  onViewSource?: (location: {
+    source_path: string;
+    line_range: { start: number; end: number };
+    evidence_id?: string;
+  }) => void;
+  onLocateEvidence?: (evidenceId: string) => void;
   renderContent: (state: {
     activeTab: ArtifactTab;
     evidenceFilter: EvidenceFilter;
     qualityFilter: QualityFilter;
+    onContextSelectionChange: (selection: ContextSelection | null) => void;
   }) => ReactNode;
 }
 
@@ -76,6 +87,10 @@ export default function StageWorkspace({
   qaLoading,
   qualityReport,
   qualityLoading,
+  contextSelection,
+  onContextSelectionChange,
+  onViewSource,
+  onLocateEvidence,
   renderContent,
 }: StageWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<ArtifactTab>('overview');
@@ -88,6 +103,9 @@ export default function StageWorkspace({
     setEvidenceFilter(INITIAL_EVIDENCE_FILTER);
     setQualityFilter(INITIAL_QUALITY_FILTER);
   }, [stageId]);
+
+  // 阶段作用域校验：非当前阶段的选中上下文视为过期
+  const validSelection = contextSelection?.stageId === stageId ? contextSelection : null;
 
   return (
     <div
@@ -235,27 +253,19 @@ export default function StageWorkspace({
             minWidth: 0,
           }}
         >
-          {renderContent({ activeTab, evidenceFilter, qualityFilter })}
+          {renderContent({
+            activeTab,
+            evidenceFilter,
+            qualityFilter,
+            onContextSelectionChange: onContextSelectionChange ?? (() => {}),
+          })}
         </div>
 
-        {/* ContextPanel 占位 */}
-        <div
-          className="context-panel"
-          style={{
-            width: 280,
-            minWidth: 240,
-            maxWidth: 320,
-            background: '#fff',
-            borderLeft: '1px solid #e2e8f0',
-            padding: 16,
-            flexShrink: 0,
-            overflowY: 'auto',
-          }}
-        >
-          <div style={{ fontSize: 12, color: '#94a3b8' }}>
-            上下文面板占位（Batch C 实现）
-          </div>
-        </div>
+        <ContextPanel
+          selection={validSelection}
+          onViewSource={onViewSource}
+          onLocateEvidence={onLocateEvidence}
+        />
       </div>
     </div>
   );

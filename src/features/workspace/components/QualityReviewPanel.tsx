@@ -10,6 +10,7 @@ import type {
   QualityIssueKind,
 } from '../../../types/workspace';
 import type { UiError } from '../workspaceUiTypes';
+import type { ContextSelection } from './contextPanelTypes';
 
 interface QualityReviewPanelProps {
   report?: QualityReport | null;
@@ -24,6 +25,7 @@ interface QualityReviewPanelProps {
     line_range: { start: number; end: number };
     evidence_id?: string;
   }) => void;
+  onContextSelection?: (selection: ContextSelection) => void;
 }
 
 export default function QualityReviewPanel({
@@ -35,6 +37,7 @@ export default function QualityReviewPanel({
   onGenerate,
   onEvidenceSelect,
   onViewSource,
+  onContextSelection,
 }: QualityReviewPanelProps) {
   const acceptanceLabel = (status: QualityAcceptanceStatus): string => {
     switch (status) {
@@ -92,6 +95,11 @@ export default function QualityReviewPanel({
         evidence_id: issue.evidence_id,
       });
     }
+    onContextSelection?.({
+      kind: 'quality_issue',
+      stageId: issue.stage_id,
+      payload: { kind: 'quality_issue', issue },
+    });
   };
 
   return (

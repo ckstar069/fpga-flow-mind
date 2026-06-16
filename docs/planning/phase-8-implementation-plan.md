@@ -9,7 +9,7 @@ updated: 2026-06-16
 >
 > Phase 8 是**前端为主**的阶段：把 Phase 1~7 已有能力重组为产品级工作台（**工作台化，不是新增更多卡片**），**不新增语义分析能力，不接真实 LLM，不做跨阶段映射**。
 >
-> 本文档 status 为 `active`，是 Phase 8 编码实施计划的生效文档。**Phase 8 Batch A（P8-T01~P8-T02）已完成/进入审核收口**；**Phase 8 Batch B（P8-T03~P8-T04）已实现/进入审核收口**；Batch C/D/E 与 Phase 9/10/11 均未开始。Phase 7 已完成（completion review active）。
+> 本文档 status 为 `active`，是 Phase 8 编码实施计划的生效文档。**Phase 8 Batch A（P8-T01~P8-T02）已完成/进入审核收口**；**Phase 8 Batch B（P8-T03~P8-T04）已实现/进入审核收口**；**Phase 8 Batch C（P8-T05~P8-T06）已实现/进入审核收口**；Batch D/E 与 Phase 9/10/11 均未开始。Phase 7 已完成（completion review active）。
 
 ## 0. 核心重构方向（先读）
 
@@ -35,7 +35,7 @@ Phase 8 不是普通 UI 改造，而是**信息架构工作台化**。三个关�
 | Phase 8 实施计划 active | ⏳ 本文档（draft，待审核转 active） |
 | **以上 Phase 8 详细文档全部转为 active** | ⏳ 待审核（当前 draft 已完成，正在审核收口） |
 
-> 纪律：Phase 8 详细文档全部审核转 active 后，方允许进入 Batch A 编码。**Phase 8 Batch A（P8-T01~P8-T02）已实现/进入审核收口**；**Phase 8 Batch B（P8-T03~P8-T04）已实现/进入审核收口**；Batch C/D/E 与 Phase 9/10/11 均未开始。
+> 纪律：Phase 8 详细文档全部审核转 active 后，方允许进入 Batch A 编码。**Phase 8 Batch A（P8-T01~P8-T02）已实现/进入审核收口**；**Phase 8 Batch B（P8-T03~P8-T04）已实现/进入审核收口**；**Phase 8 Batch C（P8-T05~P8-T06）已实现/进入审核收口**；Batch D/E 与 Phase 9/10/11 均未开始。
 
 ## 2. 任务拆分
 
@@ -267,4 +267,4 @@ Batch E：验收 + completion
 | 2026-06-16 | Batch A 编码完成：新增 AppShell / AppHeader / LeftNav / StageWorkspace，WorkspacePage 接线为 AgentScope 风格骨架；P8-T01/P8-T02 进入审核收口；Batch B/C/D/E 与 Phase 9/10/11 未开始。 | Claude |
 | 2026-06-16 | Batch A 审核收口：明确 StageWorkspace 中 Artifact tabs 仅为视觉占位（无 activeTab 状态、不响应点击），Batch B 才进行 Evidence/Understanding/Views/Trace/Q&A/Quality 内容迁移；修复 docs/planning/README.md Markdown 加粗未闭合。 | Claude |
 | 2026-06-16 | Batch B 编码完成：StageWorkspace 实现真实 Artifact tabs 切换 + StageOverviewBar + StageFilterBar；StageDetail 改为按 activeTab 分区渲染；EvidencePanel 增加可展开分组与前端筛选；P8-T03/P8-T04 进入审核收口；Batch C/D/E 与 Phase 9/10/11 未开始。 | Claude |
-| 2026-06-16 | Batch B 审核收口：从 TypeScript `PersistedUiState` 移除未接入的 `stage_tab` 字段，避免前后端契约不一致；修正 `phase-8-product-workbench-validation.md` 中 phase-8-implementation-plan 的状态为 active 并删除 stage_tab 相关描述。 | Claude |
+| 2026-06-16 | Batch C 编码完成：新增 `ContextPanel` / `ContextSelection` / `contextPanelUtils`；`StageWorkspace` 右侧渲染真实上下文面板；`EvidencePanel` / `MultiViewPanel` / `QualityReviewPanel` 点击对象后联动 ContextPanel；`WorkspacePage` 统一管理 trace_target / source_excerpt / qa_citation 上下文并在阶段切换、重生成、加载 session、清空 trace target 时隔离清空；P8-T05/P8-T06 进入审核收口；Batch D/E 与 Phase 9/10/11 未开始。 | Claude |

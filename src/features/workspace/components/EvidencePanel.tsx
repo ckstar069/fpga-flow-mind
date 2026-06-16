@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { EvidenceCollection, EvidenceItem, EvidenceStrength } from '../../../types/workspace';
 import type { EvidenceFilter } from './StageFilterBar';
+import type { ContextSelection } from './contextPanelTypes';
 
 // ─── strength 标签映射 ───
 const STRENGTH_LABEL: Record<EvidenceStrength, string> = {
@@ -23,18 +24,22 @@ type GroupBy = 'source_kind' | 'strength';
 
 interface EvidencePanelProps {
   evidence: EvidenceCollection;
+  stageId?: string;
   highlightedEvidenceId?: string;
   currentSourceEvidenceId?: string;
   onEvidenceSelect?: (evidenceId: string) => void;
+  onContextSelection?: (selection: ContextSelection) => void;
   evidenceFilter?: EvidenceFilter;
   groupBy?: GroupBy;
 }
 
 export default function EvidencePanel({
   evidence,
+  stageId,
   highlightedEvidenceId,
   currentSourceEvidenceId,
   onEvidenceSelect,
+  onContextSelection,
   evidenceFilter,
   groupBy = 'source_kind',
 }: EvidencePanelProps) {
@@ -208,9 +213,11 @@ export default function EvidencePanel({
               groupKey={groupKey}
               groupBy={groupBy}
               items={items}
+              stageId={stageId}
               highlightedEvidenceId={highlightedEvidenceId}
               currentSourceEvidenceId={currentSourceEvidenceId}
               onEvidenceSelect={onEvidenceSelect}
+              onContextSelection={onContextSelection}
             />
           ))}
         </div>
@@ -223,16 +230,20 @@ function EvidenceGroup({
   groupKey,
   groupBy,
   items,
+  stageId,
   highlightedEvidenceId,
   currentSourceEvidenceId,
   onEvidenceSelect,
+  onContextSelection,
 }: {
   groupKey: string;
   groupBy: GroupBy;
   items: EvidenceItem[];
+  stageId?: string;
   highlightedEvidenceId?: string;
   currentSourceEvidenceId?: string;
   onEvidenceSelect?: (evidenceId: string) => void;
+  onContextSelection?: (selection: ContextSelection) => void;
 }) {
   const [expanded, setExpanded] = useState(true);
   const displayLabel =
@@ -279,9 +290,11 @@ function EvidenceGroup({
             <EvidenceItemCard
               key={item.evidence_id}
               item={item}
+              stageId={stageId}
               highlighted={highlightedEvidenceId === item.evidence_id}
               currentSource={currentSourceEvidenceId === item.evidence_id}
               onSelect={onEvidenceSelect}
+              onContextSelection={onContextSelection}
             />
           ))}
         </div>
@@ -293,20 +306,35 @@ function EvidenceGroup({
 // ─── 证据项卡片 ───
 function EvidenceItemCard({
   item,
+  stageId,
   highlighted,
   currentSource,
   onSelect,
+  onContextSelection,
 }: {
   item: EvidenceItem;
+  stageId?: string;
   highlighted?: boolean;
   currentSource?: boolean;
   onSelect?: (evidenceId: string) => void;
+  onContextSelection?: (selection: ContextSelection) => void;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const strengthColor =
     STRENGTH_COLOR[item.strength as EvidenceStrength] ?? '#9e9e9e';
   const strengthLabel =
     STRENGTH_LABEL[item.strength as EvidenceStrength] ?? item.strength;
+
+  const handleClick = () => {
+    onSelect?.(item.evidence_id);
+    if (stageId) {
+      onContextSelection?.({
+        kind: 'evidence',
+        stageId,
+        payload: { kind: 'evidence', item },
+      });
+    }
+  };
 
   // 高亮时滚动到该元素
   useEffect(() => {
@@ -318,7 +346,7 @@ function EvidenceItemCard({
   return (
     <div
       ref={cardRef}
-      onClick={() => onSelect?.(item.evidence_id)}
+      onClick={handleClick}
       style={{
         padding: '10px 14px',
         background: highlighted ? '#fff9c4' : currentSource ? '#e3f2fd' : '#fff',

@@ -8,6 +8,7 @@ import type {
   SelectedTraceTarget,
 } from '../../../types/workspace';
 import type { UiError } from '../workspaceUiTypes';
+import type { ContextSelection } from './contextPanelTypes';
 
 // ─── 中文标签映射 ───────────────────────────────────────────────────────
 
@@ -134,8 +135,10 @@ interface MultiViewPanelProps {
   views: ViewGraph[];
   loading?: boolean;
   error?: UiError | string;
+  stageId?: string;
   selectedTarget?: SelectedTraceTarget | null;
   onSelectTarget?: (target: SelectedTraceTarget) => void;
+  onContextSelection?: (selection: ContextSelection) => void;
 }
 
 // ─── 主组件 ─────────────────────────────────────────────────────────────
@@ -144,8 +147,10 @@ export default function MultiViewPanel({
   views,
   loading,
   error,
+  stageId,
   selectedTarget,
   onSelectTarget,
+  onContextSelection,
 }: MultiViewPanelProps) {
   const [selectedTab, setSelectedTab] = useState<ViewType>('structure');
 
@@ -280,8 +285,10 @@ export default function MultiViewPanel({
       {currentGraph ? (
         <ViewGraphRenderer
           graph={currentGraph}
+          stageId={stageId}
           selectedTarget={selectedTarget}
           onSelectTarget={onSelectTarget}
+          onContextSelection={onContextSelection}
         />
       ) : (
         <div
@@ -304,12 +311,16 @@ export default function MultiViewPanel({
 
 function ViewGraphRenderer({
   graph,
+  stageId,
   selectedTarget,
   onSelectTarget,
+  onContextSelection,
 }: {
   graph: ViewGraph;
+  stageId?: string;
   selectedTarget?: SelectedTraceTarget | null;
   onSelectTarget?: (target: SelectedTraceTarget) => void;
+  onContextSelection?: (selection: ContextSelection) => void;
 }) {
   const { nodes, edges, meta } = graph;
 
@@ -324,19 +335,38 @@ function ViewGraphRenderer({
       : null;
 
   const handleNodeClick = (nodeId: string) => {
-    onSelectTarget?.({
+    const target: SelectedTraceTarget = {
       kind: 'view_node',
       view_type: graph.view_type,
       node_id: nodeId,
-    });
+    };
+    onSelectTarget?.(target);
+    if (stageId) {
+      const node = nodes.find((n) => n.node_id === nodeId);
+      if (node) {
+        onContextSelection?.({
+          kind: 'view_node',
+          stageId,
+          payload: { kind: 'view_node', viewType: graph.view_type, node },
+        });
+      }
+    }
   };
 
   const handleEdgeClick = (edge: ViewEdge) => {
-    onSelectTarget?.({
+    const target: SelectedTraceTarget = {
       kind: 'view_edge',
       view_type: graph.view_type,
       edge_id: edge.edge_id,
-    });
+    };
+    onSelectTarget?.(target);
+    if (stageId) {
+      onContextSelection?.({
+        kind: 'view_edge',
+        stageId,
+        payload: { kind: 'view_edge', viewType: graph.view_type, edge },
+      });
+    }
   };
 
   // 空状态

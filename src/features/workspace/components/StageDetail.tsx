@@ -14,6 +14,7 @@ import type {
 } from '../../../types/workspace';
 import type { UiError } from '../workspaceUiTypes';
 import { formatBytes } from '../workspaceUiUtils';
+import type { ContextSelection } from './contextPanelTypes';
 import EvidencePanel from './EvidencePanel';
 import UnderstandingPanel from './UnderstandingPanel';
 import MultiViewPanel from './MultiViewPanel';
@@ -34,6 +35,7 @@ type ArtifactTab =
 
 interface StageDetailProps {
   activeTab: ArtifactTab;
+  stageId: string;
   context: StageContext;
   evidence?: EvidenceCollection;
   evidenceError?: UiError;
@@ -71,6 +73,7 @@ interface StageDetailProps {
   onEvidenceSelect?: (evidenceId: string) => void;
   onAskGroundedQuestion?: (question: string) => void;
   onGroundedCitationClick?: (citation: GroundedAnswerCitation) => void;
+  onContextSelectionChange?: (selection: ContextSelection | null) => void;
   qualityReport?: QualityReport | null;
   qualityLoading?: boolean;
   qualityError?: UiError | null;
@@ -83,6 +86,7 @@ interface StageDetailProps {
 
 export default function StageDetail({
   activeTab,
+  stageId,
   context,
   evidence,
   evidenceError,
@@ -115,6 +119,7 @@ export default function StageDetail({
   onEvidenceSelect,
   onAskGroundedQuestion,
   onGroundedCitationClick,
+  onContextSelectionChange,
   qualityReport,
   qualityLoading,
   qualityError,
@@ -156,6 +161,8 @@ export default function StageDetail({
           highlightedEvidenceId={highlightedEvidenceId}
           currentSourceEvidenceId={currentSourceEvidenceId}
           onEvidenceSelect={onEvidenceSelect}
+          onContextSelectionChange={onContextSelectionChange}
+          stageId={stageId}
           evidenceFilter={evidenceFilter}
         />
       );
@@ -181,6 +188,8 @@ export default function StageDetail({
           understandingLoading={understandingLoading}
           selectedTraceTarget={selectedTraceTarget}
           onSelectTraceTarget={onSelectTraceTarget}
+          stageId={stageId}
+          onContextSelectionChange={onContextSelectionChange}
         />
       );
     case 'trace':
@@ -223,6 +232,7 @@ export default function StageDetail({
           onGenerateQualityReport={onGenerateQualityReport}
           onEvidenceSelect={onEvidenceSelect}
           onViewSource={onViewSource}
+          onContextSelectionChange={onContextSelectionChange}
           qualityFilter={qualityFilter}
         />
       );
@@ -452,6 +462,8 @@ function EvidenceTab({
   highlightedEvidenceId,
   currentSourceEvidenceId,
   onEvidenceSelect,
+  onContextSelectionChange,
+  stageId,
   evidenceFilter,
 }: {
   evidence?: EvidenceCollection;
@@ -462,6 +474,8 @@ function EvidenceTab({
   highlightedEvidenceId?: string | null;
   currentSourceEvidenceId?: string | null;
   onEvidenceSelect?: (evidenceId: string) => void;
+  onContextSelectionChange?: (selection: ContextSelection | null) => void;
+  stageId: string;
   evidenceFilter?: EvidenceFilter;
 }) {
   return (
@@ -482,9 +496,11 @@ function EvidenceTab({
       {evidence && (
         <EvidencePanel
           evidence={evidence}
+          stageId={stageId}
           highlightedEvidenceId={highlightedEvidenceId ?? undefined}
           currentSourceEvidenceId={currentSourceEvidenceId ?? undefined}
           onEvidenceSelect={onEvidenceSelect}
+          onContextSelection={onContextSelectionChange}
           evidenceFilter={evidenceFilter}
         />
       )}
@@ -570,6 +586,8 @@ function ViewsTab({
   understandingLoading,
   selectedTraceTarget,
   onSelectTraceTarget,
+  stageId,
+  onContextSelectionChange,
 }: {
   views?: ViewGraph[];
   viewsLoading?: boolean;
@@ -579,6 +597,8 @@ function ViewsTab({
   understandingLoading?: boolean;
   selectedTraceTarget?: SelectedTraceTarget | null;
   onSelectTraceTarget?: (target: SelectedTraceTarget) => void;
+  stageId: string;
+  onContextSelectionChange?: (selection: ContextSelection | null) => void;
 }) {
   return (
     <div>
@@ -610,8 +630,10 @@ function ViewsTab({
           views={views ?? []}
           loading={viewsLoading}
           error={!viewsLoading ? viewsError : undefined}
+          stageId={stageId}
           selectedTarget={selectedTraceTarget}
           onSelectTarget={onSelectTraceTarget}
+          onContextSelection={onContextSelectionChange}
         />
       )}
 
@@ -739,6 +761,7 @@ function QualityTab({
   onGenerateQualityReport,
   onEvidenceSelect,
   onViewSource,
+  onContextSelectionChange,
   qualityFilter,
 }: {
   qualityReport?: QualityReport | null;
@@ -753,6 +776,7 @@ function QualityTab({
     line_range: { start: number; end: number };
     evidence_id?: string;
   }) => void;
+  onContextSelectionChange?: (selection: ContextSelection | null) => void;
   qualityFilter?: QualityFilter;
 }) {
   const filteredReport = useFilteredQualityReport(qualityReport, qualityFilter);
@@ -769,6 +793,7 @@ function QualityTab({
         onGenerate={onGenerateQualityReport}
         onEvidenceSelect={onEvidenceSelect}
         onViewSource={onViewSource}
+        onContextSelection={onContextSelectionChange}
       />
     </div>
   );
