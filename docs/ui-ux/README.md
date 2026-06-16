@@ -78,3 +78,4 @@ Phase 1 UI/UX 设计由以下文档组成：
 | [`phase-4-multi-view-panel.md`](phase-4-multi-view-panel.md) | `active` | Phase 4 三视图面板前端设计：MultiViewPanel 布局、Tab bar（结构图/数据流/时序流水）、SVG 渲染方案、节点/边颜色形状置信度编码、hover tooltip、空状态、交互规范 | Phase 4 前端编码前必读 |
 | [`phase-5-trace-and-qa-view.md`](phase-5-trace-and-qa-view.md) | `active` | Phase 5 证据回链与 Grounded Q&A 前端设计：MultiViewPanel 选中态、TracePanel、SourceExcerptPanel、EvidencePanel 高亮、GroundedQAPanel、视觉语义 | Phase 5 前端编码前必读 |
 | [`phase-7-quality-review-view.md`](phase-7-quality-review-view.md) | `active` | Phase 7 Quality Review 视图设计：仅做质量评估视图不做工作台重构、Quality Review 面板/issue list/stage quality summary/各面板最小质量提示/验收清单视图、视觉语义、文案规范 | Phase 7 前端编码前必读（active；UI 属 Batch C，Batch A 不含 UI） |
+| [`phase-8-product-workbench-view.md`](phase-8-product-workbench-view.md) | `draft` | Phase 8 产品级工作台 UI/UX：AgentScope 风格 9 条设计语言、三段式骨架、深色导航/浅色主区/顶部概览/中部筛选/可展开列表/卡片/蓝色强调、视觉语义系统、空/错误状态、文案规范 | Phase 8 前端编码前必读（draft，待审核转 active） |

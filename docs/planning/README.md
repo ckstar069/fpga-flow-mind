@@ -116,6 +116,7 @@ updated: YYYY-MM-DD
 | [`phase-7-implementation-plan.md`](phase-7-implementation-plan.md) | `active` | Phase 7 编码实施计划：P7-T01~P7-T10 任务拆解、5 个 Batch（A~E）划分与允许/禁止边界、依赖关系、进入/退出条件、安全边界。**Phase 7 Batch A/B/C/D 全部完成** | Phase 7 编码实施依据（active） |
 | [`phase-7-completion-review.md`](phase-7-completion-review.md) | `active` | Phase 7 收尾验收与完成审查：P7-T01~P7-T10 完成状态、真实项目验收（主/副样本）、前后对比、安全边界、**允许进入 Phase 8 详细文档编制** | Phase 7 完成后必读 |
 | [`phase-8-overview-product-ui-workbench.md`](phase-8-overview-product-ui-workbench.md) | `draft` | Phase 8 overview：产品级 UI/UX 工作台重构 | Phase 8 详细文档编制前必读 |
+| [`phase-8-implementation-plan.md`](phase-8-implementation-plan.md) | `draft` | Phase 8 编码实施计划：P8-T01~P8-T10 任务拆解、5 个 Batch（A~E）划分、进入/退出条件、安全边界。**Phase 8 编码尚未开始**（详细文档待审核转 active） | Phase 8 编码实施依据（draft） |
 | [`phase-9-overview-real-llm-grounding.md`](phase-9-overview-real-llm-grounding.md) | `draft` | Phase 9 overview：真实 LLM Provider 与 grounding 生产化 | Phase 9 详细文档编制前必读 |
 | [`phase-10-overview-cross-stage-python-rtl.md`](phase-10-overview-cross-stage-python-rtl.md) | `draft` | Phase 10 overview：跨阶段理解与 Python-to-RTL 映射 | Phase 10 详细文档编制前必读 |
 | [`phase-11-overview-semantic-memory-and-integration.md`](phase-11-overview-semantic-memory-and-integration.md) | `draft` | Phase 11 overview：多阶段语义记忆、测试覆盖图与 agent-scope 联动 | Phase 11 详细文档编制前必读 |

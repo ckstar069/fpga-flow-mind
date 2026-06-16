@@ -96,7 +96,7 @@ docs/
 
 ### Post-MVP 路线图 / 后续阶段规划任务
 
-> MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP。下列 Post-MVP 文档中，**Phase 7 详细文档已 `active`**；**Phase 7 已全部完成（Batch A/B/C/D，[completion review](planning/phase-7-completion-review.md) active）**；Phase 7 overview 与 Phase 8~11 overview 仍为 `draft`。进入任一阶段编码前需先编制该阶段详细文档并通过审核。
+> MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP。下列 Post-MVP 文档中，**Phase 7 详细文档已 `active`**；**Phase 7 已全部完成（Batch A/B/C/D，[completion review](planning/phase-7-completion-review.md) active）**；Phase 7 overview 与 Phase 8~11 overview 仍为 `draft`。Phase 8 详细文档已编制为 `draft`（待审核转 active），Phase 8 编码尚未开始。进入任一阶段编码前需先编制该阶段详细文档并通过审核。
 
 1. `docs/planning/post-mvp-roadmap.md`（Post-MVP 总体路线图：Phase 7~11 阶段关系、依赖顺序、进入纪律，draft）
 2. `docs/planning/phase-7-overview-real-project-quality.md`（Phase 7 overview：真实项目质量补强，draft）
@@ -108,6 +108,13 @@ docs/
      - `docs/testing/phase-7-real-project-quality-validation.md`（验证与验收，active）
      - `docs/planning/phase-7-implementation-plan.md`（编码实施计划，active）
 3. `docs/planning/phase-8-overview-product-ui-workbench.md`（Phase 8 overview：产品级 UI 工作台重构，draft）
+   - Phase 8 详细文档（**均已编制为 draft，待审核转 active 后方允许编码；Phase 8 编码尚未开始**）：
+     - `docs/requirements/phase-8-product-workbench-requirements.md`（需求 R8-001~R8-010，draft）
+     - `docs/design/phase-8-workbench-architecture.md`（工作台架构，draft）
+     - `docs/design/phase-8-ui-state-and-navigation-design.md`（UI 状态与导航，draft）
+     - `docs/ui-ux/phase-8-product-workbench-view.md`（工作台 UI/UX，draft）
+     - `docs/testing/phase-8-product-workbench-validation.md`（验证与验收，draft）
+     - `docs/planning/phase-8-implementation-plan.md`（编码实施计划，draft）
 4. `docs/planning/phase-9-overview-real-llm-grounding.md`（Phase 9 overview：真实 LLM 与 grounding 生产化，draft）
 5. `docs/planning/phase-10-overview-cross-stage-python-rtl.md`（Phase 10 overview：跨阶段与 Python-to-RTL 映射，draft）
 6. `docs/planning/phase-11-overview-semantic-memory-and-integration.md`（Phase 11 overview：语义记忆、测试覆盖图与 agent-scope 联动，draft）
