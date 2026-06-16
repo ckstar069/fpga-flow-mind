@@ -96,7 +96,7 @@ docs/
 
 ### Post-MVP 路线图 / 后续阶段规划任务
 
-> MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP。下列 Post-MVP 文档中，**Phase 7 详细文档已 `active`**；**Phase 7 已全部完成（Batch A/B/C/D，[completion review](planning/phase-7-completion-review.md) active）**；Phase 7 overview 与 Phase 8~11 overview 仍为 `draft`。进入任一阶段编码前需先编制该阶段详细文档并审核为 active。
+> MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP。下列 Post-MVP 文档中，**Phase 7 详细文档已 `active`**；**Phase 7 已全部完成（Batch A/B/C/D，[completion review](planning/phase-7-completion-review.md) active）**；Phase 7 overview 与 Phase 8~11 overview 仍为 `draft`。进入任一阶段编码前需先编制该阶段详细文档并通过审核。
 
 1. `docs/planning/post-mvp-roadmap.md`（Post-MVP 总体路线图：Phase 7~11 阶段关系、依赖顺序、进入纪律，draft）
 2. `docs/planning/phase-7-overview-real-project-quality.md`（Phase 7 overview：真实项目质量补强，draft）

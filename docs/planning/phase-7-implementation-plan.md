@@ -24,7 +24,7 @@ updated: 2026-06-16
 | Phase 7 实施计划 active | ✅ 本文档（active） |
 | **以上 Phase 7 详细文档全部转为 active** | ✅ 已满足，**Batch A/B/C/D 全部完成（completion review 已 active）** |
 
-> 纪律：**Batch D P2 阶段**：在 P0/P1 收口基础上进行质量信号校准和阶段状态隔离修复。不改 evidence/understanding/view/qa 既有核心逻辑、不接真实 LLM、不写目标项目。**P2 完成后可进入 P3（completion review）或 Phase 7 completion review**。Phase 8/9/10/11 仍未开始。
+> 纪律：Phase 7 已全部完成（Batch A/B/C/D），completion review 已 active（见 [`phase-7-completion-review.md`](phase-7-completion-review.md)）。本文档作为 Phase 7 历史实施依据保留。下一步允许进入 Phase 8 详细文档编制与 UI/UX 重构准备，但 **Phase 8 编码尚未开始**；进入 Phase 8 编码前需先编制其详细文档并通过审核。Phase 9/10/11 亦未开始。
 
 ## 2. 任务拆分
 
