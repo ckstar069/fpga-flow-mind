@@ -364,4 +364,87 @@ mod tests {
         assert!(ctx.upstream_refs[0].inferred);
         assert!(ctx.upstream_refs[0].interface_file_path.as_ref().unwrap().contains("top_interface.py"));
     }
+
+    #[test]
+    fn ai_project_template_python_stage_selectable() {
+        // ai_project_template 布局：src/python_model/L1_prototype/b.py
+        // select_stage(root, "L1") 应返回 source_path 指向 L1_prototype，files 包含 b.py。
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        touch(root, "src/python_model/L1_prototype/b.py", "def b(): pass\n");
+
+        let result = select_stage(root.to_str().unwrap().to_string(), "L1".to_string());
+        assert!(result.success, "ai_project_template 布局的 L1 阶段应可选");
+        let ctx = result.data.unwrap();
+        assert_eq!(ctx.stage_id, "L1");
+        assert!(
+            ctx.source_path.contains("L1_prototype"),
+            "source_path 应指向深层 L1_prototype 目录，实际: {}",
+            ctx.source_path
+        );
+        assert_eq!(ctx.files.len(), 1, "应返回 b.py 一个文件");
+        assert!(
+            ctx.files.iter().any(|f| f.source_path.ends_with("b.py")),
+            "files 应包含 b.py"
+        );
+        assert!(ctx.error_code.is_none(), "有文件时不应返回 stage_empty");
+    }
+
+    #[test]
+    fn ai_project_template_rtl_stage_selectable() {
+        // ai_project_template 布局：src/verilog_model/rtl/top.v
+        // select_stage(root, "RTL") 应返回 top.v。
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        touch(root, "src/verilog_model/rtl/top.v", "module top; endmodule\n");
+
+        let result = select_stage(root.to_str().unwrap().to_string(), "RTL".to_string());
+        assert!(result.success, "ai_project_template 布局的 RTL 阶段应可选");
+        let ctx = result.data.unwrap();
+        assert_eq!(ctx.stage_id, "RTL");
+        assert!(
+            ctx.source_path.contains("verilog_model/rtl"),
+            "source_path 应指向深层 verilog_model/rtl 目录，实际: {}",
+            ctx.source_path
+        );
+        assert_eq!(ctx.files.len(), 1, "应返回 top.v 一个文件");
+        assert!(
+            ctx.files.iter().any(|f| f.source_path.ends_with("top.v")),
+            "files 应包含 top.v"
+        );
+        assert_eq!(
+            ctx.files[0].language,
+            crate::models::enums::Language::Verilog
+        );
+    }
+
+    #[test]
+    fn ai_project_template_deep_source_file_collected() {
+        // 端到端验证：scanner 深层源码扫描 + stage_detector 识别 + select_stage 过滤
+        // 共同保证深层子包源码（深度 5）能进入 StageContext.files。
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        touch(root, "src/python_model/L0_external/rx_02_coarse_sync/coarse_block.py", "def coarse(): pass\n");
+        touch(root, "src/python_model/L0_external/shared_04_preamble/preamble.py", "def preamble(): pass\n");
+
+        let result = select_stage(root.to_str().unwrap().to_string(), "L0".to_string());
+        assert!(result.success);
+        let ctx = result.data.unwrap();
+        assert_eq!(ctx.stage_id, "L0");
+        assert!(
+            ctx.source_path.contains("L0_external"),
+            "source_path 应指向深层 L0_external 目录"
+        );
+        assert_eq!(ctx.files.len(), 2, "应收集到 2 个深层子包源码文件");
+        let src_paths: Vec<_> = ctx.files.iter().map(|f| f.source_path.clone()).collect();
+        assert!(
+            src_paths.iter().any(|p| p.contains("coarse_block.py")),
+            "应包含 coarse_block.py"
+        );
+        assert!(
+            src_paths.iter().any(|p| p.contains("preamble.py")),
+            "应包含 preamble.py"
+        );
+        assert!(ctx.error_code.is_none(), "有文件时不应返回 stage_empty");
+    }
 }

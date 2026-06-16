@@ -50,6 +50,7 @@ pub fn scan_workspace_files(root: &Path) -> ScanOutput {
         root,
         root,
         0,
+        &[],
         &mut output,
         deadline,
         total_limit,
@@ -58,6 +59,71 @@ pub fn scan_workspace_files(root: &Path) -> ScanOutput {
     );
 
     output
+}
+
+/// 判断 ai_project_template 中的"阶段根目录"（深层有效源码目录的入口）。
+///
+/// 仅匹配直接位于 `src/python_model/` 下的 `L*_xxx` 目录，
+/// 以及 `src/verilog_model/rtl`。这些是允许更深递归的入口目录；
+/// 一旦进入这些入口，其全部子孙目录都应继续递归（见 `is_inside_deep_source_tree`）。
+fn is_deep_source_root(name: &str, parent_chain: &[String]) -> bool {
+    let lower = name.to_lowercase();
+    // 直接位于 src/python_model/ 下的 L*_xxx 目录
+    let is_lstar = lower.starts_with("l0_") || lower.starts_with("l1_") || lower.starts_with("l2_")
+        || lower.starts_with("l3_") || lower.starts_with("l4_") || lower.starts_with("l5_")
+        || lower.starts_with("l6_");
+    if is_lstar {
+        if parent_chain.len() >= 2 {
+            let parent = parent_chain[parent_chain.len() - 1].to_lowercase();
+            let grandparent = parent_chain[parent_chain.len() - 2].to_lowercase();
+            if parent == "python_model" && grandparent == "src" {
+                return true;
+            }
+        }
+    }
+    // rtl 目录位于 src/verilog_model/ 下
+    if lower == "rtl" {
+        if parent_chain.len() >= 2 {
+            let parent = parent_chain[parent_chain.len() - 1].to_lowercase();
+            let grandparent = parent_chain[parent_chain.len() - 2].to_lowercase();
+            if parent == "verilog_model" && grandparent == "src" {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+/// 判断当前目录是否处于 ai_project_template 深层源码树之内。
+///
+/// 如果当前目录自身是阶段根（`L*_xxx` / `rtl`），或者其祖先链中存在阶段根，
+/// 则视为"深层源码树内部"，允许超过默认深度 3 的进一步递归。
+/// 这样 `src/python_model/L0_external/rx_02_coarse_sync/sub/...` 这类深层子包
+/// 也能被完整扫描，而噪声目录（`.git` / `.claude` / `__pycache__` 等）仍受
+/// `should_skip_dir` 拦截，不会无限制递归。
+fn is_inside_deep_source_tree(name: &str, parent_chain: &[String]) -> bool {
+    if is_deep_source_root(name, parent_chain) {
+        return true;
+    }
+    // 沿祖先链查找阶段根：阶段根的路径模式为 .../python_model/L*_xxx 或 .../verilog_model/rtl
+    // 即祖先链中存在某个元素是阶段根（其父为 python_model/verilog_model 且祖父为 src）
+    let n = parent_chain.len();
+    for i in 0..n {
+        let ancestor = parent_chain[i].to_lowercase();
+        if i >= 2 {
+            let parent = parent_chain[i - 1].to_lowercase();
+            let grandparent = parent_chain[i - 2].to_lowercase();
+            if is_deep_source_root(&ancestor, &[grandparent.clone(), parent]) {
+                return true;
+            }
+        } else {
+            // 链过短，直接构造空父链判断（阶段根需 src/python_model，i>=2 才满足）
+            if is_deep_source_root(&ancestor, &[]) {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 fn should_skip_dir(name: &str) -> bool {
@@ -99,6 +165,7 @@ fn scan_dir(
     root: &Path,
     dir: &Path,
     depth: usize,
+    parent_chain: &[String],
     output: &mut ScanOutput,
     deadline: Instant,
     total_limit: usize,
@@ -116,7 +183,15 @@ fn scan_dir(
         return;
     }
 
-    if depth > 3 {
+    // ai_project_template 深层有效源码树（src/python_model/L*_xxx、src/verilog_model/rtl
+    // 及其子孙目录）允许超过默认深度 3 的递归，避免漏扫真实深层源码；
+    // 其他路径（含噪声目录的深层子目录）仍受深度限制，并由 should_skip_dir 提前拦截。
+    let dir_name = dir
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("")
+        .to_string();
+    if depth > 3 && !is_inside_deep_source_tree(&dir_name, parent_chain) {
         output.warnings.push(WorkspaceWarning {
             error_code: ErrorCode::ScanTimeout,
             message: format!("目录深度超过 3，跳过: {}", dir.display()),
@@ -193,11 +268,11 @@ fn scan_dir(
         }
 
         if file_type.is_dir() {
-            let dir_name = path
+            let entry_dir_name = path
                 .file_name()
                 .and_then(|n| n.to_str())
                 .unwrap_or("");
-            if should_skip_dir(dir_name) {
+            if should_skip_dir(entry_dir_name) {
                 continue;
             }
             dirs_to_recurse.push(path);
@@ -291,10 +366,18 @@ fn scan_dir(
 
     // 递归子目录
     for sub in dirs_to_recurse {
+        let sub_name = sub
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("")
+            .to_string();
+        let mut new_chain = parent_chain.to_vec();
+        new_chain.push(sub_name);
         scan_dir(
             root,
             &sub,
             depth + 1,
+            &new_chain,
             output,
             deadline,
             total_limit,
@@ -461,5 +544,89 @@ mod tests {
         // 不应产生大量 scan_timeout warnings
         let timeout_warnings = out.warnings.iter().filter(|w| w.error_code == ErrorCode::ScanTimeout).count();
         assert_eq!(timeout_warnings, 0, "噪声目录跳过不应产生 scan_timeout");
+    }
+
+    #[test]
+    fn deep_ai_template_source_files_scanned_without_timeout() {
+        // 回归：真实 ai_project_template 存在深度 5 的源码文件，
+        // 旧逻辑在 depth > 3 时整目录跳过，导致深层子包源码漏扫并产生 scan_timeout。
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        touch(root, "src/python_model/L0_external/rx_02_coarse_sync/coarse_block.py");
+        touch(root, "src/python_model/L0_external/shared_04_preamble/preamble.py");
+        touch(root, "src/python_model/L0_external/top.py");
+        touch(root, "src/verilog_model/rtl/top.v");
+
+        let out = scan_workspace_files(root);
+        let rel_paths: Vec<_> = out.files.iter().map(|f| f.rel_path.clone()).collect();
+        assert!(
+            rel_paths.contains(&"src/python_model/L0_external/rx_02_coarse_sync/coarse_block.py".to_string()),
+            "深层子包源码 coarse_block.py 必须被扫描到"
+        );
+        assert!(
+            rel_paths.contains(&"src/python_model/L0_external/shared_04_preamble/preamble.py".to_string()),
+            "深层子包源码 preamble.py 必须被扫描到"
+        );
+        assert!(rel_paths.contains(&"src/python_model/L0_external/top.py".to_string()));
+        assert!(rel_paths.contains(&"src/verilog_model/rtl/top.v".to_string()));
+
+        // 深层有效源码扫描不得产生 scan_timeout（深度限制不应误伤 ai_project_template 源码）
+        let timeout_warnings = out
+            .warnings
+            .iter()
+            .filter(|w| w.error_code == ErrorCode::ScanTimeout)
+            .count();
+        assert_eq!(timeout_warnings, 0, "深层 ai_project_template 源码扫描不应产生 scan_timeout");
+    }
+
+    #[test]
+    fn deep_source_tree_all_descendants_scanned() {
+        // 阶段根之下的多层子孙目录都应被递归扫描（不限 depth 3）。
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        touch(root, "src/python_model/L0_external/rx_02_coarse_sync/filters/deep_filter.py");
+        touch(root, "src/python_model/L0_external/shared_04_preamble/sub/inner/innermost.py");
+        touch(root, "src/verilog_model/rtl/ip/cores/core_top.v");
+
+        let out = scan_workspace_files(root);
+        let rel_paths: Vec<_> = out.files.iter().map(|f| f.rel_path.clone()).collect();
+        assert!(
+            rel_paths.contains(&"src/python_model/L0_external/rx_02_coarse_sync/filters/deep_filter.py".to_string()),
+            "阶段根下多层子目录的源码应被扫描"
+        );
+        assert!(
+            rel_paths.contains(&"src/python_model/L0_external/shared_04_preamble/sub/inner/innermost.py".to_string()),
+            "阶段根下嵌套子包源码应被扫描"
+        );
+        assert!(
+            rel_paths.contains(&"src/verilog_model/rtl/ip/cores/core_top.v".to_string()),
+            "rtl 阶段根下多层子目录源码应被扫描"
+        );
+    }
+
+    #[test]
+    fn noise_dirs_still_depth_limited_outside_deep_source() {
+        // 深度限制在 ai_project_template 深层源码树之外仍然生效：
+        // 非 src/python_model、src/verilog_model 路径下的深层目录被噪声跳过或深度跳过，
+        // 不得无限制递归进 .git / .claude 等噪声目录。
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        // .claude 深层文件不应被扫描（should_skip_dir 提前拦截）
+        touch(root, ".claude/commands/a/b/c/d/deep_cmd.md");
+        // __pycache__ 深层不应被扫描
+        touch(root, "__pycache__/x/y/z/deep_cache.pyc");
+        // 非深层源码树的普通深层目录：深度 > 3 应被跳过（不视为有效源码树）
+        touch(root, "docs/nested/very/deep/file.md");
+
+        let out = scan_workspace_files(root);
+        let rel_paths: Vec<_> = out.files.iter().map(|f| f.rel_path.clone()).collect();
+        assert!(
+            !rel_paths.iter().any(|p| p.contains(".claude")),
+            ".claude 噪声目录不得被扫描"
+        );
+        assert!(
+            !rel_paths.iter().any(|p| p.contains("__pycache__")),
+            "__pycache__ 噪声目录不得被扫描"
+        );
     }
 }

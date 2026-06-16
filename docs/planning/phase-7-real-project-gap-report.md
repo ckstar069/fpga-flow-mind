@@ -2,13 +2,37 @@
 
 ---
 status: active
-updated: 2026-06-15
+updated: 2026-06-16
 ---
 
 > 本报告是 Phase 7 Batch D 第一步的产出：基于真实/等价 `ai_project_template` 生成项目建立质量基线，回答“fpga-flow-mind 在接近真实项目时到底离可用还差多少”。
 > 本报告**不是** Phase 7 完成验收，也不是 Phase 8/9/10 规划。
 
+## 0. 当前状态（最新更新：2026-06-16，请优先阅读）
+
+> 本节描述 **P0-1/P0-2 修复后** 的当前状态。下文 §1~§6 的具体数值与“真实结构不被识别 / scan_timeout 30 条”等表述是 **历史基线发现**（详见 §0.2），不得据此判断当前工具状态。
+
+### 0.1 已收口项（本轮 Batch D P0-1/P0-2）
+
+- **P0-1 阶段识别已修：** `stage_detector` 已支持 `ai_project_template` 深层布局，打开 `src/python_model/L*_xxx`、`src/verilog_model/rtl` 原目录即可识别 L0~L6、RTL 阶段，顶层目录优先，重复候选生成 warning。`select_stage` 端到端测试覆盖 ai_project_template 布局（L1、RTL 及深度 5 源码进入 StageContext.files）。
+- **P0-2 扫描收口已修：** `scanner` 已跳过 `.git` / `.claude` / `__pycache__` / `.pytest_cache` / `.mypy_cache` / `.ruff_cache` / `.egg-info` / `vivado` / `reports` / `build` / `dist` / `node_modules` / `target` / `.idea` / `.vscode` / `.venv` / `venv` / `sim_build` / `.tox` / `htmlcov` 等噪声目录与 `.DS_Store` / `.coverage` 等噪声文件；**并修复了深层源码漏扫**：一旦进入 `src/python_model/L*_xxx` 或 `src/verilog_model/rtl` 深层源码树，其全部子孙目录不再受固定 `depth > 3` 拦截，真实深度 5 的源码（如 `src/python_model/L0_external/rx_02_coarse_sync/coarse_block.py`、`src/python_model/L0_external/shared_04_preamble/preamble.py`）可被完整扫描且不产生 `scan_timeout`。噪声目录的深度跳过在深层源码树之外仍然生效。
+
+### 0.2 历史基线发现（已部分修复，仅作背景）
+
+- 下文 §1~§6 中的“阶段检测器只识别顶层阶段目录”“真实 `src/python_model/L1_prototype` 不被识别”“扫描产生 30 条 scan_timeout”“evidence/understanding/view 过粗或为空”等，记录的是 **P0-1/P0-2 修复前** 的基线观测值。
+- 其中“阶段不被识别”与“scan_timeout 集中于噪声目录/深层目录跳过”两项，已由 P0-1/P0-2 修复（见 §0.1）。
+- evidence 粒度、understanding 丰富度、dataflow/timing view 退化等项 **尚未修复**，属 P0-3 及之后范围，本轮未进入。
+
+### 0.3 本轮明确不做 / 不得进入
+
+- **不得** 视为 Phase 7 完成。
+- **不得** 进入 Phase 8 / 9 / 10。
+- **不得** 进入 P0-3（dataflow / timing 非空生成），需单独授权。
+- 不修改目标项目目录；不运行 Vivado / synthesis / implementation / bitstream；不接真实 LLM；不输出 PASS/HOLD/正确性裁决。
+
 ## 1. 样本项目来源与结构
+
+> **历史基线段落：** 本节及以下 §2~§6 的具体数值、问题描述为 **P0-1/P0-2 修复前** 的基线观测。当前状态见 §0.1。其中“阶段不被识别”“scan_timeout 集中于深层噪声/源码跳过”两项已修复。
 
 ### 1.1 真实项目
 
@@ -32,10 +56,12 @@ updated: 2026-06-15
 
 ### 2.1 Phase 1：Workspace 扫描
 
+> **历史基线观测（修复前）。** 当前状态：阶段识别已修（见 §0.1 P0-1）；`scan_timeout` 已通过噪声目录跳过 + 深层源码扫描修复降为零（见 §0.1 P0-2）。
+
 - **结果：** 成功打开；在临时顶层阶段目录存在时，L0~L6、RTL 均被识别，文件数统计正常。
-- **问题：**
-  - 真实 `src/python_model/L1_prototype` 结构不被识别为阶段；必须采用顶层阶段目录才能扫描。
-  - 扫描产生 30 条 `scan_timeout: 目录深度超过 3` 警告，多集中在 `tests/python/L*/__pycache__` 与 `.claude/commands/...` 深层目录。这导致部分可分析文件被跳过，可能影响 evidence 完整性。
+- **问题（基线）：**
+  - ~~真实 `src/python_model/L1_prototype` 结构不被识别为阶段~~（**P0-1 已修**，见 §0.1）。
+  - ~~扫描产生 30 条 `scan_timeout: 目录深度超过 3` 警告~~（**P0-2 已修**：噪声目录跳过 + 深层源码树不受 depth>3 拦截，见 §0.1）。基线时这些警告多集中在 `tests/python/L*/__pycache__` 与 `.claude/commands/...` 深层目录，导致部分可分析文件被跳过。
 
 ### 2.2 Phase 2：Evidence 收集
 
@@ -97,9 +123,11 @@ updated: 2026-06-15
 
 ### 3.1 Evidence 抽取（Phase 2）
 
-1. **目录结构不匹配真实项目：** 真实 `ai_project_template` 项目源码在 `src/python_model/L1_prototype` 等深层目录，当前 stage_detector 要求顶层阶段目录，导致真实项目无法被识别。
-2. **扫描深度限制导致遗漏：** `scan_timeout` 警告频繁，深层子目录（如 `__pycache__`、`.claude`、测试辅助目录）被跳过，可能错过或误过滤有用文件。
-3. **evidence 粒度偏粗：** 真实 L0 有 14 个文件、多个子模块，但只生成 20 项 evidence，无法支撑后续细粒度理解。
+> **历史基线差距。** 第 1、2 项已由 P0-1/P0-2 修复（见 §0.1）；第 3 项（evidence 粒度）属后续范围，本轮未进入。
+
+1. ~~**目录结构不匹配真实项目：** 真实 `ai_project_template` 项目源码在 `src/python_model/L1_prototype` 等深层目录，当前 stage_detector 要求顶层阶段目录，导致真实项目无法被识别。~~（**P0-1 已修**）
+2. ~~**扫描深度限制导致遗漏：** `scan_timeout` 警告频繁，深层子目录（如 `__pycache__`、`.claude`、测试辅助目录）被跳过，可能错过或误过滤有用文件。~~（**P0-2 已修**：噪声目录跳过，深层有效源码树不再受 depth>3 拦截）
+3. **evidence 粒度偏粗（未修）：** 真实 L0 有 14 个文件、多个子模块，但只生成 20 项 evidence，无法支撑后续细粒度理解。
 
 ### 3.2 Understanding 生成（Phase 3）
 
@@ -166,22 +194,24 @@ updated: 2026-06-15
 
 ## 6. 结论与下一步建议
 
-### 6.1 核心结论
+> **历史基线结论（修复前）。** 当前状态：阶段识别不匹配与 scan_timeout 已由 P0-1/P0-2 修复（见 §0.1）；understanding/view 退化仍未修，属 P0-3 及之后范围。本节结论保留作为基线背景，不得据此判断当前工具阶段识别状态。
+
+### 6.1 核心结论（基线）
 
 Phase 7 Batch C 的 UI 接入是通的，但面对真实 `ai_project_template` 项目时，工具远未达到可用：
 
-- **阶段识别**与真实项目结构不匹配。
-- **Understanding / View / Trace / Q&A** 在真实代码上严重退化。
+- ~~**阶段识别**与真实项目结构不匹配。~~（**P0-1 已修**）
+- **Understanding / View / Trace / Q&A** 在真实代码上严重退化（dataflow/timing 为空属 P0-3 范围，未进入）。
 - **Quality Review** 目前主要是“诚实地报告自己分析得不好”，而不是“分析得很好”。
 
 ### 6.2 建议继续 Phase 7 Batch D 修复
 
 在进入 Phase 8 之前，应先完成 Batch D 的真实项目质量补强，特别是：
 
-1. 让 stage_detector 支持真实 `ai_project_template` 目录结构。
-2. 提升 understanding 的丰富度（接口、信号、处理步骤）。
-3. 让 dataflow / timing view 至少能生成非空图。
-4. 优化 scanner，减少 scan_timeout 并提高有效源码覆盖率。
+1. ~~让 stage_detector 支持真实 `ai_project_template` 目录结构。~~（**P0-1 已完成**）
+2. 提升 understanding 的丰富度（接口、信号、处理步骤）。（未进入）
+3. 让 dataflow / timing view 至少能生成非空图。（属 P0-3，未进入，需单独授权）
+4. ~~优化 scanner，减少 scan_timeout 并提高有效源码覆盖率。~~（**P0-2 已完成**，含深层源码扫描修复）
 
 **关于验收方法：** 后续 Batch D 验收必须满足以下二者之一：
 - 直接修复 `stage_detector`，使工具能打开真实项目原目录并识别阶段；或
@@ -296,3 +326,4 @@ Phase 7 Batch C 的 UI 接入是通的，但面对真实 `ai_project_template` �
 | 2026-06-15 | 创建 Phase 7 Batch D 真实项目质量基线报告，基于 `fpga_project_coarse_sync` 运行完整链路，记录 evidence / understanding / view / quality 退化项，提出 Batch D 修复优先级与 Phase 8/9/10 分界。 | Claude |
 | 2026-06-15 | 安全收口修正：明确承认”曾向目标项目根目录写入临时阶段副本”属于验收方法偏差；修正”目标项目未被修改”为”src/ 校验和一致但存在目录写入偏差”；新增后续必须使用 /tmp normalized mirror 或修 stage_detector 的约束；新增 Batch D P0 修复计划（stage_detector 真实目录识别、scanner 噪声跳过、dataflow/timing 非空生成、回归验收）。 | Claude |
 | 2026-06-16 | **Batch D P0-1/P0-2 完成**：修复 `stage_detector` 支持 ai_project_template 目录结构（`src/python_model/L0_external` -> L0、`src/verilog_model/rtl` -> RTL）；修复 `scanner` 跳过噪声目录（`.git`、`.claude`、`__pycache__`、`.pytest_cache`、`.mypy_cache`、`.ruff_cache`、`.egg-info`、`reports`、`vivado`、`build`、`dist`、`node_modules`、`target`、`.DS_Store`、`.idea`、`.vscode`、`.venv`、`venv`、`sim_build`、`.tox`、`.coverage`、`htmlcov`）；新增 Rust 单元测试 12 项（stage_detector）+ 7 项（scanner）；真实项目只读验证通过（src/ checksum 前后一致，未创建临时目录）；`cargo test --lib` 494 通过、`cargo check` 通过、`npm run build` 通过、`npx tsc --noEmit` 通过；rg 边界检查无新增产品代码越界。 | Claude |
+| 2026-06-16 | **Batch D P0-1/P0-2 审核收口（深层源码漏扫修复）**：发现并修复 P0-2 残留缺陷——原 `is_deep_source_dir` 仅匹配阶段根目录名本身，对阶段根之下的子孙目录（如 `src/python_model/L0_external/rx_02_coarse_sync/`）仍触发 `depth > 3` 拦截，导致真实深度 5 源码（`coarse_block.py`、`preamble.py`）漏扫并产生 `scan_timeout`。重写为 `is_deep_source_root` + `is_inside_deep_source_tree`：一旦进入 ai_project_template 深层源码树，其全部子孙目录不再受固定深度限制；噪声目录跳过在深层源码树之外仍生效。新增 scanner 测试 3 项（深度 5 源码扫描、子孙目录全递归、噪声目录深度限制仍生效）；新增 select_stage ai_project_template 布局端到端测试 3 项（L1、RTL、深度 5 源码进入 StageContext）。文档结构调整：新增 §0 当前状态（历史基线 vs 修复后状态分离），§1/§2.1/§3.1/§6 旧结论标注为历史基线并删除线标注已修复项。明确本轮不进入 P0-3、不进入 Phase 8/9/10。 | Claude |

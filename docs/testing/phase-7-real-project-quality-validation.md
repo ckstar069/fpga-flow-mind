@@ -2,7 +2,7 @@
 
 ---
 status: active
-updated: 2026-06-15
+updated: 2026-06-16
 ---
 
 > 本文档定义 Phase 7（真实项目评估与 evidence/understanding 质量补强）的验证与验收设计：Rust 单元/集成测试方向、前端构建与组件验证方向、真实桌面验收步骤、真实样本验收策略、checksum 只读验证、rg 安全回归、以及 Phase 7 完成标准。
@@ -179,3 +179,4 @@ Phase 7 完成后，方允许考虑进入：
 | 2026-06-15 | Batch C GUI 验收补充：用户在可用 GUI 环境中完成截图验收，确认 L0 收集 evidence / 生成 understanding / 生成 views / 生成质量报告可显示，Trace / evidence / quality 面板可用；同时观察到 Quality Review 报告暴露 structure view 仅少量节点、dataflow / timing view 为空、`empty_or_unhelpful_view` 等退化项。该结果说明 Batch C UI 可运行，但真实产品可用性与分析价值仍弱，尚不足以支撑 Phase 7 完成结论。 | Claude |
 | 2026-06-15 | Batch D 安全收口修正：在 §4 真实桌面验收步骤中增加严格只读约束（禁止向目标项目写入临时目录/文件，必须使用 `/tmp` 或 app-owned normalized mirror）；§5 新增”硬只读约束”子节，明确原始项目与 mirror 双 checksum 记录要求；§6/§10 同步更新安全边界与 checksum 规则。 | Claude |
 | 2026-06-16 | **Batch D P0-1/P0-2 验证记录**：`stage_detector` 新增 ai_project_template 深层布局识别（`src/python_model/L0_external` -> L0 等、`src/verilog_model/rtl` -> RTL），顶层目录优先，重复候选生成 warning；`scanner` 新增噪声目录跳过（`.git`、`.claude`、`__pycache__`、`.pytest_cache`、`.mypy_cache`、`.ruff_cache`、`.egg-info`、`reports`、`vivado`、`build`、`dist`、`node_modules`、`target`、`.DS_Store`、`.idea`、`.vscode`、`.venv`、`venv`、`sim_build`、`.tox`、`.coverage`、`htmlcov`）；新增 Rust 单元测试 12 项（stage_detector ai_project_template 布局）+ 7 项（scanner 噪声跳过）；真实项目 `fpga_project_coarse_sync` 只读验证通过（src/ 下 49 个 .py/.v/.sv/.md 文件 SHA-256 前后一致，未在项目根目录创建临时 L0/L1/RTL 目录）；`cargo test --lib` 494 通过、`cargo check` 通过、`npm run build` 通过、`npx tsc --noEmit` 通过；rg 边界检查无新增产品代码越界（PASS/HOLD/审计用语、Vivado/synthesis/implementation/bitstream、OpenAI/Anthropic/api_key、Command::new/外部进程、目标项目写入）。P0-3（dataflow/timing 非空生成）未进入，需单独授权。 | Claude |
+| 2026-06-16 | **Batch D P0-1/P0-2 审核收口验证**：发现 P0-2 残留缺陷并修复——原 scanner 深层源码判定 `is_deep_source_dir` 仅匹配阶段根目录名，阶段根子孙目录仍被 `depth > 3` 拦截，导致真实深度 5 源码（`src/python_model/L0_external/rx_02_coarse_sync/coarse_block.py`、`src/python_model/L0_external/shared_04_preamble/preamble.py`）漏扫并产生 `scan_timeout`。重写为 `is_deep_source_root` + `is_inside_deep_source_tree`，阶段根及其全部子孙不再受固定深度限制，噪声目录深度跳过在源码树之外仍生效。新增测试：scanner 3 项（`deep_ai_template_source_files_scanned_without_timeout`、`deep_source_tree_all_descendants_scanned`、`noise_dirs_still_depth_limited_outside_deep_source`）、select_stage 3 项（`ai_project_template_python_stage_selectable`、`ai_project_template_rtl_stage_selectable`、`ai_project_template_deep_source_file_collected`），均用 tempdir，生产代码不写入目标项目。`cargo test --lib` 全量通过、`cargo check` 通过、`npm run build` 通过、`npx tsc --noEmit` 通过；rg 边界检查无新增产品代码越界。P0-3 未进入，需单独授权；未进入 Phase 8/9/10。 | Claude |
