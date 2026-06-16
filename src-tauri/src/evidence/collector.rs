@@ -366,11 +366,12 @@ mod tests {
         let mut collector = EvidenceCollector::new("RTL");
         let collection = collector.collect_from_stage_context(&ctx);
 
-        assert_eq!(collection.evidence_items.len(), 1);
-        assert_eq!(collection.evidence_items[0].symbol.as_deref(), Some("top"));
+        // P1: module + port extraction → 2 items
+        assert!(collection.evidence_items.len() >= 2, "应有 module + port, 实际 {}", collection.evidence_items.len());
+        assert!(collection.evidence_items.iter().any(|i| i.symbol.as_deref() == Some("top")), "应包含 module top");
+        assert!(collection.evidence_items.iter().any(|i| i.symbol.as_deref() == Some("clk")), "应包含 port clk");
         assert_eq!(collection.stats.files_processed, 1);
-        assert_eq!(collection.evidence_items[0].evidence_id, "EV-RTL-000001");
-        assert_eq!(collection.stats.items_by_kind.get("rtl"), Some(&1));
+        assert_eq!(collection.stats.items_by_kind.get("rtl"), Some(&collection.stats.total_items));
     }
 
     #[test]

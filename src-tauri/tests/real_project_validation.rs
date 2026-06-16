@@ -14,6 +14,57 @@ use fpga_flow_mind_lib::models::enums::ErrorCode;
 const PRIMARY_SAMPLE: &str = "/Users/ckstar/Repo/znxt_ofdm/fpga_project_coarse_sync";
 const SECONDARY_SAMPLE: &str = "/Users/ckstar/Repo/znxt_ofdm/fpga_project_fft";
 
+// ─── Checksum helper (pure Rust, no Command::new) ──────────────────────
+
+fn compute_src_checksum(root: &Path) -> Vec<(String, String)> {
+    use sha2::Digest;
+
+    let mut results: Vec<(String, String)> = Vec::new();
+    let src_dir = root.join("src");
+    if !src_dir.exists() {
+        return results;
+    }
+    collect_checksums(&src_dir, &mut results);
+    // stable sort by relative path
+    results.sort_by(|a, b| a.0.cmp(&b.0));
+    results
+}
+
+fn collect_checksums(dir: &Path, out: &mut Vec<(String, String)>) {
+    use sha2::Digest;
+
+    let Ok(entries) = std::fs::read_dir(dir) else { return };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        // skip noise directories
+        if path.is_dir() {
+            if matches!(name,
+                "__pycache__" | ".git" | ".claude" | "node_modules" | "target" |
+                "vivado" | "reports" | "build" | "dist" | ".venv" | "venv" |
+                "sim_build" | ".tox" | "htmlcov" | ".pytest_cache" | ".mypy_cache" |
+                ".ruff_cache" | ".egg-info" | ".idea" | ".vscode"
+            ) {
+                continue;
+            }
+            collect_checksums(&path, out);
+            continue;
+        }
+        // only .py / .v / .sv / .md
+        let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+        if !matches!(ext, "py" | "v" | "sv" | "md") {
+            continue;
+        }
+        let Ok(content) = std::fs::read(&path) else { continue };
+        let hash = format!("{:x}", sha2::Sha256::digest(&content));
+        let rel = path.strip_prefix(path.ancestors().nth(2).unwrap_or(&path))
+            .unwrap_or(&path)
+            .to_string_lossy()
+            .to_string();
+        out.push((rel, hash));
+    }
+}
+
 // ─── Test 1: Primary Sample - Stage Detection ─────────────────────────
 
 #[test]
@@ -127,44 +178,24 @@ fn primary_sample_skips_noise_dirs() {
     assert!(!v_files.is_empty(), "Must have Verilog files");
 }
 
-// ─── Test 5: Checksum Verification ──────────────────────────────────────
+// ─── Test 5: Checksum Verification (pure Rust, no Command::new) ───────
 
 #[test]
 #[ignore = "requires real project at PRIMARY_SAMPLE"]
 fn primary_sample_checksum_consistency() {
-    use std::process::Command;
-
     let root = Path::new(PRIMARY_SAMPLE);
 
     // Compute checksum before
-    let before = Command::new("sh")
-        .arg("-c")
-        .arg(format!(
-            "cd {} && find src -type f \\( -name '*.py' -o -name '*.v' -o -name '*.sv' -o -name '*.md' \\) -exec shasum -a 256 {{}} \\; | sort",
-            root.display()
-        ))
-        .output()
-        .expect("Failed to compute checksum");
-
-    let before_str = String::from_utf8(before.stdout).unwrap();
+    let before = compute_src_checksum(root);
 
     // Re-scan (read-only operation)
     let _scan = scan_workspace_files(root);
     let _result = detect_stages(root, &_scan.files);
 
     // Compute checksum after
-    let after = Command::new("sh")
-        .arg("-c")
-        .arg(format!(
-            "cd {} && find src -type f \\( -name '*.py' -o -name '*.v' -o -name '*.sv' -o -name '*.md' \\) -exec shasum -a 256 {{}} \\; | sort",
-            root.display()
-        ))
-        .output()
-        .expect("Failed to compute checksum");
+    let after = compute_src_checksum(root);
 
-    let after_str = String::from_utf8(after.stdout).unwrap();
+    assert_eq!(before, after, "Checksums must match before and after read-only operations");
 
-    assert_eq!(before_str, after_str, "Checksums must match before and after read-only operations");
-
-    println!("Checksum verification passed: {} files", before_str.lines().count());
+    println!("Checksum verification passed: {} files", before.len());
 }

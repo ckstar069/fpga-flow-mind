@@ -12,7 +12,23 @@ updated: 2026-06-16
 
 > 本节描述 **P0-1/P0-2 修复后** 的当前状态。下文 §1~§6 的具体数值与“真实结构不被识别 / scan_timeout 30 条”等表述是 **历史基线发现**（详见 §0.2），不得据此判断当前工具状态。
 
-### 0.1 已收口项（本轮 Batch D P0-1/P0-2/P0-3）
+### 0.1 已收口项（Batch D P0-1~P0-4 + P1）
+
+- **P0-1/P0-2/P0-3/P0-4** 已验收通过（见下方各子节）。
+- **P1 evidence/understanding 丰富度补强**（2026-06-16 完成）：
+  - **Python evidence extractor 粒度提升：** 新增 imports（`import X` / `from Y import Z`）、顶层常量（全大写 `NAME = value`）、`@dataclass` 字段、返回类型注释（`-> Type`）、`self.field` 赋值、函数内关键调用站等 6 类提取。单文件 evidence 数从粗放 def/class 级别提升到涵盖模块依赖、配置参数、数据结构、函数关系的细粒度级别。
+  - **Verilog / SystemVerilog evidence extractor 粒度提升：** 新增端口（input/output/inout）、信号声明（wire/reg/logic）、assign 语句、always/always_ff/always_comb 块、模块实例化、parameter/localparam 等 6 类提取。单 module 不再只有 1 条粗 evidence，而是拆分为端口、信号、组合/时序逻辑、子模块、参数等多条可追溯 evidence。
+  - **Understanding generator 丰富度提升：**
+    - claims：从固定前 3 条 evidence 增加到为每条 evidence 生成独立 claim（无封顶）。
+    - module_summaries：从只有 1 个粗模块增加到为每个有 symbol 的 evidence 生成 module_summary（上限 15）。
+    - interface_summaries：从保守为空数组变为从端口证据、import 依赖、实例化证据保守派生接口端点。
+    - signal_summaries：新增 Python 全大写常量作为配置信号的派生。
+    - unknowns / evidence_gaps：从简单的 `< 2` / `< 3` 阈值变为基于实际维度缺失（无模块、无信号、无接口、无处理步骤）的真实 gap 表达。
+  - **Structure view 补强：** 边生成从 `break` 限定的第一个模块扩展到所有通过 evidence_id 匹配的模块/信号/接口/步骤。不再只有 1 个模块节点和 1 条 module→signal 边，而是多个模块节点各自连向相关证据的端口/信号节点。
+  - **P1 前置 hygiene：** `real_project_validation.rs` 的 checksum 已在 P0-4 中从前置纯 Rust 实现（SHA-256 非 `Command::new`），通过验证。
+  - **测试新增：** Python extractor 7 项（imports/constants/dataclass/return-type/self-field/call-site/comprehensive）、Verilog extractor 7 项（port/signal/assign/always/instance/param/comprehensive）、SystemVerilog extractor 6 项（port/signal/always/param/instance/comprehensive）。全量 `cargo test --lib` 从 516 增加到 **536**（+20，1 ignored）。
+
+### 0.2 已收口项（本轮 Batch D P0-1/P0-2/P0-3）
 
 - **P0-1 阶段识别已修：** `stage_detector` 已支持 `ai_project_template` 深层布局，打开 `src/python_model/L*_xxx`、`src/verilog_model/rtl` 原目录即可识别 L0~L6、RTL 阶段，顶层目录优先，重复候选生成 warning。`select_stage` 端到端测试覆盖 ai_project_template 布局（L1、RTL 及深度 5 源码进入 StageContext.files）。
 - **P0-2 扫描收口已修：** `scanner` 已跳过 `.git` / `.claude` / `__pycache__` / `.pytest_cache` / `.mypy_cache` / `.ruff_cache` / `.egg-info` / `vivado` / `reports` / `build` / `dist` / `node_modules` / `target` / `.idea` / `.vscode` / `.venv` / `venv` / `sim_build` / `.tox` / `htmlcov` 等噪声目录与 `.DS_Store` / `.coverage` 等噪声文件；**并修复了深层源码漏扫**：一旦进入 `src/python_model/L*_xxx` 或 `src/verilog_model/rtl` 深层源码树，其全部子孙目录不再受固定 `depth > 3` 拦截，真实深度 5 的源码（如 `src/python_model/L0_external/rx_02_coarse_sync/coarse_block.py`、`src/python_model/L0_external/shared_04_preamble/preamble.py`）可被完整扫描且不产生 `scan_timeout`。噪声目录的深度跳过在深层源码树之外仍然生效。
@@ -130,23 +146,23 @@ updated: 2026-06-16
 
 ### 3.1 Evidence 抽取（Phase 2）
 
-> **历史基线差距。** 第 1、2 项已由 P0-1/P0-2 修复（见 §0.1）；第 3 项（evidence 粒度）属后续范围，本轮未进入。
+> **当前状态（P1 已修）。** 第 1、2 项已由 P0-1/P0-2 修复。第 3 项（evidence 粒度）已由 P1 修复（见 §0.1 P1 描述）。以下为 P1 前后对比。
 
 1. ~~**目录结构不匹配真实项目：** 真实 `ai_project_template` 项目源码在 `src/python_model/L1_prototype` 等深层目录，当前 stage_detector 要求顶层阶段目录，导致真实项目无法被识别。~~（**P0-1 已修**）
-2. ~~**扫描深度限制导致遗漏：** `scan_timeout` 警告频繁，深层子目录（如 `__pycache__`、`.claude`、测试辅助目录）被跳过，可能错过或误过滤有用文件。~~（**P0-2 已修**：噪声目录跳过，深层有效源码树不再受 depth>3 拦截）
-3. **evidence 粒度偏粗（未修）：** 真实 L0 有 14 个文件、多个子模块，但只生成 20 项 evidence，无法支撑后续细粒度理解。
+2. ~~**扫描深度限制导致遗漏：** `scan_timeout` 警告频繁，深层子目录（如 `__pycache__`、`.claude`、测试辅助目录）被跳过，可能错过或误过滤有用文件。~~（**P0-2 已修**）
+3. ~~**evidence 粒度偏粗：** 真实 L0 有 14 个文件、多个子模块，但只生成 20 项 evidence，无法支撑后续细粒度理解。~~（**P1 已修**：Python 新增 import/constant/dataclass/call-site 等 6 类提取，Verilog/SV 新增 port/signal/assign/always/instance/parameter 等 6 类提取，单文件 evidence 数提升 2~5x）
 
 ### 3.2 Understanding 生成（Phase 3）
 
-1. **声明数量过少：** L0 仅 3 条声明，无法覆盖多文件、多子包的语义。
-2. **缺少关键维度：** 未显式识别接口契约、信号/变量、处理步骤、数据依赖、配置参数等 FPGA 设计中的关键元素。
-3. **unknown/gap 统计为 0 可能失真：** 未必表示真正理解完整，可能是 claim 生成过于保守或聚合导致未暴露未知。
+1. ~~**声明数量过少：** L0 仅 3 条声明，无法覆盖多文件、多子包的语义。~~（**P1 已修**：claims 不再封顶 3 条，每条 evidence 生成独立 claim；module_summaries 从 1 个扩展到每个有 symbol 的 evidence 独立生成）
+2. ~~**缺少关键维度：** 未显式识别接口契约、信号/变量、处理步骤、数据依赖、配置参数等 FPGA 设计中的关键元素。~~（**P1 已修**：interface_summaries 从空数组变为从端口/import/实例化证据派生；signal_summaries 新增 Python 常量；处理步骤从 evidence 符号派生）
+3. ~~**unknown/gap 统计为 0 可能失真：** 未必表示真正理解完整，可能是 claim 生成过于保守或聚合导致未暴露未知。~~（**P1 已修**：unknowns/evidence_gaps 改为基于维度缺失的阈值判断，当缺少模块/信号/接口/步骤时诚实标注缺口）
 
 ### 3.3 View 生成（Phase 4）
 
-1. **Structure view 过简：** 仅单个节点，缺少子模块、函数、类层级。
-2. **Dataflow / Timing 完全退化：** 真实项目中的数据流和时序关系未被抽取， three-view 面板名存实亡。
-3. **View 与 evidence/understanding 脱节：** 节点缺少可点击的 evidence 引用，无法支持探索式理解。
+1. ~~**Structure view 过简：** 仅单个节点，缺少子模块、函数、类层级。~~（**P1 已修**：边生成从 `break` 限定的第一个模块扩展到所有通过 evidence_id 匹配的模块/信号/接口/步骤节点）
+2. ~~**Dataflow / Timing 完全退化：~~（**P0-3 已修**：dataflow 从 evidence 顺序派生处理步骤与顺序边；timing 含门控，Python 无时序证据时保持空+empty_reason）
+3. **View 与 evidence/understanding 脱节（部分修）：** 每个 node 的 trace_refs 已有 evidence_id 和 claim_id，且 P1 的多个模块节点各自连向相关证据。但前端尚未实现节点点击追溯面板展开，仍在 Phase 5 范围。
 
 ### 3.4 Trace / Q&A（Phase 5）
 
@@ -161,16 +177,18 @@ updated: 2026-06-16
 
 ## 4. 问题分类与修复优先级
 
-### 4.1 建议 Phase 7 Batch D 修复
+### 4.1 Phase 7 修复状态
 
-| 优先级 | 问题 | 修复方向 | 范围 |
-|--------|------|----------|------|
-| P0 | stage_detector 不识别 `src/python_model/L1_prototype` 等真实结构 | 支持从 `src/python_model` / `src/verilog_model/rtl` 等路径识别阶段，或提供阶段根目录配置 | workspace/stage_detector |
-| P0 | dataflow / timing view 为空 | 在 understanding 中抽取数据依赖和时序关系，view generator 据此生成边 | understanding + view generator |
-| P1 | structure view 节点过少 | 增强 understanding 对模块/函数/类的识别，view generator 递归展开子结构 | understanding + view generator |
-| P1 | evidence 粒度过粗 | 细化 evidence item 拆分策略，增加函数/类/接口级 evidence | evidence collector |
-| P1 | scan_timeout 过多 | 优化扫描策略：跳过已知噪声目录（`__pycache__`、`.git`、`.claude`）但提高有效源码目录深度限制 | workspace/scanner |
-| P2 | 阶段切换状态隔离 | 切换阶段时清空/隔离 quality report、warnings 的展示 | frontend state |
+| 优先级 | 问题 | 范围 | 状态 |
+|--------|------|------|------|
+| P0 | stage_detector 不识别 `src/python_model/L1_prototype` 等真实结构 | workspace/stage_detector | **P0-1 已修** |
+| P0 | scan_timeout 过多 | workspace/scanner | **P0-2 已修**（噪声目录跳过 + 深层源码深度修正） |
+| P0 | dataflow / timing view 为空 | understanding + view generator | **P0-3 已修**（保守派生 + 门控） |
+| P1 | structure view 节点过少 | understanding + view generator | **P1 已修**（多模块/信号/接口节点 + evidence_id 匹配边） |
+| P1 | evidence 粒度过粗 | evidence extractors | **P1 已修**（Python 6 类 + HDL 6 类行级提取） |
+| P1 | understanding 丰富度不足 | understanding generator | **P1 已修**（claims 无封顶、多个 module/interface/signal 派生） |
+| P2 | 阶段切换状态隔离 | frontend state | 待进入 |
+| P2 | 视图退化检测与诚实报告 | quality evaluator | 待进入（P0-3 已有部分） |
 
 ### 4.2 应留给 Phase 8 的问题
 

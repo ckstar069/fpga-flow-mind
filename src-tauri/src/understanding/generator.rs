@@ -144,17 +144,19 @@ fn first_identifier(s: &str) -> Option<String> {
 /// 规则（保守、可追溯）：
 /// - **processing_steps**：对 Python 阶段的函数符号 evidence，按 evidence 顺序生成
 ///   step（confidence=inferred，绑定 evidence_id）。RTL 阶段不派生 step（避免把
-///   硬件 module 当作算法步骤）。每个 step 仅表示“存在该处理单元”，不臆造调用关系。
+///   硬件 module 当作算法步骤）。每个 step 仅表示"存在该处理单元"，不臆造调用关系。
 /// - **signal_summaries**：从 RTL evidence 摘要中识别 input/output 端口与时钟/复位
-///   关键字（confidence=inferred，绑定 evidence_id）。
-/// - **interface_summaries**：保守不派生（需明确的接口契约证据，本轮不伪造）。
+///   关键字（confidence=inferred，绑定 evidence_id）。Python 阶段识别全大写常量。
+/// - **interface_summaries**：从端口/import 证据中保守识别接口端点。
 fn derive_conservative_summaries(
     _stage_id: &str,
     items: &[EvidenceContextItem],
 ) -> DerivedSummaries {
     let mut signal_summaries: Vec<serde_json::Value> = Vec::new();
+    let mut interface_summaries: Vec<serde_json::Value> = Vec::new();
     let mut processing_steps: Vec<serde_json::Value> = Vec::new();
     let mut sig_seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut iface_seen: std::collections::HashSet<String> = std::collections::HashSet::new();
     let mut step_seen: std::collections::HashSet<String> = std::collections::HashSet::new();
     let mut step_order: u32 = 1;
 
@@ -163,6 +165,7 @@ fn derive_conservative_summaries(
         let symbol = ctx.symbol.as_deref().unwrap_or("");
         let is_rtl = ctx.source_kind == "rtl";
         let is_python = ctx.source_kind == "python_stage";
+        let summary_lower = ctx.summary.to_lowercase();
 
         // ── processing_steps：仅 Python 函数/类符号，按顺序 ──
         // 跳过 dunder 与 __init__ 这类无算法语义的符号。
@@ -179,8 +182,9 @@ fn derive_conservative_summaries(
             }
         }
 
-        // ── signal_summaries：RTL 端口与时钟/复位 ──
+        // ── signal_summaries ──
         if is_rtl {
+            // RTL：从摘要文本识别 input/output 端口
             let sigs = extract_signal_from_excerpt(&ctx.summary);
             for (name, direction) in sigs {
                 if sig_seen.insert(name.clone()) {
@@ -193,18 +197,86 @@ fn derive_conservative_summaries(
                     }));
                 }
             }
+        } else if is_python && !symbol.is_empty() && symbol.chars().all(|c| c.is_uppercase() || c == '_' || c.is_digit(10)) {
+            // Python：全大写常量视为配置信号
+            if sig_seen.insert(symbol.to_string()) {
+                signal_summaries.push(serde_json::json!({
+                    "name": symbol,
+                    "description": format!("P1 派生自 Python 常量证据 {} 的配置信号", ev_id),
+                    "direction": None::<String>,
+                    "evidence_refs": [{"evidence_id": ev_id}],
+                    "confidence": "inferred"
+                }));
+            }
+        }
+
+        // ── interface_summaries：从端口证据和 import 证据派生 ──
+        let is_port_evidence = summary_lower.starts_with("input")
+            || summary_lower.starts_with("output")
+            || summary_lower.starts_with("inout");
+        let is_import_evidence = summary_lower.starts_with("import")
+            || summary_lower.starts_with("from");
+        let is_instance_evidence = ctx.summary.contains('(') && ctx.summary.contains(')')
+            && !symbol.is_empty() && (symbol.contains("u_") || symbol.contains("inst"));
+
+        if is_port_evidence && !symbol.is_empty() {
+            let iface_name = format!("{}_port", symbol);
+            if iface_seen.insert(iface_name.clone()) {
+                let iface_type = if summary_lower.starts_with("input") { "input_port" }
+                    else if summary_lower.starts_with("output") { "output_port" }
+                    else { "bidirectional_port" };
+                interface_summaries.push(serde_json::json!({
+                    "name": iface_name,
+                    "description": format!("P1 派生自端口证据 {} 的接口端点", ev_id),
+                    "interface_type": iface_type,
+                    "evidence_refs": [{"evidence_id": ev_id}],
+                    "confidence": "inferred"
+                }));
+            }
+        }
+
+        if is_import_evidence && !symbol.is_empty() && summary_lower.contains("import") {
+            let iface_name = format!("dep_{}", symbol);
+            if iface_seen.insert(iface_name.clone()) {
+                interface_summaries.push(serde_json::json!({
+                    "name": iface_name,
+                    "description": format!("P1 派生自依赖证据 {} 的外部接口", ev_id),
+                    "interface_type": "external_dependency",
+                    "evidence_refs": [{"evidence_id": ev_id}],
+                    "confidence": "inferred"
+                }));
+            }
+        }
+
+        if is_instance_evidence {
+            let iface_name = format!("inst_{}", symbol);
+            if iface_seen.insert(iface_name.clone()) {
+                interface_summaries.push(serde_json::json!({
+                    "name": iface_name,
+                    "description": format!("P1 派生自实例化证据 {} 的子模块接口", ev_id),
+                    "interface_type": "submodule_interface",
+                    "evidence_refs": [{"evidence_id": ev_id}],
+                    "confidence": "inferred"
+                }));
+            }
         }
     }
 
-    // 控制处理步骤上限，避免过多噪声（保留 evidence 顺序前 N 个）
+    // 控制处理步骤上限
     const MAX_STEPS: usize = 12;
     if processing_steps.len() > MAX_STEPS {
         processing_steps.truncate(MAX_STEPS);
     }
 
+    // 控制接口上限
+    const MAX_IFACES: usize = 10;
+    if interface_summaries.len() > MAX_IFACES {
+        interface_summaries.truncate(MAX_IFACES);
+    }
+
     DerivedSummaries {
         signal_summaries,
-        interface_summaries: vec![], // 本轮保守不派生 interface（需明确契约证据）
+        interface_summaries,
         processing_steps,
     }
 }
@@ -215,6 +287,7 @@ fn derive_conservative_summaries(
 ///
 /// 所有的 evidence_refs 仅使用传入的 known_evidence_ids，
 /// 确保通过 SchemaValidator 的 hallucination guard。
+/// P1: 为每个 evidence 符号生成独立的 claim 和 module_summary，不做数量封顶。
 pub struct MockProvider;
 
 impl UnderstandingProvider for MockProvider {
@@ -227,19 +300,17 @@ impl UnderstandingProvider for MockProvider {
         // 构建确定性 mock ImplementationUnderstanding JSON
         let mut claims = Vec::new();
         let mut module_summaries = Vec::new();
+        let categories = [
+            "module_structure",
+            "signal_definition",
+            "data_processing",
+            "interface_description",
+            "configuration",
+        ];
 
         if !input.evidence_context_items.is_empty() {
-            // 为前 3 个 evidence（或全部）生成 claims
-            let claim_count = evidence_count.min(3);
-            let categories = [
-                "module_structure",
-                "signal_definition",
-                "data_processing",
-            ];
-            let confidences = ["confirmed", "supported", "inferred"];
-
-            for i in 0..claim_count {
-                let ctx = &input.evidence_context_items[i];
+            // P1: 为每个 evidence item（不封顶）生成 claim
+            for (i, ctx) in input.evidence_context_items.iter().enumerate() {
                 let ev_id = &ctx.evidence_id;
                 let claim_id = format!("CL-{}-{:06}", stage_id, i + 1);
                 let desc = if let Some(sym) = &ctx.symbol {
@@ -251,22 +322,30 @@ impl UnderstandingProvider for MockProvider {
                     "claim_id": claim_id,
                     "category": categories[i % categories.len()],
                     "description": desc,
-                    "confidence": confidences[i % confidences.len()],
+                    "confidence": "inferred",
                     "evidence_refs": [{"evidence_id": ev_id}],
                     "has_evidence_gap": false
                 }));
 
-                // 为第一个 claim 生成模块摘要
-                if i == 0 {
-                    let module_name = ctx.symbol.as_deref().unwrap_or("unknown");
-                    module_summaries.push(serde_json::json!({
-                        "name": format!("module_{}", module_name),
-                        "description": format!("基于证据 {} 的模块", ev_id),
-                        "evidence_refs": [{"evidence_id": ev_id}],
-                        "confidence": "supported"
-                    }));
+                // P1: 为每个有 symbol 的 evidence 生成模块摘要
+                if let Some(sym) = &ctx.symbol {
+                    // 跳过 dunder 和短名（已知的噪声符号）
+                    if !sym.starts_with('_') && sym.len() > 1 {
+                        module_summaries.push(serde_json::json!({
+                            "name": format!("module_{}", sym),
+                            "description": format!("基于证据 {} [{}] 的模块", ev_id, sym),
+                            "evidence_refs": [{"evidence_id": ev_id}],
+                            "confidence": "supported"
+                        }));
+                    }
                 }
             }
+        }
+
+        // P1: 限制 module_summaries 数量避免过度膨胀
+        const MAX_MODULES: usize = 15;
+        if module_summaries.len() > MAX_MODULES {
+            module_summaries.truncate(MAX_MODULES);
         }
 
         // ── P0-3 保守派生：从 evidence symbol/excerpt 派生 signals / interfaces /
@@ -277,33 +356,59 @@ impl UnderstandingProvider for MockProvider {
         let interface_summaries = derived.interface_summaries;
         let processing_steps = derived.processing_steps;
 
-        // 如果 evidence 不足，添加 unknowns 和 gaps
+        // P1: 基于派生结果添加更真实的 unknowns 和 gaps
         let first_ev_id = input.ordered_evidence_ids.first();
         let mut unknowns = Vec::new();
         let mut evidence_gaps = Vec::new();
 
-        if evidence_count < 2 {
+        if evidence_count == 0 {
+            // 完全无证据 → 全面未知
             unknowns.push(serde_json::json!({
                 "unknown_id": format!("UNK-{}-000001", stage_id),
-                "description": "实现细节无法从现有证据推断",
-                "related_evidence_refs": match first_ev_id {
-                    Some(id) => vec![serde_json::json!({"evidence_id": id})],
-                    None => vec![],
-                },
-                "reason": "证据数量不足以推断完整实现逻辑"
+                "description": "实现细节完全无法推断（无可用证据）",
+                "related_evidence_refs": [],
+                "reason": "阶段无任何源文件可收集证据"
             }));
-        }
-
-        if evidence_count < 3 {
             evidence_gaps.push(serde_json::json!({
                 "gap_id": format!("GAP-{}-000001", stage_id),
-                "expected_evidence": "更多模块/信号/接口定义证据",
-                "reason": "需要更完整的源码覆盖",
-                "related_evidence_refs": match first_ev_id {
-                    Some(id) => vec![serde_json::json!({"evidence_id": id})],
-                    None => vec![],
-                }
+                "expected_evidence": "至少一个 .py/.v/.sv 源文件",
+                "reason": "无法从空阶段生成结构化理解",
+                "related_evidence_refs": []
             }));
+        } else {
+            // 有证据但某些维度仍缺失
+            if module_summaries.is_empty() {
+                unknowns.push(serde_json::json!({
+                    "unknown_id": format!("UNK-{}-000001", stage_id),
+                    "description": "未识别到明确的模块结构（缺少 class/module 声明证据）",
+                    "related_evidence_refs": first_ev_id.map_or(vec![], |id| vec![serde_json::json!({"evidence_id": id})]),
+                    "reason": "现有证据无 class/module 定义，无法派生模块摘要"
+                }));
+            }
+            if signal_summaries.is_empty() {
+                unknowns.push(serde_json::json!({
+                    "unknown_id": format!("UNK-{}-000002", stage_id),
+                    "description": "未识别到信号定义（缺少端口/变量声明证据）",
+                    "related_evidence_refs": first_ev_id.map_or(vec![], |id| vec![serde_json::json!({"evidence_id": id})]),
+                    "reason": "现有证据无端口/变量声明，或未通过轻量解析识别"
+                }));
+            }
+            if interface_summaries.is_empty() && !module_summaries.is_empty() {
+                evidence_gaps.push(serde_json::json!({
+                    "gap_id": format!("GAP-{}-000001", stage_id),
+                    "expected_evidence": "端口方向 / 接口契约 / import 依赖声明证据",
+                    "reason": "模块间接口关系未从现有 evidence 中识别（需更准确方向或接口协议信息）",
+                    "related_evidence_refs": first_ev_id.map_or(vec![], |id| vec![serde_json::json!({"evidence_id": id})]),
+                }));
+            }
+            if processing_steps.is_empty() && signal_summaries.is_empty() {
+                evidence_gaps.push(serde_json::json!({
+                    "gap_id": format!("GAP-{}-000002", stage_id),
+                    "expected_evidence": "函数/方法/处理步骤或数据流定义证据",
+                    "reason": "无法确定阶段内部的处理流水或数据变换",
+                    "related_evidence_refs": first_ev_id.map_or(vec![], |id| vec![serde_json::json!({"evidence_id": id})]),
+                }));
+            }
         }
 
         let short_summary = if evidence_count == 0 {

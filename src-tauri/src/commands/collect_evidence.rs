@@ -110,8 +110,11 @@ mod tests {
         let col = result.data.unwrap();
         assert_eq!(col.stage_id, "RTL");
         assert!(!col.evidence_items.is_empty(), "应有证据项");
-        assert_eq!(col.evidence_items[0].evidence_id, "EV-RTL-000001");
-        assert_eq!(col.stats.items_by_kind.get("rtl"), Some(&1));
+        // P1: module + port extraction → ≥ 2 items
+        assert!(col.evidence_items.len() >= 2, "应有至少 2 项证据, 实际 {}", col.evidence_items.len());
+        assert!(col.evidence_items.iter().any(|i| i.evidence_id == "EV-RTL-000001"), "ID 应从 EV-RTL-000001 开始");
+        let rtl_count = col.stats.items_by_kind.get("rtl").copied().unwrap_or(0);
+        assert!(rtl_count >= 2, "rtl 类应有至少 2 项, 实际 {}", rtl_count);
     }
 
     // ─── 空阶段 ────────────────────────────────────────────────────

@@ -94,75 +94,113 @@ pub fn build_structure_view(iu: &ImplementationUnderstanding) -> ViewGraph {
         });
     }
 
-    // ── 边：module → signal（同一模块相关的信号） ──
-    for node in &nodes {
-        if node.node_type == NodeType::Module {
-            // 为每个 signal 创建引用边
-            for signal_node in &nodes {
-                if signal_node.node_type == NodeType::Signal {
-                    edge_counter += 1;
-                    edges.push(ViewEdge {
-                        edge_id: format!("E-structure-{:04}", edge_counter),
-                        edge_type: EdgeType::References,
-                        source_node_id: node.node_id.clone(),
-                        target_node_id: signal_node.node_id.clone(),
-                        label: None,
-                        description: format!("模块 {} 关联信号 {}", node.label, signal_node.label),
-                        confidence: ClaimConfidence::Inferred,
-                        trace_refs: vec![],
-                    });
-                }
+    // ── 边：module → signal（通过 evidence_id 匹配） ──
+    for module_node in &nodes {
+        if module_node.node_type != NodeType::Module {
+            continue;
+        }
+        let module_ev_ids: std::collections::HashSet<Option<&str>> = module_node
+            .trace_refs
+            .iter()
+            .map(|t| t.evidence_id.as_deref())
+            .collect();
+
+        for signal_node in &nodes {
+            if signal_node.node_type != NodeType::Signal {
+                continue;
             }
-            break; // 只为第一个 module 创建边缘（避免过度生成）
+            // 只在有共同 evidence_id 时创建边
+            let shares_evidence = signal_node
+                .trace_refs
+                .iter()
+                .any(|t| module_ev_ids.contains(&t.evidence_id.as_deref()));
+            if shares_evidence {
+                edge_counter += 1;
+                edges.push(ViewEdge {
+                    edge_id: format!("E-structure-{:04}", edge_counter),
+                    edge_type: EdgeType::References,
+                    source_node_id: module_node.node_id.clone(),
+                    target_node_id: signal_node.node_id.clone(),
+                    label: None,
+                    description: format!("模块 {} 关联信号 {}", module_node.label, signal_node.label),
+                    confidence: ClaimConfidence::Inferred,
+                    trace_refs: vec![],
+                });
+            }
         }
     }
 
     // ── 边：module → interface ──
-    for node in &nodes {
-        if node.node_type == NodeType::Module {
-            for iface_node in &nodes {
-                if iface_node.node_type == NodeType::Interface {
-                    edge_counter += 1;
-                    edges.push(ViewEdge {
-                        edge_id: format!("E-structure-{:04}", edge_counter),
-                        edge_type: EdgeType::References,
-                        source_node_id: node.node_id.clone(),
-                        target_node_id: iface_node.node_id.clone(),
-                        label: None,
-                        description: format!(
-                            "模块 {} 使用接口 {}",
-                            node.label, iface_node.label
-                        ),
-                        confidence: ClaimConfidence::Inferred,
-                        trace_refs: vec![],
-                    });
-                }
+    for module_node in &nodes {
+        if module_node.node_type != NodeType::Module {
+            continue;
+        }
+        let module_ev_ids: std::collections::HashSet<Option<&str>> = module_node
+            .trace_refs
+            .iter()
+            .map(|t| t.evidence_id.as_deref())
+            .collect();
+
+        for iface_node in &nodes {
+            if iface_node.node_type != NodeType::Interface {
+                continue;
             }
-            break;
+            // 共享 evidence_id 或模块/接口名匹配
+            let shares_evidence = iface_node
+                .trace_refs
+                .iter()
+                .any(|t| module_ev_ids.contains(&t.evidence_id.as_deref()));
+            let name_match = iface_node
+                .label
+                .to_lowercase()
+                .contains(&module_node.label.to_lowercase().replace("module_", ""));
+            if shares_evidence || name_match {
+                edge_counter += 1;
+                edges.push(ViewEdge {
+                    edge_id: format!("E-structure-{:04}", edge_counter),
+                    edge_type: EdgeType::References,
+                    source_node_id: module_node.node_id.clone(),
+                    target_node_id: iface_node.node_id.clone(),
+                    label: None,
+                    description: format!("模块 {} 使用接口 {}", module_node.label, iface_node.label),
+                    confidence: ClaimConfidence::Inferred,
+                    trace_refs: vec![],
+                });
+            }
         }
     }
 
-    // ── 边：processing_step → module（步骤发生在模块内） ──
-    for node in &nodes {
-        if node.node_type == NodeType::ProcessingStep {
-            for mod_node in &nodes {
-                if mod_node.node_type == NodeType::Module {
-                    edge_counter += 1;
-                    edges.push(ViewEdge {
-                        edge_id: format!("E-structure-{:04}", edge_counter),
-                        edge_type: EdgeType::Contains,
-                        source_node_id: node.node_id.clone(),
-                        target_node_id: mod_node.node_id.clone(),
-                        label: None,
-                        description: format!(
-                            "处理步骤 {} 在模块 {} 内",
-                            node.label, mod_node.label
-                        ),
-                        confidence: ClaimConfidence::Inferred,
-                        trace_refs: vec![],
-                    });
-                    break; // 每个 step 只链接第一个 module
-                }
+    // ── 边：processing_step → module（通过 evidence_id 匹配） ──
+    for step_node in &nodes {
+        if step_node.node_type != NodeType::ProcessingStep {
+            continue;
+        }
+        let step_ev_ids: std::collections::HashSet<Option<&str>> = step_node
+            .trace_refs
+            .iter()
+            .map(|t| t.evidence_id.as_deref())
+            .collect();
+
+        for mod_node in &nodes {
+            if mod_node.node_type != NodeType::Module {
+                continue;
+            }
+            let shares_evidence = mod_node
+                .trace_refs
+                .iter()
+                .any(|t| step_ev_ids.contains(&t.evidence_id.as_deref()));
+            if shares_evidence {
+                edge_counter += 1;
+                edges.push(ViewEdge {
+                    edge_id: format!("E-structure-{:04}", edge_counter),
+                    edge_type: EdgeType::Contains,
+                    source_node_id: step_node.node_id.clone(),
+                    target_node_id: mod_node.node_id.clone(),
+                    label: None,
+                    description: format!("处理步骤 {} 在模块 {} 内", step_node.label, mod_node.label),
+                    confidence: ClaimConfidence::Inferred,
+                    trace_refs: vec![],
+                });
             }
         }
     }
