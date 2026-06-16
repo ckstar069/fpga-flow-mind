@@ -12,23 +12,25 @@ updated: 2026-06-16
 
 > 本节描述 **P0-1/P0-2 修复后** 的当前状态。下文 §1~§6 的具体数值与“真实结构不被识别 / scan_timeout 30 条”等表述是 **历史基线发现**（详见 §0.2），不得据此判断当前工具状态。
 
-### 0.1 已收口项（本轮 Batch D P0-1/P0-2）
+### 0.1 已收口项（本轮 Batch D P0-1/P0-2/P0-3）
 
 - **P0-1 阶段识别已修：** `stage_detector` 已支持 `ai_project_template` 深层布局，打开 `src/python_model/L*_xxx`、`src/verilog_model/rtl` 原目录即可识别 L0~L6、RTL 阶段，顶层目录优先，重复候选生成 warning。`select_stage` 端到端测试覆盖 ai_project_template 布局（L1、RTL 及深度 5 源码进入 StageContext.files）。
 - **P0-2 扫描收口已修：** `scanner` 已跳过 `.git` / `.claude` / `__pycache__` / `.pytest_cache` / `.mypy_cache` / `.ruff_cache` / `.egg-info` / `vivado` / `reports` / `build` / `dist` / `node_modules` / `target` / `.idea` / `.vscode` / `.venv` / `venv` / `sim_build` / `.tox` / `htmlcov` 等噪声目录与 `.DS_Store` / `.coverage` 等噪声文件；**并修复了深层源码漏扫**：一旦进入 `src/python_model/L*_xxx` 或 `src/verilog_model/rtl` 深层源码树，其全部子孙目录不再受固定 `depth > 3` 拦截，真实深度 5 的源码（如 `src/python_model/L0_external/rx_02_coarse_sync/coarse_block.py`、`src/python_model/L0_external/shared_04_preamble/preamble.py`）可被完整扫描且不产生 `scan_timeout`。噪声目录的深度跳过在深层源码树之外仍然生效。
+- **P0-3 dataflow/timing 最小非空保守生成已修：** 根因是 `MockProvider` 硬编码 `signal_summaries`/`interface_summaries`/`processing_steps` 为空数组，丢弃了 evidence 已携带的 symbol/excerpt/source_kind。修复路径（保守、可追溯，不接真实 LLM）：`MockProvider` 新增 `derive_conservative_summaries`，从 evidence 的 Python 函数/类符号按 evidence 顺序派生 `processing_steps`（绑定 evidence_id，confidence=inferred），从 RTL evidence excerpt 识别 input/output/clk 派生 `signal_summaries`；`dataflow_builder`/`timing_builder` 的顺序/时钟边改为从端点节点 trace_refs 合并派生（消除原空 trace 推断边）；`timing_builder` 新增 RTL 时序保守回退（processing_steps 空但有 clk/rst 信号时生成 ClockDomain/ResetDomain 节点）。真实项目只读验证（`fpga_project_coarse_sync`，src/ SHA-256 前后一致 `090fd1f4...`，未创建临时目录）：L0 dataflow 12 节点/11 边、timing 12/11（基线均为 0/0）；L1 dataflow 9/8、timing 9/8；RTL dataflow 4/0、timing 2/0（clk/rst 节点）。dataflow/timing 的 Medium `empty_or_unhelpful_view` 由修复前每阶段 3 条降为 **0**；RTL 残留 1 条 Low 孤立节点提示（clk/rst 无 pipeline 可连），属诚实信号而非伪造。
 
 ### 0.2 历史基线发现（已部分修复，仅作背景）
 
-- 下文 §1~§6 中的“阶段检测器只识别顶层阶段目录”“真实 `src/python_model/L1_prototype` 不被识别”“扫描产生 30 条 scan_timeout”“evidence/understanding/view 过粗或为空”等，记录的是 **P0-1/P0-2 修复前** 的基线观测值。
+- 下文 §1~§6 中的“阶段检测器只识别顶层阶段目录”“真实 `src/python_model/L1_prototype` 不被识别”“扫描产生 30 条 scan_timeout”“evidence/understanding/view 过粗或为空”等，记录的是 **P0-1/P0-2/P0-3 修复前** 的基线观测值。
 - 其中“阶段不被识别”与“scan_timeout 集中于噪声目录/深层目录跳过”两项，已由 P0-1/P0-2 修复（见 §0.1）。
-- evidence 粒度、understanding 丰富度、dataflow/timing view 退化等项 **尚未修复**，属 P0-3 及之后范围，本轮未进入。
+- “dataflow/timing view 完全为空 / empty_or_unhelpful_view”一项，已由 P0-3 修复（见 §0.1）。
+- evidence 粒度（Phase 2 拆分策略）、understanding 丰富度（接口/信号/处理步骤的更细语义识别）等项 **仍未修**，属 P1 及之后范围。当前 P0-3 的保守派生只解决“有 evidence 时不再无谓退化”，不替代后续 P1 的语义补强。
 
 ### 0.3 本轮明确不做 / 不得进入
 
 - **不得** 视为 Phase 7 完成。
 - **不得** 进入 Phase 8 / 9 / 10。
-- **不得** 进入 P0-3（dataflow / timing 非空生成），需单独授权。
 - 不修改目标项目目录；不运行 Vivado / synthesis / implementation / bitstream；不接真实 LLM；不输出 PASS/HOLD/正确性裁决。
+- 后续 P1（evidence 粒度细化、understanding 接口/信号语义补强）需单独授权。
 
 ## 1. 样本项目来源与结构
 
@@ -327,3 +329,4 @@ Phase 7 Batch C 的 UI 接入是通的，但面对真实 `ai_project_template` �
 | 2026-06-15 | 安全收口修正：明确承认”曾向目标项目根目录写入临时阶段副本”属于验收方法偏差；修正”目标项目未被修改”为”src/ 校验和一致但存在目录写入偏差”；新增后续必须使用 /tmp normalized mirror 或修 stage_detector 的约束；新增 Batch D P0 修复计划（stage_detector 真实目录识别、scanner 噪声跳过、dataflow/timing 非空生成、回归验收）。 | Claude |
 | 2026-06-16 | **Batch D P0-1/P0-2 完成**：修复 `stage_detector` 支持 ai_project_template 目录结构（`src/python_model/L0_external` -> L0、`src/verilog_model/rtl` -> RTL）；修复 `scanner` 跳过噪声目录（`.git`、`.claude`、`__pycache__`、`.pytest_cache`、`.mypy_cache`、`.ruff_cache`、`.egg-info`、`reports`、`vivado`、`build`、`dist`、`node_modules`、`target`、`.DS_Store`、`.idea`、`.vscode`、`.venv`、`venv`、`sim_build`、`.tox`、`.coverage`、`htmlcov`）；新增 Rust 单元测试 12 项（stage_detector）+ 7 项（scanner）；真实项目只读验证通过（src/ checksum 前后一致，未创建临时目录）；`cargo test --lib` 494 通过、`cargo check` 通过、`npm run build` 通过、`npx tsc --noEmit` 通过；rg 边界检查无新增产品代码越界。 | Claude |
 | 2026-06-16 | **Batch D P0-1/P0-2 审核收口（深层源码漏扫修复）**：发现并修复 P0-2 残留缺陷——原 `is_deep_source_dir` 仅匹配阶段根目录名本身，对阶段根之下的子孙目录（如 `src/python_model/L0_external/rx_02_coarse_sync/`）仍触发 `depth > 3` 拦截，导致真实深度 5 源码（`coarse_block.py`、`preamble.py`）漏扫并产生 `scan_timeout`。重写为 `is_deep_source_root` + `is_inside_deep_source_tree`：一旦进入 ai_project_template 深层源码树，其全部子孙目录不再受固定深度限制；噪声目录跳过在深层源码树之外仍生效。新增 scanner 测试 3 项（深度 5 源码扫描、子孙目录全递归、噪声目录深度限制仍生效）；新增 select_stage ai_project_template 布局端到端测试 3 项（L1、RTL、深度 5 源码进入 StageContext）。文档结构调整：新增 §0 当前状态（历史基线 vs 修复后状态分离），§1/§2.1/§3.1/§6 旧结论标注为历史基线并删除线标注已修复项。明确本轮不进入 P0-3、不进入 Phase 8/9/10。 | Claude |
+| 2026-06-16 | **Batch D P0-3 完成（dataflow/timing 最小非空保守生成）**：根因——`MockProvider` 硬编码 `signal_summaries`/`interface_summaries`/`processing_steps` 为空数组，丢弃 evidence 已携带的 symbol/excerpt/source_kind，导致 dataflow/timing builder 无可派生输入而退化为空图。修复（保守、可追溯、不接真实 LLM）：(1) `MockProvider` 新增 `derive_conservative_summaries`，从 evidence context items 派生 `processing_steps`（Python 函数/类符号按 evidence 顺序，绑定 evidence_id，confidence=inferred，跳过 dunder/下划线前缀；RTL 不派生 step）、`signal_summaries`（RTL excerpt 识别 input/output/clk）；interface 本轮保守不派生。(2) `dataflow_builder`/`timing_builder` 顺序/时钟边改为从端点节点 trace_refs 合并派生（`merge_node_trace_refs`），消除原空 trace 推断边。(3) `timing_builder` 新增 RTL 时序保守回退（steps 空但有 clk/rst 信号时生成 ClockDomain/ResetDomain 节点）。新增 Rust 单测 14 项。真实项目只读验证（src/ SHA-256 前后一致 `090fd1f4...`，未创建临时目录）：L0 dataflow 12 节点/11 边、timing 12/11（基线 0/0）；L1 dataflow 9/8、timing 9/8；RTL dataflow 4/0、timing 2/0。dataflow/timing 的 Medium `empty_or_unhelpful_view` 由修复前每阶段 3 条降为 0（RTL 残留 1 条 Low 孤立节点提示为诚实信号）。`cargo test --lib` 514 通过、`cargo check` 通过、`npm run build` 通过、`npx tsc --noEmit` 通过；rg 边界检查无新增产品代码越界。**仍保持空图的诚实情形**：Python 阶段无时序证据时 timing 保持空（明确 empty_reason）；interface 本轮不派生。未进入 Phase 8/9/10。后续 P1（evidence 粒度细化、understanding 接口/信号语义补强）需单独授权。 | Claude |

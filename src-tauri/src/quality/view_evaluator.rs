@@ -420,4 +420,114 @@ mod tests {
         assert_eq!(isolated_issues[0].node_id.as_deref(), Some("N-2"));
         assert_eq!(isolated_issues[0].severity, QualitySeverity::Low);
     }
+
+    // ─── P0-3: 非空且 trace 可解析的 dataflow/timing 不应被判 empty_or_unhelpful ──
+
+    #[test]
+    fn non_empty_traceable_dataflow_not_flagged_empty() {
+        use crate::views::models::{EdgeType, NodeType};
+        // 模拟 P0-3 后的 dataflow 视图：2 个 processing_step 节点 + 1 条带 trace 的顺序边
+        let n1 = ViewNode {
+            node_id: "N-dataflow-0001".to_string(),
+            node_type: NodeType::ProcessingStep,
+            label: "load".to_string(),
+            description: "载入".to_string(),
+            confidence: ClaimConfidence::Supported,
+            trace_refs: vec![make_trace_ref(Some("EV-1"), None)],
+            layout: None,
+        };
+        let n2 = ViewNode {
+            node_id: "N-dataflow-0002".to_string(),
+            node_type: NodeType::ProcessingStep,
+            label: "corr".to_string(),
+            description: "相关".to_string(),
+            confidence: ClaimConfidence::Supported,
+            trace_refs: vec![make_trace_ref(Some("EV-2"), None)],
+            layout: None,
+        };
+        // 边 trace_refs 指向端点节点的 evidence（P0-3 行为）
+        let edge = ViewEdge {
+            edge_id: "E-dataflow-0001".to_string(),
+            edge_type: EdgeType::DataFlow,
+            source_node_id: "N-dataflow-0001".to_string(),
+            target_node_id: "N-dataflow-0002".to_string(),
+            label: None,
+            description: "处理步骤 1 → 2".to_string(),
+            confidence: ClaimConfidence::Inferred,
+            trace_refs: vec![make_trace_ref(Some("EV-1"), None)],
+        };
+        // evidence 集含 EV-1/EV-2
+        let mut ev = HashSet::new();
+        ev.insert("EV-1".to_string());
+        ev.insert("EV-2".to_string());
+        let graph = make_view_graph(ViewType::Dataflow, vec![n1, n2], vec![edge]);
+        let input = ViewEvaluatorInput {
+            sample_id: "S1",
+            stage_id: "L0",
+            view: &graph,
+            evidence_id_set: &ev,
+            claim_id_set: &HashSet::new(),
+        };
+        let (report, issues) = ViewEvaluator::evaluate(&input);
+
+        // 非空 → 不应有 EmptyOrUnhelpfulView（节点+边均可解析）
+        let empty_issues: Vec<_> = issues
+            .iter()
+            .filter(|i| i.kind == QualityIssueKind::EmptyOrUnhelpfulView)
+            .collect();
+        assert!(
+            empty_issues.is_empty(),
+            "非空且 trace 可解析的 dataflow 不应被判 empty_or_unhelpful, issues: {:?}",
+            issues
+        );
+        assert_eq!(report.trace_resolvable_ratio, 1.0);
+    }
+
+    #[test]
+    fn non_empty_traceable_timing_not_flagged_empty() {
+        use crate::views::models::{EdgeType, NodeType};
+        // RTL 时序回退：1 个 ClockDomain 节点（trace 到 EV-RTL-1），无 step → 无边
+        let n = ViewNode {
+            node_id: "N-timing-0001".to_string(),
+            node_type: NodeType::ClockDomain,
+            label: "clk".to_string(),
+            description: "时钟".to_string(),
+            confidence: ClaimConfidence::Inferred,
+            trace_refs: vec![make_trace_ref(Some("EV-RTL-1"), None)],
+            layout: None,
+        };
+        let mut ev = HashSet::new();
+        ev.insert("EV-RTL-1".to_string());
+        let graph = make_view_graph(ViewType::Timing, vec![n], vec![]);
+        let input = ViewEvaluatorInput {
+            sample_id: "S1",
+            stage_id: "RTL",
+            view: &graph,
+            evidence_id_set: &ev,
+            claim_id_set: &HashSet::new(),
+        };
+        let (report, issues) = ViewEvaluator::evaluate(&input);
+
+        // 非空、trace 可解析 → 不应被判 Medium 严重度的"视图为空"。
+        // 孤立节点提示（Low）是诚实信号，可接受，但不应是 Medium empty。
+        let medium_empty: Vec<_> = issues
+            .iter()
+            .filter(|i| {
+                i.kind == QualityIssueKind::EmptyOrUnhelpfulView
+                    && i.severity == QualitySeverity::Medium
+            })
+            .collect();
+        assert!(
+            medium_empty.is_empty(),
+            "非空且 trace 可解析的 timing 不应有 Medium empty_or_unhelpful, issues: {:?}",
+            issues
+        );
+        assert_eq!(report.trace_resolvable_ratio, 1.0);
+        // 孤立节点提示（如有）严重度应为 Low
+        for i in &issues {
+            if i.description.contains("孤立节点") {
+                assert_eq!(i.severity, QualitySeverity::Low);
+            }
+        }
+    }
 }

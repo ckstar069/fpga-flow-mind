@@ -31,6 +31,184 @@ pub enum ProviderError {
     NotConfigured,
 }
 
+// ─── P0-3 保守派生辅助 ──────────────────────────────────────────────
+
+/// 保守派生产物 — 由 evidence symbol/excerpt 确定性派生的 IU 摘要片段。
+///
+/// 设计原则（诚实优先，不伪造）：
+/// - 所有派生项必须绑定真实 evidence_id。
+/// - 仅做基于 evidence 顺序与符号/关键词的保守识别，不做算法语义猜测。
+/// - 证据不足以派生某类摘要时，对应字段保持空数组；view 层据此输出 empty_reason。
+struct DerivedSummaries {
+    signal_summaries: Vec<serde_json::Value>,
+    interface_summaries: Vec<serde_json::Value>,
+    processing_steps: Vec<serde_json::Value>,
+}
+
+/// 从单个 evidence context item 的摘要片段中保守识别信号名（用于 signal_summaries）。
+///
+/// 仅识别明确的方向性 token，不做语义推断。识别到则返回 (name, direction)。
+fn extract_signal_from_excerpt(excerpt: &str) -> Vec<(String, Option<String>)> {
+    let mut out: Vec<(String, Option<String>)> = Vec::new();
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+    // RTL 端口：input/output <name> / wire/reg <name>
+    // 仅匹配行首形式，避免在表达式中间误匹配。
+    for raw_line in excerpt.lines() {
+        let line = raw_line.trim_start();
+        let lower = line.to_lowercase();
+        // 跳过注释行
+        if lower.starts_with("//") || lower.starts_with("/*") || lower.starts_with("*") {
+            continue;
+        }
+        // input/output port
+        if let Some(rest) = lower
+            .strip_prefix("input ")
+            .or_else(|| lower.strip_prefix("output "))
+        {
+            let direction = if lower.starts_with("input") {
+                Some("input")
+            } else {
+                Some("output")
+            };
+            // 提取首个标识符
+            if let Some(name) = first_identifier(rest) {
+                let key = name.clone();
+                if seen.insert(key) {
+                    out.push((name, direction.map(|s| s.to_string())));
+                }
+            }
+            continue;
+        }
+        // 时钟/复位信号关键字（仅当行内出现且非注释）。
+        // 仅当行本身是 wire/reg 声明或端口声明时，提取其首个标识符作为时钟信号。
+        if (lower.contains("clk") || lower.contains("clock"))
+            && (lower.starts_with("wire ") || lower.starts_with("reg ") || lower.starts_with("input "))
+        {
+            if let Some(name) = first_identifier(&lower) {
+                if name.contains("clk") || name.contains("clock") {
+                    let key = name.clone();
+                    if seen.insert(key) {
+                        out.push((name, Some("input".to_string())));
+                    }
+                }
+            }
+        }
+    }
+
+    // 控制信号总数上限，避免噪声膨胀
+    out.truncate(8);
+    out
+}
+
+/// 提取字符串中第一个合法标识符（字母/下划线开头，含字母数字下划线）。
+fn first_identifier(s: &str) -> Option<String> {
+    let s = s.trim_start();
+    let mut chars = s.char_indices().peekable();
+    // 跳过前导非标识符字符（如 `[3:0]`、`wire`、`reg`、`signed`）
+    let mut started = false;
+    let mut start = 0usize;
+    let mut end = 0usize;
+    for (i, c) in chars.by_ref() {
+        let is_ident_char = c.is_alphanumeric() || c == '_';
+        let is_ident_start = c.is_alphabetic() || c == '_';
+        if !started {
+            if is_ident_start {
+                started = true;
+                start = i;
+                end = i + c.len_utf8();
+            }
+            // 跳过类型关键字前缀（wire/reg/signed/logic/input/output），继续找下一个标识符
+            // 简单处理：遇到标识符就记，但若它是已知类型关键字，则重置
+        } else if is_ident_char {
+            end = i + c.len_utf8();
+        } else {
+            break;
+        }
+    }
+    if !started {
+        return None;
+    }
+    let candidate = &s[start..end];
+    // 跳过类型关键字，取其后的标识符
+    let type_keywords = ["wire", "reg", "logic", "signed", "input", "output", "inout"];
+    if type_keywords.contains(&candidate) {
+        // 递归取剩余部分
+        return first_identifier(&s[end..]);
+    }
+    Some(candidate.to_string())
+}
+
+/// 从 evidence context items 保守派生 signal/interface/processing_step 摘要。
+///
+/// 规则（保守、可追溯）：
+/// - **processing_steps**：对 Python 阶段的函数符号 evidence，按 evidence 顺序生成
+///   step（confidence=inferred，绑定 evidence_id）。RTL 阶段不派生 step（避免把
+///   硬件 module 当作算法步骤）。每个 step 仅表示“存在该处理单元”，不臆造调用关系。
+/// - **signal_summaries**：从 RTL evidence 摘要中识别 input/output 端口与时钟/复位
+///   关键字（confidence=inferred，绑定 evidence_id）。
+/// - **interface_summaries**：保守不派生（需明确的接口契约证据，本轮不伪造）。
+fn derive_conservative_summaries(
+    _stage_id: &str,
+    items: &[EvidenceContextItem],
+) -> DerivedSummaries {
+    let mut signal_summaries: Vec<serde_json::Value> = Vec::new();
+    let mut processing_steps: Vec<serde_json::Value> = Vec::new();
+    let mut sig_seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut step_seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut step_order: u32 = 1;
+
+    for ctx in items {
+        let ev_id = &ctx.evidence_id;
+        let symbol = ctx.symbol.as_deref().unwrap_or("");
+        let is_rtl = ctx.source_kind == "rtl";
+        let is_python = ctx.source_kind == "python_stage";
+
+        // ── processing_steps：仅 Python 函数/类符号，按顺序 ──
+        // 跳过 dunder 与 __init__ 这类无算法语义的符号。
+        if is_python && !symbol.is_empty() && !symbol.starts_with('_') {
+            if step_seen.insert(symbol.to_string()) {
+                processing_steps.push(serde_json::json!({
+                    "name": symbol,
+                    "description": format!("保守派生自证据 {} 的处理单元（按 evidence 顺序）", ev_id),
+                    "order": step_order,
+                    "evidence_refs": [{"evidence_id": ev_id}],
+                    "confidence": "inferred"
+                }));
+                step_order += 1;
+            }
+        }
+
+        // ── signal_summaries：RTL 端口与时钟/复位 ──
+        if is_rtl {
+            let sigs = extract_signal_from_excerpt(&ctx.summary);
+            for (name, direction) in sigs {
+                if sig_seen.insert(name.clone()) {
+                    signal_summaries.push(serde_json::json!({
+                        "name": name,
+                        "description": format!("保守派生自 RTL 证据 {} 的信号", ev_id),
+                        "direction": direction,
+                        "evidence_refs": [{"evidence_id": ev_id}],
+                        "confidence": "inferred"
+                    }));
+                }
+            }
+        }
+    }
+
+    // 控制处理步骤上限，避免过多噪声（保留 evidence 顺序前 N 个）
+    const MAX_STEPS: usize = 12;
+    if processing_steps.len() > MAX_STEPS {
+        processing_steps.truncate(MAX_STEPS);
+    }
+
+    DerivedSummaries {
+        signal_summaries,
+        interface_summaries: vec![], // 本轮保守不派生 interface（需明确契约证据）
+        processing_steps,
+    }
+}
+
 // ─── MockProvider ───────────────────────────────────────────────────
 
 /// Mock provider — 基于 known_evidence_ids 生成确定性 mock 输出
@@ -91,6 +269,14 @@ impl UnderstandingProvider for MockProvider {
             }
         }
 
+        // ── P0-3 保守派生：从 evidence symbol/excerpt 派生 signals / interfaces /
+        //    processing_steps。全部绑定 evidence_id，不做算法语义猜测，仅按 evidence
+        //    顺序产出可追溯节点。证据不足的字段保持空数组（由 view 层输出 empty_reason）。
+        let derived = derive_conservative_summaries(stage_id, &input.evidence_context_items);
+        let signal_summaries = derived.signal_summaries;
+        let interface_summaries = derived.interface_summaries;
+        let processing_steps = derived.processing_steps;
+
         // 如果 evidence 不足，添加 unknowns 和 gaps
         let first_ev_id = input.ordered_evidence_ids.first();
         let mut unknowns = Vec::new();
@@ -138,11 +324,14 @@ impl UnderstandingProvider for MockProvider {
             )
         } else {
             format!(
-                "基于 {} 条证据对阶段 {} 进行了结构化理解分析，识别出 {} 个声明、{} 个模块、{} 个未知项和 {} 个证据缺失。",
+                "基于 {} 条证据对阶段 {} 进行了结构化理解分析，识别出 {} 个声明、{} 个模块、{} 个信号、{} 个接口、{} 个处理步骤、{} 个未知项和 {} 个证据缺失。",
                 evidence_count,
                 stage_id,
                 claims.len(),
                 module_summaries.len(),
+                signal_summaries.len(),
+                interface_summaries.len(),
+                processing_steps.len(),
                 unknowns.len(),
                 evidence_gaps.len()
             )
@@ -182,9 +371,9 @@ impl UnderstandingProvider for MockProvider {
             },
             "claims": claims,
             "module_summaries": module_summaries,
-            "signal_summaries": [],
-            "interface_summaries": [],
-            "processing_steps": [],
+            "signal_summaries": signal_summaries,
+            "interface_summaries": interface_summaries,
+            "processing_steps": processing_steps,
             "unknowns": unknowns,
             "evidence_gaps": evidence_gaps,
             "generation_meta": {
@@ -199,9 +388,9 @@ impl UnderstandingProvider for MockProvider {
                 "claims_by_confidence": conf_map,
                 "claims_by_category": cat_map,
                 "module_count": module_summaries.len() as u32,
-                "signal_count": 0u32,
-                "interface_count": 0u32,
-                "processing_step_count": 0u32,
+                "signal_count": signal_summaries.len() as u32,
+                "interface_count": interface_summaries.len() as u32,
+                "processing_step_count": processing_steps.len() as u32,
                 "unknown_count": unknowns.len() as u32,
                 "evidence_gap_count": evidence_gaps.len() as u32
             }
@@ -830,5 +1019,253 @@ mod tests {
         assert!(!ts.is_empty());
         assert!(ts.contains('T'), "degraded generated_at 应为 ISO 8601: {}", ts);
         assert_ne!(ts, "2026-06-12T00:00:00Z", "degraded 不应使用旧 dummy 值");
+    }
+
+    // ─── gen_12 ~ gen_16: P0-3 保守派生测试 ─────────────────────────
+
+    fn make_item_with_kind(
+        id: &str,
+        symbol: Option<&str>,
+        summary: &str,
+        source_kind: SourceKind,
+        language: Language,
+    ) -> EvidenceItem {
+        EvidenceItem {
+            evidence_id: id.to_string(),
+            source_path: "/tmp/test".to_string(),
+            language,
+            source_kind,
+            line_range: LineRange { start: 1, end: 5 },
+            symbol: symbol.map(|s| s.to_string()),
+            summary: summary.to_string(),
+            strength: EvidenceStrength::Direct,
+        }
+    }
+
+    /// gen_12: Python 函数符号 evidence → processing_steps（按 evidence 顺序）
+    #[test]
+    fn gen_12_python_symbols_derive_processing_steps() {
+        let items = vec![
+            make_item_with_kind("EV-L0-000001", Some("load_samples"), "def load_samples():", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L0-000002", Some("correlate"), "def correlate(rx):", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L0-000003", Some("detect_peak"), "def detect_peak(corr):", SourceKind::PythonStage, Language::Python),
+        ];
+        let collection = make_collection("L0", items);
+        let generator = UnderstandingGenerator::new(Box::new(MockProvider));
+        let iu = generator.generate(&collection).unwrap();
+
+        assert_eq!(iu.processing_steps.len(), 3, "3 个 Python 函数应派生 3 个 step");
+        assert_eq!(iu.processing_steps[0].name, "load_samples");
+        assert_eq!(iu.processing_steps[0].order, 1);
+        assert_eq!(iu.processing_steps[1].name, "correlate");
+        assert_eq!(iu.processing_steps[1].order, 2);
+        assert_eq!(iu.processing_steps[2].name, "detect_peak");
+        assert_eq!(iu.processing_steps[2].order, 3);
+        // 每个 step 必须绑定 evidence_id
+        for step in &iu.processing_steps {
+            assert!(!step.evidence_refs.is_empty(), "step {} 必须绑定 evidence", step.name);
+            assert!(step.evidence_refs[0].evidence_id.starts_with("EV-"));
+        }
+        // 置信度应为 inferred（保守派生）
+        assert_eq!(iu.processing_steps[0].confidence, ClaimConfidence::Inferred);
+        // stats 反映派生
+        assert_eq!(iu.stats.processing_step_count, 3);
+    }
+
+    /// gen_13: dunder / 下划线开头符号不派生 step
+    #[test]
+    fn gen_13_dunder_symbols_not_derived() {
+        let items = vec![
+            make_item_with_kind("EV-L0-000001", Some("__init__"), "def __init__(self):", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L0-000002", Some("_private"), "def _private():", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L0-000003", Some("public_fn"), "def public_fn():", SourceKind::PythonStage, Language::Python),
+        ];
+        let collection = make_collection("L0", items);
+        let iu = UnderstandingGenerator::new(Box::new(MockProvider)).generate(&collection).unwrap();
+
+        assert_eq!(iu.processing_steps.len(), 1, "仅 public_fn 应派生 step");
+        assert_eq!(iu.processing_steps[0].name, "public_fn");
+    }
+
+    /// gen_14: RTL evidence 派生 signals（input/output 端口 + clk）
+    #[test]
+    fn gen_14_rtl_derives_signals() {
+        let rtl_summary = "module coarse_sync(\n    input clk,\n    input rst_n,\n    input [11:0] rx_data,\n    output [11:0] peak_idx\n);";
+        let items = vec![make_item_with_kind(
+            "EV-RTL-000001",
+            Some("coarse_sync"),
+            rtl_summary,
+            SourceKind::Rtl,
+            Language::Verilog,
+        )];
+        let collection = make_collection("RTL", items);
+        let iu = UnderstandingGenerator::new(Box::new(MockProvider)).generate(&collection).unwrap();
+
+        // 应识别出多个信号（clk/rst_n/rx_data/peak_idx）
+        assert!(!iu.signal_summaries.is_empty(), "RTL evidence 应派生 signals");
+        let names: Vec<&str> = iu.signal_summaries.iter().map(|s| s.name.as_str()).collect();
+        assert!(names.iter().any(|n| n.contains("clk")), "应识别 clk，实际: {:?}", names);
+        assert!(names.iter().any(|n| n.contains("rx_data") || n.contains("data")), "应识别数据端口");
+        // 每个信号绑定 evidence_id
+        for sig in &iu.signal_summaries {
+            assert!(!sig.evidence_refs.is_empty(), "信号 {} 必须绑定 evidence", sig.name);
+        }
+        // RTL 不派生 processing_steps（不把 module 当算法步骤）
+        assert!(iu.processing_steps.is_empty(), "RTL 不应派生 processing_steps");
+    }
+
+    /// gen_15: 空 evidence collection 不派生任何摘要
+    #[test]
+    fn gen_15_empty_evidence_no_derivation() {
+        let collection = make_collection("L0", vec![]);
+        let iu = UnderstandingGenerator::new(Box::new(MockProvider)).generate(&collection).unwrap();
+
+        assert!(iu.processing_steps.is_empty());
+        assert!(iu.signal_summaries.is_empty());
+        assert!(iu.interface_summaries.is_empty());
+    }
+
+    /// gen_16: 派生项全部引用真实 evidence_id（hallucination guard）
+    #[test]
+    fn gen_16_derived_refs_all_real() {
+        let items = vec![
+            make_item_with_kind("EV-L0-000001", Some("foo"), "def foo():", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L0-000002", Some("bar"), "def bar():", SourceKind::PythonStage, Language::Python),
+        ];
+        let collection = make_collection("L0", items);
+        let iu = UnderstandingGenerator::new(Box::new(MockProvider)).generate(&collection).unwrap();
+
+        let known: HashSet<String> = collection.evidence_items.iter().map(|i| i.evidence_id.clone()).collect();
+        for step in &iu.processing_steps {
+            for r in &step.evidence_refs {
+                assert!(known.contains(&r.evidence_id), "step {} 引用未知 evidence_id: {}", step.name, r.evidence_id);
+            }
+        }
+        for sig in &iu.signal_summaries {
+            for r in &sig.evidence_refs {
+                assert!(known.contains(&r.evidence_id), "signal {} 引用未知 evidence_id: {}", sig.name, r.evidence_id);
+            }
+        }
+    }
+
+    // ─── P0-3 真实项目只读验证 harness（#[ignore]，手动 --ignored 触发） ────
+    //
+    // 直接读取真实项目 /Users/ckstar/Repo/znxt_ofdm/fpga_project_coarse_sync 源码
+    // （只读：std::fs::read，绝不写入），跑 collect → understanding → views →
+    // quality，打印每阶段 nodes/edges/issues 统计。不创建临时目录，不写目标项目。
+
+    use crate::evidence::collector::EvidenceCollector;
+    use crate::models::stage_context::{StageContext, StageFile};
+    use crate::quality::view_evaluator::{ViewEvaluator, ViewEvaluatorInput};
+    use crate::views::generator::ViewGraphGenerator;
+
+    fn stage_files_for(dir: &str, stage_id: &str) -> Vec<StageFile> {
+        let base = format!(
+            "/Users/ckstar/Repo/znxt_ofdm/fpga_project_coarse_sync/{}",
+            dir
+        );
+        let mut files = Vec::new();
+        collect_source_files_recursive(std::path::Path::new(&base), &mut files);
+        // 调试输出（测试日志可见）
+        eprintln!("[harness] stage={} dir={} files={}", stage_id, dir, files.len());
+        files
+    }
+
+    fn collect_source_files_recursive(base: &std::path::Path, files: &mut Vec<StageFile>) {
+        let entries = match std::fs::read_dir(base) {
+            Ok(e) => e,
+            Err(_) => return,
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                // 跳过噪声目录
+                let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                if matches!(name, "__pycache__" | ".git" | ".claude" | "node_modules" | "target") {
+                    continue;
+                }
+                collect_source_files_recursive(&path, files);
+                continue;
+            }
+            if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                let (language, source_kind) = match ext {
+                    "py" => (Language::Python, SourceKind::PythonStage),
+                    "v" => (Language::Verilog, SourceKind::Rtl),
+                    "sv" => (Language::SystemVerilog, SourceKind::Rtl),
+                    _ => continue,
+                };
+                files.push(StageFile {
+                    source_path: path.to_string_lossy().to_string(),
+                    language,
+                    source_kind,
+                    size_bytes: std::fs::metadata(&path).ok().map(|m| m.len()),
+                });
+            }
+        }
+    }
+
+    fn run_stage_pipeline(stage_id: &str, dir: &str) -> String {
+        let files = stage_files_for(dir, stage_id);
+        let stage_context = StageContext {
+            stage_id: stage_id.to_string(),
+            source_path: dir.to_string(),
+            files,
+            external_deps: vec![],
+            upstream_refs: vec![],
+            error_code: None,
+        };
+        let mut collector = EvidenceCollector::new(stage_id);
+        let collection = collector.collect_from_stage_context(&stage_context);
+        let ev_count = collection.evidence_items.len();
+
+        let iu = UnderstandingGenerator::new(Box::new(MockProvider)).generate(&collection).unwrap();
+        let graphs = ViewGraphGenerator::generate_all(&iu);
+
+        let ev_id_set: HashSet<String> = collection.evidence_items.iter().map(|i| i.evidence_id.clone()).collect();
+        let cl_id_set: HashSet<String> = iu.claims.iter().map(|c| c.claim_id.clone()).collect();
+
+        let mut report_lines = vec![format!(
+            "[{}] evidence={} claims={} steps={} signals={} modules={}",
+            stage_id, ev_count, iu.claims.len(), iu.processing_steps.len(), iu.signal_summaries.len(), iu.module_summaries.len()
+        )];
+
+        for graph in &graphs {
+            let vt = format!("{:?}", graph.view_type).to_lowercase();
+            let (_rpt, issues) = ViewEvaluator::evaluate(&ViewEvaluatorInput {
+                sample_id: stage_id,
+                stage_id,
+                view: graph,
+                evidence_id_set: &ev_id_set,
+                claim_id_set: &cl_id_set,
+            });
+            let empty_medium = issues.iter().filter(|i| {
+                i.kind == crate::quality::models::QualityIssueKind::EmptyOrUnhelpfulView
+                    && i.severity == crate::quality::models::QualitySeverity::Medium
+            }).count();
+            let empty_low = issues.iter().filter(|i| {
+                i.kind == crate::quality::models::QualityIssueKind::EmptyOrUnhelpfulView
+                    && i.severity == crate::quality::models::QualitySeverity::Low
+            }).count();
+            report_lines.push(format!(
+                "  {} nodes={} edges={} empty_reason={} | empty_medium={} empty_low={}",
+                vt,
+                graph.nodes.len(),
+                graph.edges.len(),
+                graph.meta.empty_reason.is_some(),
+                empty_medium,
+                empty_low,
+            ));
+        }
+        report_lines.join("\n")
+    }
+
+    #[test]
+    #[ignore]
+    fn p03_real_project_readonly_baseline() {
+        // 只读：仅 std::fs::read_dir / read / metadata，不写目标项目。
+        let l0 = run_stage_pipeline("L0", "src/python_model/L0_external");
+        let l1 = run_stage_pipeline("L1", "src/python_model/L1_prototype");
+        let rtl = run_stage_pipeline("RTL", "src/verilog_model/rtl");
+        eprintln!("\n===== P0-3 真实项目只读基线 =====\n{}\n\n{}\n\n{}\n========================", l0, l1, rtl);
     }
 }

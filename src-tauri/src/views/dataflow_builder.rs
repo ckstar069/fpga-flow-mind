@@ -219,6 +219,7 @@ pub fn build_dataflow_view(iu: &ImplementationUnderstanding) -> ViewGraph {
 
     if !input_ids.is_empty() && !step_ids.is_empty() {
         edge_counter += 1;
+        let refs = merge_node_trace_refs(&nodes, &input_ids[0], &step_ids[0]);
         edges.push(ViewEdge {
             edge_id: format!("E-dataflow-{:04}", edge_counter),
             edge_type: EdgeType::DataFlow,
@@ -227,13 +228,14 @@ pub fn build_dataflow_view(iu: &ImplementationUnderstanding) -> ViewGraph {
             label: None,
             description: "输入数据流入第一个处理步骤".to_string(),
             confidence: ClaimConfidence::Inferred,
-            trace_refs: vec![],
+            trace_refs: refs,
         });
     }
 
     // ── 边：processing_step[i] → processing_step[i+1] ──
     for i in 0..step_ids.len().saturating_sub(1) {
         edge_counter += 1;
+        let refs = merge_node_trace_refs(&nodes, &step_ids[i], &step_ids[i + 1]);
         edges.push(ViewEdge {
             edge_id: format!("E-dataflow-{:04}", edge_counter),
             edge_type: EdgeType::DataFlow,
@@ -242,7 +244,7 @@ pub fn build_dataflow_view(iu: &ImplementationUnderstanding) -> ViewGraph {
             label: None,
             description: format!("处理步骤 {} → {}", i + 1, i + 2),
             confidence: ClaimConfidence::Inferred,
-            trace_refs: vec![],
+            trace_refs: refs,
         });
     }
 
@@ -255,23 +257,33 @@ pub fn build_dataflow_view(iu: &ImplementationUnderstanding) -> ViewGraph {
 
     if !step_ids.is_empty() && !output_ids.is_empty() {
         edge_counter += 1;
+        let last_step = &step_ids[step_ids.len() - 1];
+        let refs = merge_node_trace_refs(&nodes, last_step, &output_ids[0]);
         edges.push(ViewEdge {
             edge_id: format!("E-dataflow-{:04}", edge_counter),
             edge_type: EdgeType::DataFlow,
-            source_node_id: step_ids[step_ids.len() - 1].clone(),
+            source_node_id: last_step.clone(),
             target_node_id: output_ids[0].clone(),
             label: None,
             description: "最后一个处理步骤输出数据".to_string(),
             confidence: ClaimConfidence::Inferred,
-            trace_refs: vec![],
+            trace_refs: refs,
         });
     }
 
     // ── 元信息 ──
+    // 区分两种空：无 processing_steps（最常见）vs 完全无 IO 信号。
     let empty_reason = if nodes.is_empty() {
-        Some(
-            "数据流信息不足：无 processing_steps 且无可识别的输入/输出信号".to_string(),
-        )
+        if iu.processing_steps.is_empty() {
+            Some(
+                "数据流为空：缺少 processing_steps 或可追溯处理证据（无函数/步骤级 evidence）"
+                    .to_string(),
+            )
+        } else {
+            Some(
+                "数据流为空：无 processing_steps 且无可识别的输入/输出信号".to_string(),
+            )
+        }
     } else {
         None
     };
@@ -305,6 +317,31 @@ fn build_trace_refs(evidence_refs: &[EvidenceRef]) -> Vec<ViewTraceRef> {
             r.relevance.clone(),
         ))
         .collect()
+}
+
+/// 合并两个端点节点的 trace_refs 作为边的 trace_refs。
+///
+/// P0-3：边的可追溯性来自其连接的节点。当两端节点都无可解析 trace 时，
+/// 返回空 vec（view_evaluator 会将其标记为退化，但不伪造证据）。
+fn merge_node_trace_refs(
+    nodes: &[ViewNode],
+    source_id: &str,
+    target_id: &str,
+) -> Vec<ViewTraceRef> {
+    let mut refs: Vec<ViewTraceRef> = Vec::new();
+    let mut seen_ev: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for node in nodes {
+        if node.node_id == source_id || node.node_id == target_id {
+            for tr in &node.trace_refs {
+                if let Some(ev) = &tr.evidence_id {
+                    if seen_ev.insert(ev.clone()) {
+                        refs.push(tr.clone());
+                    }
+                }
+            }
+        }
+    }
+    refs
 }
 
 // ─── 测试 ────────────────────────────────────────────────────────────
@@ -539,5 +576,75 @@ mod tests {
         assert_eq!(graph.nodes.len(), 1);
         assert_eq!(graph.nodes[0].node_type, NodeType::IntermediateData);
         assert!(graph.meta.empty_reason.is_none(), "有节点时不应有 empty_reason");
+    }
+
+    // ─── P0-3: 边可追溯 + 保守派生测试 ────────────────────────────────
+
+    fn make_step_with_ev(name: &str, desc: &str, order: u32, ev_id: &str) -> ProcessingStepSummary {
+        ProcessingStepSummary {
+            name: name.to_string(), description: desc.to_string(), order,
+            evidence_refs: vec![EvidenceRef { evidence_id: ev_id.to_string(), relevance: None }],
+            confidence: ClaimConfidence::Supported,
+        }
+    }
+
+    fn make_iface_with_ev(name: &str, desc: &str, ev_id: &str) -> InterfaceSummary {
+        InterfaceSummary {
+            name: name.to_string(), description: desc.to_string(),
+            interface_type: None,
+            evidence_refs: vec![EvidenceRef { evidence_id: ev_id.to_string(), relevance: None }],
+            confidence: ClaimConfidence::Supported,
+        }
+    }
+
+    /// df_13: 3 个 processing_steps → 3 节点 + 顺序边，所有边有 trace_refs
+    #[test]
+    fn df_13_steps_with_evidence_edges_traceable() {
+        let iu = make_iu(
+            vec![
+                make_step_with_ev("load", "载入", 1, "EV-1"),
+                make_step_with_ev("corr", "相关", 2, "EV-2"),
+                make_step_with_ev("peak", "峰值", 3, "EV-3"),
+            ],
+            vec![make_iface_with_ev("data_input", "输入", "EV-0"), make_iface_with_ev("data_output", "输出", "EV-4")],
+            vec![],
+        );
+        let graph = build_dataflow_view(&iu);
+        let steps: Vec<_> = graph.nodes.iter().filter(|n| n.node_type == NodeType::ProcessingStep).collect();
+        assert_eq!(steps.len(), 3, "应生成 3 个处理步骤节点");
+        let seq_edges: Vec<_> = graph.edges.iter()
+            .filter(|e| e.edge_type == EdgeType::DataFlow)
+            .collect();
+        assert!(seq_edges.len() >= 2, "至少 2 条顺序边（s1→s2, s2→s3）");
+        // 所有序列边都必须有 trace_refs（P0-3 核心）
+        for e in &seq_edges {
+            assert!(!e.trace_refs.is_empty(), "边 {} 缺少 trace_refs", e.edge_id);
+        }
+    }
+
+    /// df_14: 无 steps 但无可追溯 evidence → 仍为空，empty_reason 明确
+    #[test]
+    fn df_14_no_steps_no_evidence_stays_empty() {
+        let iu = make_iu(vec![], vec![], vec![]);
+        let graph = build_dataflow_view(&iu);
+        assert!(graph.nodes.is_empty());
+        assert!(graph.meta.empty_reason.is_some());
+        assert!(graph.meta.empty_reason.as_deref().unwrap().contains("processing_steps"));
+    }
+
+    /// df_15: node/edge 端点 node_id 全部存在于 nodes 中
+    #[test]
+    fn df_15_edges_endpoints_resolved() {
+        let iu = make_iu(
+            vec![make_step_with_ev("a", "A", 1, "EV-1"), make_step_with_ev("b", "B", 2, "EV-2")],
+            vec![make_iface_with_ev("data_input", "in", "EV-0"), make_iface_with_ev("data_output", "out", "EV-3")],
+            vec![],
+        );
+        let graph = build_dataflow_view(&iu);
+        let ids: std::collections::HashSet<&str> = graph.nodes.iter().map(|n| n.node_id.as_str()).collect();
+        for e in &graph.edges {
+            assert!(ids.contains(e.source_node_id.as_str()), "edge {} source 不存在", e.edge_id);
+            assert!(ids.contains(e.target_node_id.as_str()), "edge {} target 不存在", e.edge_id);
+        }
     }
 }

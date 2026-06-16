@@ -36,6 +36,13 @@ pub fn build_timing_view(iu: &ImplementationUnderstanding) -> ViewGraph {
         });
     }
 
+    // 记录由 processing_steps 派生的 stage 数量，用于 RTL 回退判断
+    let stage_ids_from_steps: Vec<String> = nodes
+        .iter()
+        .filter(|n| n.node_type == NodeType::PipelineStage)
+        .map(|n| n.node_id.clone())
+        .collect();
+
     // ── 时钟/复位域节点（从 claims 匹配） ──
     let mut clock_node_ids: Vec<String> = Vec::new();
     let mut reset_node_ids: Vec<String> = Vec::new();
@@ -82,6 +89,48 @@ pub fn build_timing_view(iu: &ImplementationUnderstanding) -> ViewGraph {
         }
     }
 
+    // ── P0-3 RTL 时序保守回退 ──
+    // 当 processing_steps 为空（RTL 阶段通常如此）但 signal_summaries 中含
+    // clk/rst 信号（由 MockProvider 从 RTL evidence 保守派生），生成 clock_domain /
+    // pipeline_stage 节点，绑定 signal 的 evidence_refs。这是可追溯的最小时序图，
+    // 不伪造硬件时序关系。
+    if stage_ids_from_steps.is_empty() {
+        for sig in &iu.signal_summaries {
+            let name_lower = sig.name.to_lowercase();
+            let is_clock = name_lower.contains("clk") || name_lower.contains("clock");
+            let is_reset = name_lower.contains("rst") || name_lower.contains("reset");
+            if !is_clock && !is_reset {
+                continue;
+            }
+            node_counter += 1;
+            let node_id = format!("N-timing-{:04}", node_counter);
+            let node_type = if is_clock {
+                NodeType::ClockDomain
+            } else {
+                NodeType::ResetDomain
+            };
+            nodes.push(ViewNode {
+                node_id: node_id.clone(),
+                node_type,
+                label: sig.name.clone(),
+                description: sig.description.clone(),
+                confidence: sig.confidence,
+                trace_refs: build_trace_refs(&sig.evidence_refs),
+                layout: Some(ViewLayoutHint {
+                    column: Some(1),
+                    row: Some(node_counter - 1),
+                    depth: Some(0),
+                    group: None,
+                }),
+            });
+            if is_clock {
+                clock_node_ids.push(node_id);
+            } else {
+                reset_node_ids.push(node_id);
+            }
+        }
+    }
+
     // ── 边：PipelineStage[i] → PipelineStage[i+1] ──
     let stage_ids: Vec<String> = nodes
         .iter()
@@ -91,6 +140,7 @@ pub fn build_timing_view(iu: &ImplementationUnderstanding) -> ViewGraph {
 
     for i in 0..stage_ids.len().saturating_sub(1) {
         edge_counter += 1;
+        let refs = merge_node_trace_refs(&nodes, &stage_ids[i], &stage_ids[i + 1]);
         let step_desc = if let (Some(a), Some(b)) = (
             nodes.iter().find(|n| n.node_id == stage_ids[i]),
             nodes.iter().find(|n| n.node_id == stage_ids[i + 1]),
@@ -117,7 +167,7 @@ pub fn build_timing_view(iu: &ImplementationUnderstanding) -> ViewGraph {
             label: None,
             description: step_desc.1,
             confidence: ClaimConfidence::Inferred,
-            trace_refs: vec![],
+            trace_refs: refs,
         });
     }
 
@@ -125,6 +175,7 @@ pub fn build_timing_view(iu: &ImplementationUnderstanding) -> ViewGraph {
     for clock_id in &clock_node_ids {
         if let Some(first_stage) = stage_ids.first() {
             edge_counter += 1;
+            let refs = merge_node_trace_refs(&nodes, clock_id, first_stage);
             edges.push(ViewEdge {
                 edge_id: format!("E-timing-{:04}", edge_counter),
                 edge_type: EdgeType::ClockDriven,
@@ -133,16 +184,24 @@ pub fn build_timing_view(iu: &ImplementationUnderstanding) -> ViewGraph {
                 label: None,
                 description: "时钟驱动第一个流水级".to_string(),
                 confidence: ClaimConfidence::Inferred,
-                trace_refs: vec![],
+                trace_refs: refs,
             });
         }
     }
 
     // ── 元信息 ──
+    // 区分 RTL（有 clk/rst 但无 step）vs Python（无任何时序依据）两种空。
     let empty_reason = if nodes.is_empty() {
-        Some(
-            "时序信息不足：当前阶段无 processing_steps 且无 clock/reset 相关声明".to_string(),
-        )
+        if iu.processing_steps.is_empty() && clock_node_ids.is_empty() && reset_node_ids.is_empty() {
+            Some(
+                "时序为空：当前阶段无 processing_steps，且无可追溯的 clock/reset/pipeline 证据"
+                    .to_string(),
+            )
+        } else {
+            Some(
+                "时序信息不足：当前阶段无 processing_steps 且无 clock/reset 相关声明".to_string(),
+            )
+        }
     } else {
         None
     };
@@ -179,20 +238,51 @@ fn build_trace_refs(evidence_refs: &[EvidenceRef]) -> Vec<ViewTraceRef> {
         .collect()
 }
 
+/// 合并两个端点节点的 trace_refs 作为边的 trace_refs（与 dataflow_builder 同语义）。
+fn merge_node_trace_refs(
+    nodes: &[ViewNode],
+    source_id: &str,
+    target_id: &str,
+) -> Vec<ViewTraceRef> {
+    let mut refs: Vec<ViewTraceRef> = Vec::new();
+    let mut seen_ev: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for node in nodes {
+        if node.node_id == source_id || node.node_id == target_id {
+            for tr in &node.trace_refs {
+                if let Some(ev) = &tr.evidence_id {
+                    if seen_ev.insert(ev.clone()) {
+                        refs.push(tr.clone());
+                    }
+                }
+            }
+        }
+    }
+    refs
+}
+
 // ─── 测试 ────────────────────────────────────────────────────────────
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::understanding::models::{
-        ClaimCategory, GenerationMeta, ImplementationClaim,
-        ImplementationUnderstanding, ProcessingStepSummary, StageSummary, UnderstandingStats,
+        ClaimCategory, EvidenceRef, GenerationMeta, ImplementationClaim,
+        ImplementationUnderstanding, ProcessingStepSummary, SignalSummary, StageSummary,
+        UnderstandingStats,
     };
     use std::collections::HashMap;
 
     fn make_iu(
         steps: Vec<ProcessingStepSummary>,
         claims: Vec<ImplementationClaim>,
+    ) -> ImplementationUnderstanding {
+        make_iu_full(steps, claims, vec![])
+    }
+
+    fn make_iu_full(
+        steps: Vec<ProcessingStepSummary>,
+        claims: Vec<ImplementationClaim>,
+        signals: Vec<SignalSummary>,
     ) -> ImplementationUnderstanding {
         ImplementationUnderstanding {
             stage_id: "L0".to_string(),
@@ -203,7 +293,7 @@ mod tests {
             },
             claims,
             module_summaries: vec![],
-            signal_summaries: vec![],
+            signal_summaries: signals,
             interface_summaries: vec![],
             processing_steps: steps,
             unknowns: vec![],
@@ -337,12 +427,13 @@ mod tests {
         assert!(graph.nodes.is_empty());
         assert!(graph.edges.is_empty());
         assert!(graph.meta.empty_reason.is_some());
-        assert!(graph
-            .meta
-            .empty_reason
-            .as_deref()
-            .unwrap()
-            .contains("时序信息不足"));
+        // P0-3: 空图原因应明确说明缺少可追溯时序依据
+        let reason = graph.meta.empty_reason.as_deref().unwrap();
+        assert!(
+            reason.contains("processing_steps") || reason.contains("clock") || reason.contains("时序"),
+            "empty_reason 应说明时序依据缺失: {}",
+            reason
+        );
     }
 
     // ─── tm_05: 不生成伪节点 ─────────────────────────────────────────
@@ -383,5 +474,117 @@ mod tests {
             assert!(node_ids.contains(edge.source_node_id.as_str()));
             assert!(node_ids.contains(edge.target_node_id.as_str()));
         }
+    }
+
+    // ─── P0-3: 边可追溯 + RTL 时钟回退测试 ──────────────────────────────
+
+    fn make_signal_with_ev(name: &str, desc: &str, direction: Option<&str>, ev_id: &str) -> SignalSummary {
+        SignalSummary {
+            name: name.to_string(),
+            description: desc.to_string(),
+            direction: direction.map(|s| s.to_string()),
+            evidence_refs: vec![EvidenceRef { evidence_id: ev_id.to_string(), relevance: None }],
+            confidence: ClaimConfidence::Inferred,
+        }
+    }
+
+    fn make_step_with_ev(name: &str, desc: &str, order: u32, ev_id: &str) -> ProcessingStepSummary {
+        ProcessingStepSummary {
+            name: name.to_string(),
+            description: desc.to_string(),
+            order,
+            evidence_refs: vec![EvidenceRef { evidence_id: ev_id.to_string(), relevance: None }],
+            confidence: ClaimConfidence::Supported,
+        }
+    }
+
+    /// tm_07: RTL 阶段无 processing_steps，但有 clk/rst signal → 生成 clock/reset 节点
+    #[test]
+    fn tm_07_rtl_signal_fallback_clock_nodes() {
+        // RTL 阶段：无 steps，但 signal_summaries 含 clk / rst_n（由 MockProvider 从 RTL evidence 派生）
+        let iu = make_iu_full(
+            vec![],
+            vec![],
+            vec![
+                make_signal_with_ev("clk", "时钟", Some("input"), "EV-RTL-1"),
+                make_signal_with_ev("rst_n", "复位", Some("input"), "EV-RTL-2"),
+            ],
+        );
+        let graph = build_timing_view(&iu);
+
+        // 应生成 ClockDomain 与 ResetDomain 节点
+        assert!(
+            graph.nodes.iter().any(|n| n.node_type == NodeType::ClockDomain),
+            "RTL clk signal 应生成 ClockDomain 节点"
+        );
+        assert!(
+            graph.nodes.iter().any(|n| n.node_type == NodeType::ResetDomain),
+            "RTL rst signal 应生成 ResetDomain 节点"
+        );
+        // 每个节点绑定 evidence
+        for node in &graph.nodes {
+            assert!(!node.trace_refs.is_empty(), "节点 {} 缺少 trace_refs", node.node_id);
+        }
+        // 非空 → 无 empty_reason
+        assert!(graph.meta.empty_reason.is_none(), "有节点时不应有 empty_reason");
+    }
+
+    /// tm_08: Python 阶段无时序依据 → 空，empty_reason 明确
+    #[test]
+    fn tm_08_python_no_timing_stays_empty() {
+        // Python 阶段：无 steps，无 clk/rst 信号（普通数据信号不触发时序回退）
+        let iu = make_iu_full(
+            vec![],
+            vec![],
+            vec![make_signal_with_ev("rx_data", "接收数据", Some("input"), "EV-1")],
+        );
+        let graph = build_timing_view(&iu);
+        assert!(graph.nodes.is_empty(), "Python 无时序依据应保持空");
+        let reason = graph.meta.empty_reason.as_deref().unwrap();
+        assert!(
+            reason.contains("clock") || reason.contains("时序") || reason.contains("processing_steps"),
+            "empty_reason 应说明缺时序依据: {}",
+            reason
+        );
+    }
+
+    /// tm_09: processing_steps 顺序边有 trace_refs
+    #[test]
+    fn tm_09_stage_edges_carry_trace_refs() {
+        let iu = make_iu_full(
+            vec![
+                make_step_with_ev("fetch", "取指", 1, "EV-1"),
+                make_step_with_ev("decode", "译码", 2, "EV-2"),
+                make_step_with_ev("execute", "执行", 3, "EV-3"),
+            ],
+            vec![],
+            vec![],
+        );
+        let graph = build_timing_view(&iu);
+        let seq_edges: Vec<_> = graph.edges.iter()
+            .filter(|e| e.edge_type == EdgeType::SequentialOrder || e.edge_type == EdgeType::PipelineForward)
+            .collect();
+        assert!(seq_edges.len() >= 2, "应有至少 2 条顺序边");
+        for e in &seq_edges {
+            assert!(!e.trace_refs.is_empty(), "时序边 {} 缺少 trace_refs", e.edge_id);
+        }
+    }
+
+    /// tm_10: RTL clk signal 节点的 trace_refs 指向 evidence_id
+    #[test]
+    fn tm_10_rtl_clock_trace_resolves_to_evidence() {
+        let iu = make_iu_full(
+            vec![],
+            vec![],
+            vec![make_signal_with_ev("clk", "主时钟", Some("input"), "EV-RTL-000001")],
+        );
+        let graph = build_timing_view(&iu);
+        let clock_node = graph.nodes.iter().find(|n| n.node_type == NodeType::ClockDomain);
+        assert!(clock_node.is_some(), "应有 ClockDomain 节点");
+        let ev_ids: Vec<&str> = clock_node.unwrap()
+            .trace_refs.iter()
+            .filter_map(|t| t.evidence_id.as_deref())
+            .collect();
+        assert!(ev_ids.contains(&"EV-RTL-000001"), "ClockDomain 节点应 trace 到 EV-RTL-000001, 实际: {:?}", ev_ids);
     }
 }
