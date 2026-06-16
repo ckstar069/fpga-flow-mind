@@ -7,6 +7,7 @@ import type {
   QualityReport,
   StageStatus,
 } from '../../../types/workspace';
+import { SURFACE, ACCENT, FONT } from './workbenchTheme';
 
 interface StageOverviewBarProps {
   stageId: string;
@@ -32,12 +33,14 @@ const STATUS_LABEL: Record<StageStatus, string> = {
   unreadable: '不可读',
 };
 
+// 阶段状态视觉色：不使用红绿裁决色。
+// available=蓝（可用焦点）；naming_anomaly=琥珀（需注意）；empty/missing/unreadable=灰（中性弱化）。
 const STATUS_COLOR: Record<StageStatus, string> = {
-  available: '#4caf50',
-  empty: '#9e9e9e',
-  missing: '#f44336',
-  naming_anomaly: '#ff9800',
-  unreadable: '#c62828',
+  available: ACCENT.blue,
+  empty: SURFACE.textDim,
+  missing: SURFACE.textDim,
+  naming_anomaly: ACCENT.amber,
+  unreadable: SURFACE.textDim,
 };
 
 export default function StageOverviewBar({
@@ -62,15 +65,15 @@ export default function StageOverviewBar({
   const qualityIssueCount = qualityReport?.issues.length ?? 0;
   const fileCount = context.files.length;
 
-  const metrics: Array<{ label: string; value: number | string; loading?: boolean }> = [
-    { label: '阶段', value: stageId },
+  const metrics: Array<{ label: string; value: number | string; loading?: boolean; accent?: boolean }> = [
+    { label: '阶段', value: stageId, accent: true },
     { label: '状态', value: STATUS_LABEL[stageStatus] ?? stageStatus },
     { label: '文件', value: fileCount },
     { label: '证据', value: evidenceCount, loading: evidenceLoading },
     { label: '声明', value: claimCount, loading: understandingLoading },
     { label: '视图', value: viewCount, loading: viewsLoading },
     { label: 'Q&A', value: qaCount, loading: qaLoading },
-    { label: '质量问题', value: qualityIssueCount, loading: qualityLoading },
+    { label: '质量记录', value: qualityIssueCount, loading: qualityLoading },
   ];
 
   return (
@@ -78,40 +81,44 @@ export default function StageOverviewBar({
       className="stage-overview-bar"
       style={{
         display: 'flex',
-        alignItems: 'center',
-        gap: 12,
+        alignItems: 'stretch',
+        gap: 8,
         overflowX: 'auto',
       }}
     >
-      {metrics.map((m, i) => (
-        <div
-          key={i}
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            minWidth: 64,
-            padding: '6px 10px',
-            background: '#fff',
-            border: '1px solid #e2e8f0',
-            borderRadius: 6,
-          }}
-        >
-          <span style={{ fontSize: 11, color: '#94a3b8', marginBottom: 2 }}>{m.label}</span>
-          <span
+      {metrics.map((m, i) => {
+        const isStatus = m.label === '状态';
+        const statusColor = STATUS_COLOR[stageStatus] ?? SURFACE.text;
+        return (
+          <div
+            key={i}
             style={{
-              fontSize: 14,
-              fontWeight: 600,
-              color:
-                m.label === '状态'
-                  ? STATUS_COLOR[stageStatus] ?? '#1e293b'
-                  : '#1e293b',
-              whiteSpace: 'nowrap',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              minWidth: 60,
+              padding: '6px 12px',
+              background: SURFACE.bgSubtle,
+              border: `1px solid ${SURFACE.border}`,
+              borderRadius: 6,
             }}
           >
-            {m.loading ? '...' : m.value}
-          </span>
-        </div>
-      ))}
+            <span style={{ fontSize: FONT.micro, color: SURFACE.textDim, marginBottom: 2 }}>
+              {m.label}
+            </span>
+            <span
+              style={{
+                fontSize: m.accent ? FONT.heading : FONT.body,
+                fontWeight: 600,
+                color: isStatus ? statusColor : SURFACE.text,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {m.loading ? '…' : m.value}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -9,7 +9,7 @@ updated: 2026-06-16
 >
 > 验证目标是"工作台是否把已有能力组织成用户可高效理解一个阶段的产品级形态，且不发生回归、不越界"，**不是**验证目标项目正确性。
 >
-> 本文 status 为 `active`，是 Phase 8 验证与验收设计的生效文档。**Phase 8 Batch A（P8-T01~P8-T02）已实现/进入审核收口**；**Phase 8 Batch B（P8-T03~P8-T04）已实现/进入审核收口**；**Phase 8 Batch C（P8-T05~P8-T06）已实现/进入审核收口**；Batch D/E 与 Phase 9/10/11 均未开始。
+> 本文 status 为 `active`，是 Phase 8 验证与验收设计的生效文档。**Phase 8 Batch A（P8-T01~P8-T02）已实现/进入审核收口**；**Phase 8 Batch B（P8-T03~P8-T04）已实现/进入审核收口**；**Phase 8 Batch C（P8-T05~P8-T06）已实现/进入审核收口**；**Phase 8 Batch D（P8-T07~P8-T09）已实现/进入审核收口**；Batch E 与 Phase 9/10/11 均未开始。
 
 ## 1. 验证策略总览
 
@@ -306,6 +306,69 @@ QualityReviewPanel.handleIssueClick(issue)
                       -> 异步设置 source_excerpt context（用户预期内的切换）
 ```
 
+## 16. Batch D 验证记录（P8-T07~P8-T09）
+
+> 记录 Phase 8 Batch D 视觉 polish、warnings 降噪、空/错误/session 恢复产品化后的实际验证结果。
+
+### 16.1 实现范围
+
+- 新增 `src/features/workspace/components/workbenchTheme.ts`：工作台设计 token（NAV 深色侧栏 / SURFACE 浅色主区 / ACCENT 蓝-青-绿-琥珀-灰语义色 / FONT 字号阶梯），不引入运行时依赖。
+- 新增 `src/features/workspace/components/StateBlocks.tsx`：统一 `EmptyState` / `Callout`（info/warning/error 三变体），供空错态复用。
+- 新增 `src/features/workspace/components/WarningsPanel.tsx`：warnings 降噪组件——折叠/分类/计数/可展开，按 `error_code` 聚合，空时不渲染。
+- 修改 `StageList` / `WorkspaceSummary` / `RecentProjectsPanel`：深色侧栏适配（原浅色子组件在深色容器内对比度差），统一 NAV token。
+- 修改 `LeftNav`：section 间细分隔线；`AppHeader`：工作台化（品牌标识 + 副标题 + 蓝色强调操作）。
+- 修改 `StageWorkspace` / `StageOverviewBar` / `StageFilterBar`：统一 token；阶段/acceptance 状态色去除红绿裁决感（available=蓝、naming_anomaly=琥珀、empty/missing/unreadable=灰）。
+- 修改 `StageDetail`：`ActionButton` secondary 紫色→青（teal）；`LoadingBlock` 紫→蓝；`ErrorBlock`/`EmptyState`/`stage_empty` 提示用 token。
+- 修改 `MultiViewPanel`：视图生成 loading 紫色→蓝色；`QualityReviewPanel`：去"（Phase 7）"内部标题、acceptance 卡红绿→蓝/琥珀中性、按钮用 token。
+- 修改 `WorkspacePage`：主区空错态统一为 `MainStateBlock`（initial/opening/loaded/error/stage_error/selecting_stage）；footer 由底部长条改为 `WarningsPanel`；leftNav projectInfo 深色产品化；移除未使用的 `ErrorPanel`。
+
+### 16.2 自动化验证结果
+
+| 命令 | 结果 |
+|------|------|
+| `npm run build` | ✅ 通过 |
+| `npx tsc --noEmit` | ✅ 无类型错误 |
+| `cd src-tauri && cargo test --lib` | ✅ 544 passed; 0 failed; 1 ignored |
+| `cd src-tauri && cargo check` | ✅ 无 warning |
+| `cargo test --test real_project_validation -- --ignored` | ✅ 主/副样本 5 项测试通过（含 checksum 一致性） |
+| 边界 rg（stage_tab / stageTab / active_stage_tab） | ✅ 无产品代码接入持久化 tab 契约 |
+| 边界 rg（ReactFlow/D3/Mermaid/OpenAI/Anthropic/api_key/Vivado/synthesis/implementation/bitstream/PASS/HOLD/审计结论） | ✅ 仅既有禁用/守卫/注释/测试语境命中，Batch D 无新增 |
+| 目标项目 checksum 一致性 | ✅ 主样本 checksum 一致；目标项目未修改 |
+
+### 16.3 warnings 降噪前后差异
+
+| 维度 | 前（Batch C） | 后（Batch D） |
+|------|---------------|---------------|
+| 占用空间 | warnings 存在时占据底部 maxHeight 200 长条，始终展开 | 折叠态为单行紧凑条（约 36px），按需展开 |
+| 呈现方式 | 全量平铺 `<ul>` 列表 | 折叠态显示总数 + 分类徽标（`error_code ×N`）；展开按 `error_code` 分组列表 |
+| 信息保留 | 全部 message + source_path | 全部保留（展开可见），不删除、不自动隐藏 |
+| 空态 | warnings 为 0 时 footer 不渲染 | 同（`WarningsPanel` 空时返回 null） |
+
+### 16.4 空/错误/session 恢复产品化覆盖清单
+
+| 状态 | 落地点 | 处理 |
+|------|--------|------|
+| 空阶段 | `StageDetail` OverviewTab | `stage_empty` 统一提示卡 |
+| 命名异常阶段 | `StageList` badge | 琥珀"命名异常"标记 |
+| evidence 未收集 | `StageDetail` EvidenceTab | 统一 `EmptyState` |
+| understanding 未生成 | `StageDetail` UnderstandingTab | 统一 `EmptyState` + 按钮 |
+| views 未生成 | `StageDetail` ViewsTab | 统一 `EmptyState` |
+| timing 诚实空图 | `MultiViewPanel` | `empty_reason` 空状态卡（保留 Phase 4 行为） |
+| Q&A 无证据/unknown | `GroundedQAPanel` | `disabledReason` + unknown/gap 诚实表达（保留 Phase 5） |
+| source_changed / source_missing / source_path_not_allowed | `LoadStatusBanner` | 标题 + 说明 + 动作（保留 Phase 6） |
+| session load failed | `LeftNav` loadError | 深色错误块 |
+| open workspace failed | `WorkspacePage` main error 分支 + LeftNav 深色块 | `MainStateBlock` error + 紧凑深色块 |
+| ContextPanel 无选择 | `ContextPanel` 空状态（Batch C） | 居中提示文案 |
+| quality 未生成 / 无法生成 / stage empty | `QualityReviewPanel` | 空态卡 + `disabledReason` |
+| initial / opening / loaded（无阶段） | `WorkspacePage` `MainStateBlock` | 统一图标 + 标题 + 说明引导 |
+
+> 所有文案表达"工具状态/不确定性"，不出现"正确/错误/PASS/HOLD/审计结论"裁决话术，不制造虚假成功态，保留 error_code 与可恢复语义。
+
+### 16.5 当前未完成范围
+
+- P8-T10（回归 + 桌面验收 + completion review）未开始（Batch E）。
+- 桌面手工验收（点击/截图/响应式）留待 Batch E 在真实桌面环境完成；本 Batch D 已通过构建/类型/Rust 测试/真实样本 checksum 保证无回归。
+
 ## 12. 变更记录
 
 | 日期 | 变更 | 作者 |
@@ -314,3 +377,4 @@ QualityReviewPanel.handleIssueClick(issue)
 | 2026-06-16 | 审核通过，status 从 draft 转 active；允许进入 Phase 8 Batch A（P8-T01~P8-T02）；Phase 8 编码尚未开始；Batch B/C/D/E 与 Phase 9/10/11 未开始。 | Claude |
 | 2026-06-16 | 追加 §13 Batch A 验证记录：P8-T01/P8-T02 骨架实现通过 npm build / tsc / cargo test --lib / cargo check / real_project_validation --ignored；边界 rg 与目标项目只读验证通过；Batch B/C/D/E 未开始。 | Claude |
 | 2026-06-16 | 追加 §15.5 Batch C 交互收口：quality_issue 点击不再自动拉起源码片段，避免异步 source_excerpt 覆盖；源码查看收敛为 ContextPanel 的显式按钮动作；移除未使用的 `onViewSource` prop 链；验证命令与边界 rg 全通过；Batch D/E 与 Phase 9/10/11 未开始。 | Claude |
+| 2026-06-16 | 追加 §16 Batch D 验证记录：新增 workbenchTheme/StateBlocks/WarningsPanel；深色侧栏子组件适配；AppHeader 工作台化；统一 token 并去除紫色 loading；阶段/acceptance 状态色去红绿裁决感；主区空错态统一为 MainStateBlock；footer warnings 降噪；通过 build/tsc/cargo test/cargo check/real_project_validation 与边界 rg；P8-T07/P8-T08/P8-T09 进入审核收口；Batch E 与 Phase 9/10/11 未开始。 | Claude |

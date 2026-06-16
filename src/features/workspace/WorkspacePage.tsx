@@ -38,7 +38,6 @@ import {
 import type { CommandError as CommandErrorType } from '../../types/workspace';
 import type { UiError } from './workspaceUiTypes';
 
-import ErrorPanel from './components/ErrorPanel';
 import WorkspaceSummary from './components/WorkspaceSummary';
 import StageList from './components/StageList';
 import StageDetail from './components/StageDetail';
@@ -48,7 +47,9 @@ import AppShell from './components/AppShell';
 import AppHeader from './components/AppHeader';
 import LeftNav from './components/LeftNav';
 import StageWorkspace from './components/StageWorkspace';
+import WarningsPanel from './components/WarningsPanel';
 import type { ContextSelection } from './components/contextPanelTypes';
+import { SURFACE, NAV, ACCENT, FONT } from './components/workbenchTheme';
 
 // ─── 状态机 ───
 type AppState =
@@ -1087,15 +1088,53 @@ export default function WorkspacePage() {
     <LeftNav
       projectInfo={
         state.phase === 'initial' ? (
-          <div style={{ color: '#94a3b8', textAlign: 'center', marginTop: 40 }}>
-            <p>请输入项目路径并点击"打开项目"</p>
+          <div
+            style={{
+              padding: 24,
+              textAlign: 'center',
+              color: NAV.textMuted,
+              background: NAV.surface,
+              borderRadius: 8,
+              border: `1px solid ${NAV.border}`,
+            }}
+          >
+            <div style={{ fontSize: 28, marginBottom: 8 }}>📁</div>
+            <p style={{ margin: 0, fontSize: 13 }}>尚未打开项目</p>
+            <p style={{ margin: '6px 0 0', fontSize: 11, color: NAV.textDim }}>
+              输入路径或从下方恢复会话
+            </p>
           </div>
         ) : state.phase === 'opening' ? (
-          <div style={{ color: '#94a3b8', textAlign: 'center', marginTop: 40 }}>
-            <p>正在扫描 workspace...</p>
+          <div
+            style={{
+              padding: 24,
+              textAlign: 'center',
+              color: NAV.textMuted,
+              background: NAV.surface,
+              borderRadius: 8,
+              border: `1px solid ${NAV.border}`,
+            }}
+          >
+            <div style={{ fontSize: 28, marginBottom: 8 }}>🔎</div>
+            <p style={{ margin: 0, fontSize: 13 }}>正在扫描工作区…</p>
           </div>
         ) : state.phase === 'error' ? (
-          <ErrorPanel error={state.error} />
+          <div
+            style={{
+              padding: 12,
+              background: 'rgba(198, 40, 40, 0.15)',
+              borderRadius: 8,
+              border: '1px solid rgba(198, 40, 40, 0.3)',
+            }}
+          >
+            <h4 style={{ margin: '0 0 6px', fontSize: 13, color: '#fca5a5' }}>打开失败</h4>
+            <p style={{ margin: 0, fontSize: 12, color: '#e2e8f0', lineHeight: 1.5 }}>
+              {state.error.message}
+            </p>
+            {'error_code' in state.error && state.error.error_code && (
+              <code style={{ fontSize: 11, color: '#94a3b8' }}>{state.error.error_code}</code>
+            )}
+          </div>
         ) : currentProfile ? (
           <WorkspaceSummary profile={currentProfile} />
         ) : null
@@ -1172,31 +1211,29 @@ export default function WorkspacePage() {
       )}
 
       {state.phase === 'initial' && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flex: 1,
-            color: '#94a3b8',
-          }}
-        >
-          <p>请从左侧打开一个项目</p>
-        </div>
+        <MainStateBlock
+          icon="📁"
+          title="尚未打开项目"
+          message="在顶部输入目标项目路径并点击“打开项目”，或从左侧“最近项目”恢复一个会话。"
+        />
+      )}
+
+      {state.phase === 'opening' && (
+        <MainStateBlock
+          variant="loading"
+          icon="🔎"
+          title="正在扫描工作区…"
+          message="正在识别阶段目录与源码结构。"
+        />
       )}
 
       {state.phase === 'selecting_stage' && currentProfile && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flex: 1,
-            color: '#64748b',
-          }}
-        >
-          <p>正在加载阶段详情：{state.stageId}</p>
-        </div>
+        <MainStateBlock
+          variant="loading"
+          icon="⏳"
+          title={`正在加载阶段：${state.stageId}`}
+          message="正在读取阶段上下文与产物。"
+        />
       )}
 
       {evidenceState && currentProfile && selectedStageId && (
@@ -1279,65 +1316,37 @@ export default function WorkspacePage() {
       )}
 
       {state.phase === 'stage_error' && currentProfile && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flex: 1,
-            padding: 24,
-          }}
-        >
-          <div style={{ padding: 24, background: '#fff3e0', borderRadius: 8, maxWidth: 720 }}>
-            <h3 style={{ margin: '0 0 8px' }}>阶段加载失败</h3>
-            <p style={{ margin: 0 }}>{state.error.message}</p>
-          </div>
-        </div>
+        <MainStateBlock
+          variant="error"
+          icon="⚠"
+          title="阶段加载失败"
+          message={state.error.message}
+          errorCode={'error_code' in state.error ? state.error.error_code : undefined}
+        />
       )}
 
-      {!['selecting_stage', 'stage_loaded', 'stage_error', 'collecting_evidence', 'evidence_loaded', 'evidence_error', 'understanding_loading', 'understanding_loaded', 'understanding_error', 'views_loading', 'views_loaded', 'views_error'].includes(state.phase) &&
-        !currentProfile && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flex: 1,
-              color: '#94a3b8',
-            }}
-          >
-            <p>请从左侧打开一个项目</p>
-          </div>
-        )}
+      {state.phase === 'loaded' && currentProfile && (
+        <MainStateBlock
+          icon="📂"
+          title={currentProfile.workspace_name}
+          message={`项目已打开，识别到 ${currentProfile.stages.length} 个阶段。从左侧“阶段列表”选择一个阶段开始理解。`}
+        />
+      )}
+
+      {state.phase === 'error' && (
+        <MainStateBlock
+          variant="error"
+          icon="⚠"
+          title="打开项目失败"
+          message={state.error.message}
+          errorCode={'error_code' in state.error ? state.error.error_code : undefined}
+        />
+      )}
     </main>
   );
 
-  const footer = currentWarnings.length > 0 ? (
-    <footer
-      style={{
-        maxHeight: 200,
-        overflowY: 'auto',
-        background: '#fff8e1',
-        borderTop: '1px solid #e2e8f0',
-        padding: '8px 24px',
-        flexShrink: 0,
-      }}
-    >
-      <h4 style={{ margin: '0 0 8px', fontSize: 14 }}>
-        警告 ({currentWarnings.length})
-      </h4>
-      <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13 }}>
-        {currentWarnings.map((w, i) => (
-          <li key={i} style={{ marginBottom: 4 }}>
-            <code>{w.error_code}</code>: {w.message}
-            {w.source_path && (
-              <span style={{ color: '#64748b' }}> ({w.source_path})</span>
-            )}
-          </li>
-        ))}
-      </ul>
-    </footer>
-  ) : null;
+  // P8-T08：warnings 降噪，改为折叠/分类/计数/可展开的紧凑 footer（空时不渲染）
+  const footer = <WarningsPanel warnings={currentWarnings} />;
 
   return (
     <AppShell
@@ -1346,5 +1355,69 @@ export default function WorkspacePage() {
       main={main}
       footer={footer}
     />
+  );
+}
+
+/**
+ * MainStateBlock: 主工作区统一的空/加载/错误状态。
+ * 仅表达工具状态，不输出审计裁决；保留可恢复语义。
+ */
+function MainStateBlock({
+  icon,
+  title,
+  message,
+  errorCode,
+  variant = 'empty',
+}: {
+  icon: string;
+  title: string;
+  message?: string;
+  errorCode?: string;
+  variant?: 'empty' | 'loading' | 'error';
+}) {
+  const isErr = variant === 'error';
+  const titleColor = isErr ? ACCENT.red : variant === 'loading' ? ACCENT.blue : SURFACE.text;
+  return (
+    <div
+      style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        padding: 32,
+        textAlign: 'center',
+      }}
+    >
+      <div style={{ fontSize: 36, lineHeight: 1 }}>{icon}</div>
+      <div style={{ fontSize: FONT.heading, fontWeight: 600, color: titleColor }}>{title}</div>
+      {message && (
+        <div
+          style={{
+            fontSize: FONT.caption,
+            color: SURFACE.textMuted,
+            maxWidth: 380,
+            lineHeight: 1.6,
+          }}
+        >
+          {message}
+        </div>
+      )}
+      {errorCode && (
+        <code
+          style={{
+            fontSize: FONT.micro,
+            color: SURFACE.textDim,
+            background: SURFACE.bg,
+            padding: '2px 8px',
+            borderRadius: 4,
+            border: `1px solid ${SURFACE.border}`,
+          }}
+        >
+          {errorCode}
+        </code>
+      )}
+    </div>
   );
 }

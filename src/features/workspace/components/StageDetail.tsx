@@ -15,6 +15,7 @@ import type {
 import type { UiError } from '../workspaceUiTypes';
 import { formatBytes } from '../workspaceUiUtils';
 import type { ContextSelection } from './contextPanelTypes';
+import { SURFACE, ACCENT, FONT } from './workbenchTheme';
 import EvidencePanel from './EvidencePanel';
 import UnderstandingPanel from './UnderstandingPanel';
 import MultiViewPanel from './MultiViewPanel';
@@ -300,14 +301,17 @@ function OverviewTab({
       {context.error_code === 'stage_empty' && (
         <div
           style={{
-            padding: 24,
-            background: '#fafafa',
+            padding: 16,
+            background: SURFACE.bgSubtle,
+            border: `1px solid ${SURFACE.border}`,
             borderRadius: 8,
             textAlign: 'center',
             marginBottom: 16,
+            color: SURFACE.textMuted,
+            fontSize: FONT.caption,
           }}
         >
-          <p style={{ margin: 0, color: '#999' }}>该阶段无文件</p>
+          该阶段为空：未发现可分析文件。
         </div>
       )}
 
@@ -559,7 +563,7 @@ function UnderstandingTab({
         <LoadingBlock
           title="正在生成理解..."
           subtitle="正在调用后端处理，请稍候"
-          color="#7b1fa2"
+          color={ACCENT.blue}
         />
       )}
 
@@ -844,9 +848,9 @@ function ActionButton({
   label: string;
 }) {
   const colors = {
-    primary: { border: '#1976d2', bg: '#1976d2' },
-    secondary: { border: '#7b1fa2', bg: '#7b1fa2' },
-    success: { border: '#2e7d32', bg: '#2e7d32' },
+    primary: { border: ACCENT.blue, bg: ACCENT.blue },
+    secondary: { border: ACCENT.teal, bg: ACCENT.teal },
+    success: { border: ACCENT.green, bg: ACCENT.green },
   };
   const c = colors[variant];
   return (
@@ -857,10 +861,10 @@ function ActionButton({
         padding: '8px 20px',
         borderRadius: 6,
         border: `1px solid ${c.border}`,
-        background: disabled ? '#e0e0e0' : c.bg,
-        color: disabled ? '#999' : '#fff',
+        background: disabled ? SURFACE.border : c.bg,
+        color: disabled ? SURFACE.textDim : '#fff',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        fontSize: 14,
+        fontSize: FONT.body,
       }}
     >
       {label}
@@ -873,32 +877,33 @@ function ErrorBlock({ title, error }: { title: string; error: UiError }) {
     <div
       style={{
         padding: 16,
-        background: '#fff3e0',
+        background: ACCENT.redSoft,
+        border: `1px solid ${ACCENT.redBorder}`,
         borderRadius: 8,
         marginBottom: 16,
       }}
     >
-      <h4 style={{ margin: '0 0 8px', fontSize: 14 }}>{title}</h4>
-      <div style={{ fontSize: 13 }}>
+      <h4 style={{ margin: '0 0 8px', fontSize: FONT.heading, color: ACCENT.red }}>{title}</h4>
+      <div style={{ fontSize: FONT.body, color: SURFACE.text }}>
         {'error_code' in error && (
           <div style={{ marginBottom: 4 }}>
-            <span style={{ color: '#666' }}>错误码：</span>
+            <span style={{ color: SURFACE.textMuted }}>错误码：</span>
             <code>{error.error_code}</code>
           </div>
         )}
         <div style={{ marginBottom: 4 }}>
-          <span style={{ color: '#666' }}>信息：</span>
+          <span style={{ color: SURFACE.textMuted }}>信息：</span>
           {error.message}
         </div>
         {'source_path' in error && error.source_path && (
           <div style={{ marginBottom: 4 }}>
-            <span style={{ color: '#666' }}>路径：</span>
-            <code style={{ fontSize: 12 }}>{error.source_path}</code>
+            <span style={{ color: SURFACE.textMuted }}>路径：</span>
+            <code style={{ fontSize: FONT.caption }}>{error.source_path}</code>
           </div>
         )}
         {'details' in error && error.details && (
           <div>
-            <span style={{ color: '#666' }}>详情：</span>
+            <span style={{ color: SURFACE.textMuted }}>详情：</span>
             {error.details}
           </div>
         )}
@@ -906,8 +911,8 @@ function ErrorBlock({ title, error }: { title: string; error: UiError }) {
           <div style={{ marginTop: 4 }}>
             <span
               style={{
-                fontSize: 12,
-                color: error.recoverable ? '#f57c00' : '#c62828',
+                fontSize: FONT.caption,
+                color: error.recoverable ? ACCENT.amber : ACCENT.red,
               }}
             >
               {error.recoverable ? '可重试' : '不可恢复'}
@@ -950,13 +955,14 @@ function EmptyState({ message }: { message: string }) {
     <div
       style={{
         padding: 32,
-        background: '#fafafa',
+        background: SURFACE.bgSubtle,
+        border: `1px solid ${SURFACE.border}`,
         borderRadius: 8,
         textAlign: 'center',
-        color: '#999',
+        color: SURFACE.textMuted,
       }}
     >
-      <p style={{ margin: 0, fontSize: 14 }}>{message}</p>
+      <p style={{ margin: 0, fontSize: FONT.body }}>{message}</p>
     </div>
   );
 }

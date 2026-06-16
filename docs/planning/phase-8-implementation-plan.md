@@ -9,7 +9,7 @@ updated: 2026-06-16
 >
 > Phase 8 是**前端为主**的阶段：把 Phase 1~7 已有能力重组为产品级工作台（**工作台化，不是新增更多卡片**），**不新增语义分析能力，不接真实 LLM，不做跨阶段映射**。
 >
-> 本文档 status 为 `active`，是 Phase 8 编码实施计划的生效文档。**Phase 8 Batch A（P8-T01~P8-T02）已完成/进入审核收口**；**Phase 8 Batch B（P8-T03~P8-T04）已实现/进入审核收口**；**Phase 8 Batch C（P8-T05~P8-T06）已实现/进入审核收口**；Batch D/E 与 Phase 9/10/11 均未开始。Phase 7 已完成（completion review active）。
+> 本文档 status 为 `active`，是 Phase 8 编码实施计划的生效文档。**Phase 8 Batch A（P8-T01~P8-T02）已完成/进入审核收口**；**Phase 8 Batch B（P8-T03~P8-T04）已实现/进入审核收口**；**Phase 8 Batch C（P8-T05~P8-T06）已实现/进入审核收口**；**Phase 8 Batch D（P8-T07~P8-T09）已实现/进入审核收口**；Batch E 与 Phase 9/10/11 均未开始。Phase 7 已完成（completion review active）。
 
 ## 0. 核心重构方向（先读）
 
@@ -35,7 +35,7 @@ Phase 8 不是普通 UI 改造，而是**信息架构工作台化**。三个关�
 | Phase 8 实施计划 active | ⏳ 本文档（draft，待审核转 active） |
 | **以上 Phase 8 详细文档全部转为 active** | ⏳ 待审核（当前 draft 已完成，正在审核收口） |
 
-> 纪律：Phase 8 详细文档全部审核转 active 后，方允许进入 Batch A 编码。**Phase 8 Batch A（P8-T01~P8-T02）已实现/进入审核收口**；**Phase 8 Batch B（P8-T03~P8-T04）已实现/进入审核收口**；**Phase 8 Batch C（P8-T05~P8-T06）已实现/进入审核收口**；Batch D/E 与 Phase 9/10/11 均未开始。
+> 纪律：Phase 8 详细文档全部审核转 active 后，方允许进入 Batch A 编码。**Phase 8 Batch A（P8-T01~P8-T02）已实现/进入审核收口**；**Phase 8 Batch B（P8-T03~P8-T04）已实现/进入审核收口**；**Phase 8 Batch C（P8-T05~P8-T06）已实现/进入审核收口**；**Phase 8 Batch D（P8-T07~P8-T09）已实现/进入审核收口**；Batch E 与 Phase 9/10/11 均未开始。
 
 ## 2. 任务拆分
 
@@ -269,3 +269,4 @@ Batch E：验收 + completion
 | 2026-06-16 | Batch B 编码完成：StageWorkspace 实现真实 Artifact tabs 切换 + StageOverviewBar + StageFilterBar；StageDetail 改为按 activeTab 分区渲染；EvidencePanel 增加可展开分组与前端筛选；P8-T03/P8-T04 进入审核收口；Batch C/D/E 与 Phase 9/10/11 未开始。 | Claude |
 | 2026-06-16 | Batch C 审核收口：移除误提交的 `.codegraph/.gitignore`；修复 citation 点击后被异步 source excerpt 覆盖的竞态；`clearQualityState` 仅清理 `quality_issue` context；`handleCloseSourceExcerpt` 关闭时同步清空 `source_excerpt` context；`QualityReviewPanel` 所有 issue 均可点击进入 ContextPanel（无 evidence/source 的 issue 也能展示）；P8-T05/P8-T06 仍处于审核收口状态，Batch D/E 与 Phase 9/10/11 未开始。 | Claude |
 | 2026-06-16 | Batch C 交互收口：`QualityReviewPanel.handleIssueClick` 不再自动调用 `onViewSource`，点击质量记录后 ContextPanel 稳定展示 `quality_issue`，源码查看收敛为 ContextPanel 内“查看源码片段”显式按钮；移除未使用的 `onViewSource` prop 链（QualityReviewPanel/StageDetail QualityTab）；P8-T05/P8-T06 仍处于审核收口状态，Batch D/E 与 Phase 9/10/11 未开始。 | Claude |
+| 2026-06-16 | Batch D 编码完成：新增 `workbenchTheme`（设计 token）/`StateBlocks`（统一空错态）/`WarningsPanel`（warnings 折叠/分类/计数/可展开）；左侧深色导航子组件（StageList/WorkspaceSummary/RecentProjectsPanel）深色适配；AppHeader 工作台化；StageWorkspace/StageOverviewBar/StageFilterBar/StageDetail/MultiViewPanel/QualityReviewPanel 统一 token 并去除紫色 loading（改蓝/青）；阶段/acceptance 状态色去除红绿裁决感（改蓝/琥珀/灰）；主区空错态（initial/opening/loaded/error/stage_error）统一为 `MainStateBlock`；移除未使用的 `ErrorPanel`；P8-T07/P8-T08/P8-T09 进入审核收口；Batch E 与 Phase 9/10/11 未开始。 | Claude |

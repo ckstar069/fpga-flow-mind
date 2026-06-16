@@ -11,6 +11,7 @@ import type {
 } from '../../../types/workspace';
 import type { UiError } from '../workspaceUiTypes';
 import type { ContextSelection } from './contextPanelTypes';
+import { SURFACE, ACCENT, FONT } from './workbenchTheme';
 
 interface QualityReviewPanelProps {
   report?: QualityReport | null;
@@ -93,7 +94,7 @@ export default function QualityReviewPanel({
 
   return (
     <div style={{ marginBottom: 24 }}>
-      <h3 style={{ fontSize: 15, margin: '0 0 12px' }}>质量评估（Phase 7）</h3>
+      <h3 style={{ fontSize: FONT.heading, margin: '0 0 12px' }}>质量评估</h3>
 
       <button
         onClick={onGenerate}
@@ -102,18 +103,21 @@ export default function QualityReviewPanel({
         style={{
           padding: '8px 20px',
           borderRadius: 6,
-          border: report ? '1px solid #2e7d32' : '1px solid #1976d2',
-          background: loading ? '#e0e0e0' : report ? '#2e7d32' : '#1976d2',
-          color: loading ? '#999' : '#fff',
+          border: 'none',
+          background: loading ? SURFACE.border : report ? ACCENT.green : ACCENT.blue,
+          color: loading ? SURFACE.textDim : '#fff',
           cursor: !canGenerate || loading ? 'not-allowed' : 'pointer',
-          fontSize: 14,
+          fontSize: FONT.body,
+          fontWeight: 500,
         }}
       >
         {loading ? '生成中...' : report ? '重新生成质量报告' : '生成质量报告'}
       </button>
 
       {!canGenerate && disabledReason && (
-        <span style={{ fontSize: 12, color: '#999', marginLeft: 12 }}>{disabledReason}</span>
+        <span style={{ fontSize: FONT.caption, color: SURFACE.textDim, marginLeft: 12 }}>
+          {disabledReason}
+        </span>
       )}
 
       {error && (
@@ -121,15 +125,17 @@ export default function QualityReviewPanel({
           style={{
             marginTop: 16,
             padding: 16,
-            background: '#ffebee',
+            background: ACCENT.redSoft,
             borderRadius: 8,
-            border: '1px solid #ef9a9a',
+            border: `1px solid ${ACCENT.redBorder}`,
           }}
         >
-          <h4 style={{ margin: '0 0 8px', fontSize: 14, color: '#c62828' }}>质量报告生成失败</h4>
-          <p style={{ margin: 0, fontSize: 13 }}>{error.message}</p>
+          <h4 style={{ margin: '0 0 8px', fontSize: FONT.heading, color: ACCENT.red }}>
+            质量报告生成失败
+          </h4>
+          <p style={{ margin: 0, fontSize: FONT.body }}>{error.message}</p>
           {'error_code' in error && error.error_code && (
-            <code style={{ fontSize: 12, color: '#666' }}>{error.error_code}</code>
+            <code style={{ fontSize: FONT.caption, color: SURFACE.textMuted }}>{error.error_code}</code>
           )}
         </div>
       )}
@@ -139,13 +145,14 @@ export default function QualityReviewPanel({
           style={{
             marginTop: 16,
             padding: 24,
-            background: '#fafafa',
+            background: SURFACE.bgSubtle,
             borderRadius: 8,
             textAlign: 'center',
-            color: '#999',
+            border: `1px solid ${SURFACE.border}`,
+            color: SURFACE.textMuted,
           }}
         >
-          <p style={{ margin: 0, fontSize: 13 }}>点击上方按钮生成当前阶段的质量评估报告</p>
+          <p style={{ margin: 0, fontSize: FONT.body }}>点击上方按钮生成当前阶段的质量评估报告</p>
         </div>
       )}
 
@@ -155,13 +162,25 @@ export default function QualityReviewPanel({
           <div
             style={{
               padding: 16,
-              background: report.acceptance === 'meets_gate' ? '#e8f5e9' : '#ffebee',
+              background:
+                report.acceptance === 'meets_gate' ? ACCENT.blueSoft : ACCENT.amberSoft,
               borderRadius: 8,
-              border: `1px solid ${report.acceptance === 'meets_gate' ? '#81c784' : '#ef9a9a'}`,
+              border: `1px solid ${
+                report.acceptance === 'meets_gate' ? ACCENT.blueSoftBorder : ACCENT.amberBorder
+              }`,
             }}
           >
-            <div style={{ fontSize: 14, fontWeight: 600 }}>{acceptanceLabel(report.acceptance)}</div>
-            <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+            <div
+              style={{
+                fontSize: FONT.heading,
+                fontWeight: 600,
+                color:
+                  report.acceptance === 'meets_gate' ? ACCENT.blueDark : ACCENT.amber,
+              }}
+            >
+              {acceptanceLabel(report.acceptance)}
+            </div>
+            <div style={{ fontSize: FONT.caption, color: SURFACE.textMuted, marginTop: 4 }}>
               负向问题：{report.summary.total_issues} · 正向守卫：
               {report.summary.positive_guardrail_event_count}
             </div>

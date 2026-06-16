@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { EvidenceCollection, QualityReport } from '../../../types/workspace';
+import { SURFACE, FONT } from './workbenchTheme';
 
 export interface EvidenceFilter {
   source_kind?: string;
@@ -146,7 +147,7 @@ export default function StageFilterBar({
   }
 
   return (
-    <div style={{ fontSize: 12, color: '#94a3b8' }}>
+    <div style={{ fontSize: FONT.caption, color: SURFACE.textDim }}>
       {activeTab === 'overview'
         ? '选择 Artifact tab 以使用对应筛选'
         : '当前分区暂无可筛选对象'}
@@ -155,11 +156,11 @@ export default function StageFilterBar({
 }
 
 const selectStyle: React.CSSProperties = {
-  padding: '4px 8px',
-  fontSize: 12,
+  padding: '5px 8px',
+  fontSize: FONT.caption,
   borderRadius: 4,
-  border: '1px solid #cbd5e1',
-  background: '#fff',
-  color: '#1e293b',
+  border: `1px solid ${SURFACE.borderStrong}`,
+  background: SURFACE.bg,
+  color: SURFACE.text,
   outline: 'none',
 };

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { NAV } from './workbenchTheme';
 
 interface LeftNavProps {
   projectInfo?: ReactNode;
@@ -8,9 +9,9 @@ interface LeftNavProps {
 }
 
 /**
- * LeftNav: 深色固定左侧导航
+ * LeftNav: 深色固定左侧导航。
  * 承载项目信息、阶段列表、最近项目、加载错误。
- * Batch A 仅做视觉容器，不改变子组件行为。
+ * Batch D：使用统一设计 token，各 section 之间加细分隔线，提升层级清晰度。
  */
 export default function LeftNav({
   projectInfo,
@@ -25,9 +26,9 @@ export default function LeftNav({
         width: 280,
         minWidth: 240,
         maxWidth: 360,
-        background: '#1e293b',
-        color: '#e2e8f0',
-        borderRight: '1px solid #334155',
+        background: NAV.bg,
+        color: NAV.text,
+        borderRight: `1px solid ${NAV.border}`,
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -42,11 +43,17 @@ export default function LeftNav({
           padding: 16,
           display: 'flex',
           flexDirection: 'column',
-          gap: 20,
+          gap: 16,
         }}
       >
         {projectInfo}
+        {projectInfo && (
+          <div style={{ height: 1, background: NAV.divider, margin: '0 -16px' }} />
+        )}
         {stageList}
+        {stageList && (
+          <div style={{ height: 1, background: NAV.divider, margin: '0 -16px' }} />
+        )}
         {recentProjects}
         {loadError}
       </div>

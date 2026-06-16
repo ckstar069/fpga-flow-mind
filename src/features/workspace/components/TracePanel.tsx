@@ -156,13 +156,15 @@ export default function TracePanel({
         <div
           style={{
             padding: 24,
-            background: '#f3e5f5',
+            background: '#e3f2fd',
             borderRadius: 8,
             textAlign: 'center',
-            border: '1px solid #ce93d8',
+            border: '1px solid #90caf9',
           }}
         >
-          <p style={{ margin: 0, color: '#7b1fa2', fontSize: 14 }}>正在解析追溯...</p>
+          <p style={{ margin: 0, color: '#1565c0', fontSize: 14, fontWeight: 600 }}>
+            正在解析追溯...
+          </p>
         </div>
       )}
 

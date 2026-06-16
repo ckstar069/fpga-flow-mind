@@ -13,6 +13,7 @@ import StageOverviewBar from './StageOverviewBar';
 import StageFilterBar, { type EvidenceFilter, type QualityFilter } from './StageFilterBar';
 import ContextPanel from './ContextPanel';
 import type { ContextSelection } from './contextPanelTypes';
+import { SURFACE, ACCENT, FONT } from './workbenchTheme';
 
 const INITIAL_EVIDENCE_FILTER: EvidenceFilter = {};
 const INITIAL_QUALITY_FILTER: QualityFilter = {};
@@ -68,9 +69,8 @@ interface StageWorkspaceProps {
 }
 
 /**
- * StageWorkspace: 阶段工作区骨架
- * Batch B 实现真实的 Artifact tabs 切换、顶部概览条与中部筛选条。
- * 右侧 ContextPanel 仍为占位容器（Batch C 实现真实联动）。
+ * StageWorkspace: 阶段工作区骨架。
+ * Batch D：统一设计 token，顶部阶段 header + 概览 + 筛选 + Artifact tabs + 内容 + ContextPanel。
  */
 export default function StageWorkspace({
   profile,
@@ -114,39 +114,39 @@ export default function StageWorkspace({
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        background: '#f8fafc',
+        background: SURFACE.bgSubtle,
         overflow: 'hidden',
       }}
     >
-      {/* WorkspaceTopBar */}
+      {/* 阶段工作台 header */}
       <div
         className="stage-workspace-topbar"
         style={{
-          padding: '12px 20px',
-          background: '#fff',
-          borderBottom: '1px solid #e2e8f0',
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: 12,
+          padding: '10px 20px',
+          background: SURFACE.bg,
+          borderBottom: `1px solid ${SURFACE.border}`,
           flexShrink: 0,
         }}
       >
-        <div
+        <span style={{ fontSize: FONT.caption, color: SURFACE.textDim }}>{profile.workspace_name}</span>
+        <span style={{ fontSize: FONT.caption, color: SURFACE.textDim }}>/</span>
+        <span style={{ fontSize: FONT.title, fontWeight: 600, color: SURFACE.text }}>{stageId}</span>
+        <span
           style={{
-            fontSize: 15,
-            fontWeight: 600,
-            color: '#1e293b',
-          }}
-        >
-          {profile.workspace_name} / {stageId}
-        </div>
-        <div
-          style={{
-            fontSize: 12,
-            color: '#64748b',
-            marginTop: 4,
+            fontSize: FONT.micro,
+            color: SURFACE.textMuted,
+            marginLeft: 'auto',
             wordBreak: 'break-all',
+            maxWidth: '60%',
+            textAlign: 'right',
           }}
+          title={context.source_path}
         >
           {context.source_path}
-        </div>
+        </span>
       </div>
 
       {/* StageOverviewBar */}
@@ -154,8 +154,8 @@ export default function StageWorkspace({
         className="stage-overview-bar"
         style={{
           padding: '10px 20px',
-          background: '#fff',
-          borderBottom: '1px solid #e2e8f0',
+          background: SURFACE.bg,
+          borderBottom: `1px solid ${SURFACE.border}`,
           flexShrink: 0,
         }}
       >
@@ -181,8 +181,8 @@ export default function StageWorkspace({
         className="stage-filter-bar"
         style={{
           padding: '8px 20px',
-          background: '#f8fafc',
-          borderBottom: '1px solid #e2e8f0',
+          background: SURFACE.bgSubtle,
+          borderBottom: `1px solid ${SURFACE.border}`,
           flexShrink: 0,
         }}
       >
@@ -202,10 +202,10 @@ export default function StageWorkspace({
         className="artifact-tabs"
         style={{
           display: 'flex',
-          gap: 4,
-          padding: '8px 20px 0',
-          background: '#f8fafc',
-          borderBottom: '1px solid #e2e8f0',
+          gap: 2,
+          padding: '0 20px',
+          background: SURFACE.bg,
+          borderBottom: `1px solid ${SURFACE.border}`,
           flexShrink: 0,
           overflowX: 'auto',
         }}
@@ -217,16 +217,16 @@ export default function StageWorkspace({
               key={key}
               onClick={() => setActiveTab(key)}
               style={{
-                padding: '8px 14px',
-                borderRadius: '6px 6px 0 0',
-                border: isActive ? '1px solid #e2e8f0' : '1px solid transparent',
-                borderBottom: isActive ? '2px solid #1976d2' : '2px solid transparent',
-                background: isActive ? '#fff' : 'transparent',
-                color: isActive ? '#1976d2' : '#64748b',
-                fontSize: 13,
+                padding: '10px 14px',
+                border: 'none',
+                borderBottom: isActive ? `2px solid ${ACCENT.blue}` : '2px solid transparent',
+                background: 'transparent',
+                color: isActive ? ACCENT.blue : SURFACE.textMuted,
+                fontSize: FONT.body,
                 fontWeight: isActive ? 600 : 400,
                 whiteSpace: 'nowrap',
                 cursor: 'pointer',
+                marginBottom: -1,
               }}
             >
               {label}

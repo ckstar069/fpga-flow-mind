@@ -9,6 +9,7 @@ import type {
 } from '../../../types/workspace';
 import type { UiError } from '../workspaceUiTypes';
 import type { ContextSelection } from './contextPanelTypes';
+import { SURFACE, ACCENT, FONT } from './workbenchTheme';
 
 // ─── 中文标签映射 ───────────────────────────────────────────────────────
 
@@ -64,11 +65,11 @@ interface NodeStyle {
 const NODE_STYLE: Record<string, NodeStyle> = {
   module: { fill: '#e3f2fd', stroke: '#1565c0', textColor: '#0d47a1' },
   function: { fill: '#e8f5e9', stroke: '#2e7d32', textColor: '#1b5e20' },
-  interface: { fill: '#f3e5f5', stroke: '#7b1fa2', textColor: '#4a148c' },
+  interface: { fill: '#e0f7fa', stroke: '#00838f', textColor: '#006064' },
   signal: { fill: '#f5f5f5', stroke: '#757575', textColor: '#424242' },
   processing_step: { fill: '#bbdefb', stroke: '#1976d2', textColor: '#0d47a1' },
   class: { fill: '#e1f5fe', stroke: '#0288d1', textColor: '#01579b' },
-  constant: { fill: '#f3e5f5', stroke: '#8e24aa', textColor: '#4a148c' },
+  constant: { fill: '#eceff1', stroke: '#455a64', textColor: '#263238' },
   input_source: { fill: '#c8e6c9', stroke: '#388e3c', textColor: '#1b5e20' },
   output_target: { fill: '#ffe0b2', stroke: '#e65100', textColor: '#bf360c' },
   intermediate_data: { fill: '#eeeeee', stroke: '#9e9e9e', textColor: '#424242' },
@@ -172,14 +173,16 @@ export default function MultiViewPanel({
         <div
           style={{
             padding: 24,
-            background: '#f3e5f5',
+            background: ACCENT.blueSoft,
             borderRadius: 8,
             textAlign: 'center',
-            border: '1px solid #ce93d8',
+            border: `1px solid ${ACCENT.blueSoftBorder}`,
           }}
         >
-          <p style={{ margin: 0, color: '#7b1fa2', fontSize: 14 }}>正在生成视图...</p>
-          <p style={{ margin: '8px 0 0', color: '#999', fontSize: 12 }}>
+          <p style={{ margin: 0, color: ACCENT.blueDark, fontSize: FONT.body, fontWeight: 600 }}>
+            正在生成视图...
+          </p>
+          <p style={{ margin: '8px 0 0', color: SURFACE.textMuted, fontSize: FONT.caption }}>
             正在从理解结果中生成结构图、数据流和时序流水视图
           </p>
         </div>
