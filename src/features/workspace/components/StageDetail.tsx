@@ -16,6 +16,7 @@ import type { UiError } from '../workspaceUiTypes';
 import { formatBytes } from '../workspaceUiUtils';
 import type { ContextSelection } from './contextPanelTypes';
 import { SURFACE, ACCENT, FONT } from './workbenchTheme';
+import { EmptyState } from './StateBlocks';
 import EvidencePanel from './EvidencePanel';
 import UnderstandingPanel from './UnderstandingPanel';
 import MultiViewPanel from './MultiViewPanel';
@@ -509,7 +510,7 @@ function EvidenceTab({
       )}
 
       {!evidence && !evidenceError && !isCollecting && (
-        <EmptyState message="尚未收集证据，请点击上方按钮开始收集。" />
+        <EmptyState title="尚未收集证据，请点击上方按钮开始收集。" />
       )}
     </div>
   );
@@ -572,7 +573,7 @@ function UnderstandingTab({
       )}
 
       {!understanding && !understandingLoading && !understandingError && (
-        <EmptyState message="尚未生成理解，请点击上方按钮开始生成。" />
+        <EmptyState title="尚未生成理解，请点击上方按钮开始生成。" />
       )}
     </div>
   );
@@ -641,7 +642,7 @@ function ViewsTab({
       )}
 
       {!views && !viewsLoading && !viewsError && (
-        <EmptyState message="尚未生成视图，请先生成理解再生成视图。" />
+        <EmptyState title="尚未生成视图，请先生成理解再生成视图。" />
       )}
     </div>
   );
@@ -681,7 +682,7 @@ function TraceTab({
   return (
     <div>
       {!selectedTraceTarget && !sourceExcerpt && !excerptError && (
-        <EmptyState message="请在视图分区选择一个节点或边以开始追溯。" />
+        <EmptyState title="请在视图分区选择一个节点或边以开始追溯。" />
       )}
 
       {selectedTraceTarget && (
@@ -946,23 +947,6 @@ function LoadingBlock({
     >
       <p style={{ margin: 0, color, fontSize: 14 }}>{title}</p>
       <p style={{ margin: '8px 0 0', color: '#999', fontSize: 12 }}>{subtitle}</p>
-    </div>
-  );
-}
-
-function EmptyState({ message }: { message: string }) {
-  return (
-    <div
-      style={{
-        padding: 32,
-        background: SURFACE.bgSubtle,
-        border: `1px solid ${SURFACE.border}`,
-        borderRadius: 8,
-        textAlign: 'center',
-        color: SURFACE.textMuted,
-      }}
-    >
-      <p style={{ margin: 0, fontSize: FONT.body }}>{message}</p>
     </div>
   );
 }

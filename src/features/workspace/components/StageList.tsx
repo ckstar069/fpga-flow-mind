@@ -5,12 +5,16 @@ import { NAV, ACCENT, FONT } from './workbenchTheme';
 function badgePalette(status: string): { bg: string; color: string } {
   switch (status) {
     case 'naming_anomaly':
+      // 命名异常：非裁决的琥珀/橙色提示（仅表“需注意”）
       return { bg: 'rgba(245, 124, 0, 0.18)', color: ACCENT.amber };
     case 'empty':
+    case 'missing':
+    case 'unreadable':
+      // 空阶段 / 缺失 / 不可读：统一中性灰系（不使用红绿裁决色）
       return { bg: 'rgba(148, 163, 184, 0.18)', color: NAV.textMuted };
     default:
-      // missing / unreadable：中性警示色（非裁决红绿）
-      return { bg: 'rgba(198, 40, 40, 0.2)', color: '#fca5a5' };
+      // 未知状态：中性灰兜底，避免误落到红/绿裁决色
+      return { bg: 'rgba(148, 163, 184, 0.18)', color: NAV.textMuted };
   }
 }
 
