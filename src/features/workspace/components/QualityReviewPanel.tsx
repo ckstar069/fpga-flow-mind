@@ -248,15 +248,13 @@ export default function QualityReviewPanel({
                   <button
                     key={issue.issue_id}
                     onClick={() => handleIssueClick(issue)}
-                    disabled={!issue.evidence_id && !issue.source_path}
                     style={{
                       textAlign: 'left',
                       padding: 12,
                       borderRadius: 6,
                       border: '1px solid #e0e0e0',
                       background: issue.polarity === 'positive_guardrail' ? '#f1f8e9' : '#fff',
-                      cursor:
-                        issue.evidence_id || issue.source_path ? 'pointer' : 'default',
+                      cursor: 'pointer',
                       display: 'flex',
                       flexDirection: 'column',
                       gap: 6,

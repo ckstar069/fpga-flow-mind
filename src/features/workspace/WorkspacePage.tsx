@@ -185,6 +185,8 @@ export default function WorkspacePage() {
     setQualityReport(null);
     setQualityLoading(false);
     setQualityError(null);
+    // 仅清理 quality_issue context，不影响 evidence/trace/source_excerpt/qa_citation
+    setContextSelection((prev) => (prev?.kind === 'quality_issue' ? null : prev));
   }, []);
 
   // ─── 打开项目 ───
@@ -939,6 +941,8 @@ export default function WorkspacePage() {
     setSourceExcerpt(null);
     setExcerptError(null);
     setCurrentSourceEvidenceId(null);
+    // 关闭源码片段时同步清空 source_excerpt context
+    setContextSelection((prev) => (prev?.kind === 'source_excerpt' ? null : prev));
   }, []);
 
   // ─── 定位 evidence 高亮 ───
@@ -1051,13 +1055,8 @@ export default function WorkspacePage() {
           );
         }, 3000);
       }
-      if (citation.source_location) {
-        handleViewSource({
-          source_path: citation.source_location.source_path,
-          line_range: citation.source_location.line_range,
-          evidence_id: citation.evidence_id,
-        });
-      }
+      // 注意：不再自动调用 handleViewSource，避免异步覆盖 qa_citation context。
+      // 用户可在 ContextPanel 的 qa_citation 卡片中点击“查看源码片段”手动加载。
       if (selectedStageId) {
         setContextSelection({
           kind: 'qa_citation',
@@ -1066,7 +1065,7 @@ export default function WorkspacePage() {
         });
       }
     },
-    [handleViewSource, selectedStageId]
+    [selectedStageId]
   );
 
   // ─── 渲染 ───

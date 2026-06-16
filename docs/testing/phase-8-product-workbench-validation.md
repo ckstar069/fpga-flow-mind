@@ -272,6 +272,18 @@ Phase 8 完成后，方允许考虑进入：
 - P8-T07~P8-T09（视觉 polish、warnings 降噪、空/错误/session 恢复）未开始。
 - P8-T10（回归 + 桌面验收 + completion review）未开始。
 
+### 15.4 Batch C 审核收口修复
+
+> 本次收口严格限定在 Batch C 范围内，不进入 Batch D/E，不做 warnings 降噪，不接真实 LLM，不改目标项目。
+
+| 问题 | 修复说明 |
+|------|----------|
+| 误提交 `.codegraph/.gitignore` | 执行 `git rm --cached .codegraph/.gitignore`，本地 `.codegraph/` 目录保留但仓库不再跟踪 |
+| Q&A citation 被 source excerpt 异步覆盖 | `handleGroundedCitationClick` 不再自动调用 `handleViewSource`，citation 点击后 ContextPanel 稳定展示 `qa_citation`；用户可在 ContextPanel 内点击“查看源码片段”手动加载 source excerpt |
+| quality report 失效后 stale `quality_issue` context | `clearQualityState()` 增加仅对 `quality_issue` 的 context 清理，不影响 evidence/trace/source_excerpt/qa_citation |
+| 关闭 source excerpt 后 stale `source_excerpt` context | `handleCloseSourceExcerpt()` 在关闭时同步清空 `source_excerpt` context |
+| QualityReviewPanel issue 点击受限 | 移除 issue 按钮的 `disabled` 与默认光标限制，所有 issue 均可点击进入 ContextPanel；有 evidence/source 时仍保留高亮/查看源码行为 |
+
 ## 12. 变更记录
 
 | 日期 | 变更 | 作者 |
@@ -279,4 +291,4 @@ Phase 8 完成后，方允许考虑进入：
 | 2026-06-16 | 初始 draft：验证策略、AgentScope 风格可用性验收、既有能力零回归、视觉语义一致性、真实桌面验收 12 步、安全回归（含重库检查）、完成标准、进入 Phase 9 条件。审核转 active 后方允许编码。 | Claude |
 | 2026-06-16 | 审核通过，status 从 draft 转 active；允许进入 Phase 8 Batch A（P8-T01~P8-T02）；Phase 8 编码尚未开始；Batch B/C/D/E 与 Phase 9/10/11 未开始。 | Claude |
 | 2026-06-16 | 追加 §13 Batch A 验证记录：P8-T01/P8-T02 骨架实现通过 npm build / tsc / cargo test --lib / cargo check / real_project_validation --ignored；边界 rg 与目标项目只读验证通过；Batch B/C/D/E 未开始。 | Claude |
-| 2026-06-16 | 追加 §15 Batch C 验证记录：ContextPanel 真实联动 + 状态隔离实现通过 `npm run build`、`npx tsc --noEmit`、`cargo test --lib`、`cargo check` 与边界 rg；P8-T05/P8-T06 进入审核收口；Batch D/E 与 Phase 9/10/11 未开始。 | Claude |
+| 2026-06-16 | 追加 §15.4 Batch C 审核收口修复记录：移除 `.codegraph/.gitignore` 跟踪；修复 citation/source excerpt 竞态；清理 quality_issue/source_excerpt 过期 context；QualityReviewPanel issue 全可点击；验证命令与边界 rg 全通过；Batch D/E 与 Phase 9/10/11 未开始。 | Claude |
