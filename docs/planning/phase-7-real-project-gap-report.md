@@ -47,12 +47,11 @@ updated: 2026-06-16
 - “dataflow/timing view 完全为空 / empty_or_unhelpful_view”一项，已由 P0-3 修复（见 §0.1）。
 - evidence 粒度（Phase 2 拆分策略）、understanding 丰富度（接口/信号/处理步骤的更细语义识别）等项 **仍未修**，属 P1 及之后范围。当前 P0-3 的保守派生只解决“有 evidence 时不再无谓退化”，不替代后续 P1 的语义补强。
 
-### 0.3 本轮明确不做 / 不得进入
+### 0.3 当前状态（Phase 7 已完成）
 
-- **不得** 视为 Phase 7 完成。
-- **不得** 进入 Phase 8 / 9 / 10。
-- 不修改目标项目目录；不运行 Vivado / synthesis / implementation / bitstream；不接真实 LLM；不输出 PASS/HOLD/正确性裁决。
-- Batch D P2 已完成。后续 P3（completion review）需单独授权。
+- Phase 7 全部完成（Batch A/B/C/D），completion review 已 active（见 `phase-7-completion-review.md`）。
+- Phase 8 / 9 / 10 / 11 编码尚未开始（需先编制对应详细文档并审核为 active）。
+- 安全边界不变：不修改目标项目目录；不运行 Vivado / synthesis / implementation / bitstream；不接真实 LLM；不输出 PASS/HOLD/正确性裁决。
 
 ## 1. 样本项目来源与结构
 

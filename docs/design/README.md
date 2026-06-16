@@ -84,8 +84,8 @@ Phase 1 技术设计由以下文档组成，按阅读顺序排列：
 | [`phase-5-trace-and-qa-design.md`](phase-5-trace-and-qa-design.md) | `active` | Phase 5 证据回链与 Grounded Q&A 后端设计：TraceResolver、SourceExcerptResolver、Provider trait、Tauri commands、安全边界 | Phase 5 后端编码前必读 |
 | [`phase-6-persistence-model.md`](phase-6-persistence-model.md) | `active` | Phase 6 持久化数据模型：SessionManifest、PersistedWorkspace、ArtifactIndex、QaHistory、PersistedUiState、目录布局、版本规则、安全边界 | Phase 6 编码前必读 |
 | [`phase-6-persistence-and-replay-design.md`](phase-6-persistence-and-replay-design.md) | `active` | Phase 6 持久化与回放后端设计：SessionStore、commands、原子写入、路径安全、schema 校验、状态恢复、fingerprint 策略 | Phase 6 后端编码前必读 |
-| [`phase-7-real-project-evaluation-model.md`](phase-7-real-project-evaluation-model.md) | `active` | Phase 7 真实项目质量评估数据模型：RealProjectSample/StageEvaluationTarget/4 类 QualityReport/QualityIssue(+Kind+Severity)/QualityRunSummary/QualityAcceptanceStatus。强调评估产物非审计结论、可追溯、评分仅内部门槛 | Phase 7 编码前必读（active；Batch A/B/C 已实现，Batch D/E 仍不得进入） |
-| [`phase-7-evidence-understanding-quality-design.md`](phase-7-evidence-understanding-quality-design.md) | `active` | Phase 7 evidence/understanding 质量评估与补强设计：复用 Phase 1~6 能力、5 维度评估探针、10 类 issue、检查方式分层、补强 backlog 与允许/禁止边界 | Phase 7 后端编码前必读（active；Batch A/B/C 已实现，Batch D/E 仍不得进入） |
+| [`phase-7-real-project-evaluation-model.md`](phase-7-real-project-evaluation-model.md) | `active` | Phase 7 真实项目质量评估数据模型：RealProjectSample/StageEvaluationTarget/4 类 QualityReport/QualityIssue(+Kind+Severity)/QualityRunSummary/QualityAcceptanceStatus。强调评估产物非审计结论、可追溯、评分仅内部门槛 | Phase 7 编码前必读（active；Phase 7 全部完成） |
+| [`phase-7-evidence-understanding-quality-design.md`](phase-7-evidence-understanding-quality-design.md) | `active` | Phase 7 evidence/understanding 质量评估与补强设计：复用 Phase 1~6 能力、5 维度评估探针、10 类 issue、检查方式分层、补强 backlog 与允许/禁止边界 | Phase 7 后端编码前必读（active；Phase 7 全部完成） |
 
 > Phase 1 编码依据文档已收口。Phase 1 的 4 份设计文档与 `mvp-functional-contract.md` 共同构成 Phase 1 编码的权威依据。
 > Phase 2 编码依据文档已收口（status=active）：`phase-2-evidence-model.md` + `phase-2-evidence-collector-design.md` + `phase-2-evidence-requirements.md`。
@@ -94,6 +94,6 @@ Phase 1 技术设计由以下文档组成，按阅读顺序排列：
 > **Phase 5 设计文档已收口（status=active）：`phase-5-trace-model.md` + `phase-5-trace-and-qa-design.md`。**
 > **Phase 6 设计文档已收口（status=active）：`phase-6-persistence-model.md` + `phase-6-persistence-and-replay-design.md`，允许进入 Phase 6 Batch A 编码（范围限定 P6-T01~P6-T03）。**
 >
-> **Phase 7 设计文档已 active**：`phase-7-real-project-evaluation-model.md` + `phase-7-evidence-understanding-quality-design.md`（均 active）。**Phase 7 Batch A/B/C 已实现并进入审核收口，Batch D/E 仍不得进入**。
+> **Phase 7 设计文档已 active**：`phase-7-real-project-evaluation-model.md` + `phase-7-evidence-understanding-quality-design.md`（均 active）。**Phase 7 全部完成（Batch A/B/C/D，completion review 已 active）**。
 
 > 注：当前设计应优先依据 active 的 `../requirements/` 需求文档和 `../requirements/mvp-functional-contract.md`；`../initial-requirements-draft/` 仅作为历史草案参考，当与正式文档冲突时以 active 文档为准。

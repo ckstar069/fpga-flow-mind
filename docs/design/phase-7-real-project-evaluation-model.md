@@ -9,7 +9,7 @@ updated: 2026-06-15
 >
 > **关键定位**：本文档定义的所有对象都是 **Phase 7 质量评估产物**，描述"工具理解得怎么样"；**它们不是用户业务项目的审计结论**，不描述"目标项目正确/错误"。质量评分（若出现）只用于内部质量门槛，不对目标项目做评价。
 >
-> 本文档 status 为 `active`，是 Phase 7 编码的数据模型依据。**Phase 7 Batch A/B/C 已实现并进入审核收口，Batch D/E 仍不得进入**；本文模型已实现于 P7-T01~P7-T05 范围。
+> 本文档 status 为 `active`，是 Phase 7 编码的数据模型依据。**Phase 7 已全部完成（Batch A/B/C/D，completion review 已 active）；Phase 8/9/10/11 尚未开始**。本文模型已实现于 P7-T01~P7-T05 范围。
 >
 > 既有类型引用（保持稳定，不重定义）：`EvidenceItem`/`EvidenceCollection`/`EvidenceStrength`、`ImplementationUnderstanding`/`ImplementationClaim`/`ClaimConfidence`/`UnknownItem`/`EvidenceGap`、`ViewGraph`/`ViewNode`/`ViewEdge`/`ViewTraceRef`、`GroundedAnswer`/`GroundedAnswerCitation`，以及 `StageStatus`/`SourceKind`/`Language`/`LineRange`。
 

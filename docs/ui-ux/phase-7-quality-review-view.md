@@ -11,7 +11,7 @@ updated: 2026-06-15
 >
 > 所有 UI 文案表达"工具理解质量"与"不确定性"，**不评价目标项目**，避免"正确/错误""PASS/HOLD""审计结论"等用语。
 >
-> 本文档 status 为 `active`，是 Phase 7 前端编码依据（Phase 7 UI 属 Batch C，Batch A/B 不含 UI）。**Phase 7 Batch A/B/C 已实现并进入审核收口，Batch D/E 仍不得进入**。
+> 本文档 status 为 `active`，是 Phase 7 前端编码依据（Phase 7 UI 属 Batch C，Batch A/B 不含 UI）。**Phase 7 已全部完成（Batch A/B/C/D，completion review 已 active）；Phase 8/9/10/11 尚未开始**。
 
 ## 1. 设计目标
 

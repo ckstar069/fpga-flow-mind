@@ -9,7 +9,7 @@ updated: 2026-06-15
 >
 > 本文档描述的是"工具理解质量"的评估与补强，**不是目标项目的正确性审计**。所有 issue 描述"工具是否理解到位"，不描述"目标项目对不对"。
 >
-> 本文档 status 为 `active`，是 Phase 7 编码的设计依据。**Phase 7 Batch A/B/C 已实现并进入审核收口，Batch D/E 仍不得进入**。
+> 本文档 status 为 `active`，是 Phase 7 编码的设计依据。**Phase 7 已全部完成（Batch A/B/C/D，completion review 已 active）；Phase 8/9/10/11 尚未开始**。
 >
 > 数据模型见 [`phase-7-real-project-evaluation-model.md`](phase-7-real-project-evaluation-model.md)；既有能力/类型以 Phase 1~6 active 设计文档为准。
 

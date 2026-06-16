@@ -97,7 +97,7 @@ updated: YYYY-MM-DD
 | [`phase-4-view-requirements.md`](phase-4-view-requirements.md) | `active` | Phase 4 三类视图展示需求：功能点 SV-001~SV-005、StructureView/DataflowView/TimingView、证据追溯、空状态、非目标 | Phase 4 设计和实施前必读 |
 | [`phase-5-trace-and-qa-requirements.md`](phase-5-trace-and-qa-requirements.md) | `active` | Phase 5 证据回链与 grounded Q&A 需求：F5-001~F5-008、trace 选择模型、source excerpt、Grounded Q&A、安全边界、非目标 | Phase 5 设计和实施前必读 |
 | [`phase-6-persistence-and-mvp-requirements.md`](phase-6-persistence-and-mvp-requirements.md) | `active` | Phase 6 持久化、回放与 MVP 验收需求：P6-001~P6-008、session 自动保存、最近项目、变更检测、版本兼容、删除与安全边界、非目标 | Phase 6 设计和实施前必读 |
-| [`phase-7-real-project-quality-requirements.md`](phase-7-real-project-quality-requirements.md) | `active` | Phase 7 真实项目评估与 evidence/understanding 质量补强需求：RQ-001~RQ-008、真实项目样本覆盖、非目标、退出标准。**Phase 7 Batch A/B/C 已实现并进入审核收口，Batch D/E 仍不得进入** | Phase 7 设计和实施前必读（active；Batch A/B/C 已实现，Batch D/E 仍不得进入） |
+| [`phase-7-real-project-quality-requirements.md`](phase-7-real-project-quality-requirements.md) | `active` | Phase 7 真实项目评估与 evidence/understanding 质量补强需求：RQ-001~RQ-008、真实项目样本覆盖、非目标、退出标准。**Phase 7 全部完成（completion review 已 active）** | Phase 7 设计和实施前必读（active；Phase 7 全部完成） |
 
 > **需求文档职责分层**：
 >

@@ -9,7 +9,7 @@ updated: 2026-06-16
 >
 > 验证目标是"工具在真实项目上的分析质量是否可信且未越界"，**不是**验证目标项目是否"正确"。
 >
-> 本文档 status 为 `active`，是 Phase 7 验证与验收依据。**Batch A/B/C 已完成；Batch D P0/P1 已完成；当前允许进入 Batch D P2；Phase 8/9/10/11 仍未开始**。
+> 本文档 status 为 `active`，是 Phase 7 验证与验收依据。**Phase 7 全部完成（Batch A/B/C/D，completion review 已 active）；Phase 8/9/10/11 尚未开始**。
 
 ## 1. 验证策略总览
 

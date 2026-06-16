@@ -7,7 +7,7 @@ updated: 2026-06-16
 
 > 本文档定义 Phase 7（真实项目评估与 evidence/understanding 质量补强）的编码实施计划：任务拆解（P7-T01~P7-T10）、依赖关系、Batch 划分（A~E）、进入/退出条件、安全边界。
 >
-> 本文档 status 为 `active`，是 Phase 7 编码的实施依据。6 份 Phase 7 详细文档已全部审核转 `active`；**Batch A/B/C 已完成；Batch D P0/P1 已完成；当前允许进入 Batch D P2；Phase 8/9/10/11 仍未开始**。
+> 本文档 status 为 `active`，是 Phase 7 编码的实施依据。6 份 Phase 7 详细文档已全部审核转 `active`；**Batch A/B/C/D 全部完成（completion review 已 active）；Phase 8/9/10/11 仍未开始**。
 >
 > Phase 7 是质量补强阶段，目标是在真实 `ai_project_template` 项目上验证并提升分析质量，而非新增功能。范围严格收敛于评估与补强，不做 Phase 8/9/10 能力。
 
@@ -22,7 +22,7 @@ updated: 2026-06-16
 | Phase 7 UI/UX 文档 active | ✅ `phase-7-quality-review-view.md`（active） |
 | Phase 7 测试文档 active | ✅ `phase-7-real-project-quality-validation.md`（active） |
 | Phase 7 实施计划 active | ✅ 本文档（active） |
-| **以上 Phase 7 详细文档全部转为 active** | ✅ 已满足，**Batch A/B/C 已完成；Batch D P0/P1 已完成；当前允许进入 Batch D P2** |
+| **以上 Phase 7 详细文档全部转为 active** | ✅ 已满足，**Batch A/B/C/D 全部完成（completion review 已 active）** |
 
 > 纪律：**Batch D P2 阶段**：在 P0/P1 收口基础上进行质量信号校准和阶段状态隔离修复。不改 evidence/understanding/view/qa 既有核心逻辑、不接真实 LLM、不写目标项目。**P2 完成后可进入 P3（completion review）或 Phase 7 completion review**。Phase 8/9/10/11 仍未开始。
 
