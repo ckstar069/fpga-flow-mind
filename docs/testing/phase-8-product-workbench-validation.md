@@ -202,6 +202,11 @@ Phase 8 完成后，方允许考虑进入：
 - P8-T07~P8-T09（视觉 polish、warnings 降噪、空/错误/session 恢复）未开始。
 - P8-T10（回归 + 桌面验收 + completion review）未开始。
 
+### 13.5 审核收口修复（Batch A）
+
+- 修复 `docs/planning/README.md` 中两处 Phase 8 状态说明的 Markdown 加粗未闭合问题。
+- 修正 `src/features/workspace/components/StageWorkspace.tsx` 的 Artifact tabs 占位交互：移除 `activeTab` / `setActiveTab` 状态与点击响应，tab 改为非交互 `<span>` 展示，并新增占位说明"Artifact tabs 内容迁移将在 Batch B 实现；当前主内容区保留原 StageDetail 兼容视图"，避免用户误以为 Batch B 内容迁移已完成。
+
 ## 12. 变更记录
 
 | 日期 | 变更 | 作者 |
@@ -209,3 +214,4 @@ Phase 8 完成后，方允许考虑进入：
 | 2026-06-16 | 初始 draft：验证策略、AgentScope 风格可用性验收、既有能力零回归、视觉语义一致性、真实桌面验收 12 步、安全回归（含重库检查）、完成标准、进入 Phase 9 条件。审核转 active 后方允许编码。 | Claude |
 | 2026-06-16 | 审核通过，status 从 draft 转 active；允许进入 Phase 8 Batch A（P8-T01~P8-T02）；Phase 8 编码尚未开始；Batch B/C/D/E 与 Phase 9/10/11 未开始。 | Claude |
 | 2026-06-16 | 追加 §13 Batch A 验证记录：P8-T01/P8-T02 骨架实现通过 npm build / tsc / cargo test --lib / cargo check / real_project_validation --ignored；边界 rg 与目标项目只读验证通过；Batch B/C/D/E 未开始。 | Claude |
+| 2026-06-16 | 追加 §13.5 审核收口修复：闭合 docs/planning/README.md Markdown 加粗；StageWorkspace Artifact tabs 改为非交互占位，明确提示 Batch B 才迁移内容。 | Claude |

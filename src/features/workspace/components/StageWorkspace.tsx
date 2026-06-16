@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import type { ReactNode } from 'react';
 import type { WorkspaceProfile, StageContext } from '../../../types/workspace';
 
@@ -9,22 +8,22 @@ interface StageWorkspaceProps {
   children: ReactNode;
 }
 
-const ARTIFACT_TABS = [
-  { id: 'overview', label: '概览' },
-  { id: 'evidence', label: '证据' },
-  { id: 'understanding', label: '理解' },
-  { id: 'views', label: '视图' },
-  { id: 'trace', label: '追溯' },
-  { id: 'qa', label: 'Q&A' },
-  { id: 'quality', label: '质量' },
-] as const;
-
-type ArtifactTabId = typeof ARTIFACT_TABS[number]['id'];
+const ARTIFACT_TAB_LABELS = [
+  '概览',
+  '证据',
+  '理解',
+  '视图',
+  '追溯',
+  'Q&A',
+  '质量',
+];
 
 /**
  * StageWorkspace: 阶段工作区骨架
  * Batch A 仅搭建占位容器：顶部标题/概览条、筛选条、Artifact tabs、
  * 主内容区（继续渲染 StageDetail 作为 legacy content）、右侧 ContextPanel 占位。
+ *
+ * 当前 Artifact tabs 仅为视觉占位，点击不切换内容；真实内容迁移将在 Batch B 实现。
  */
 export default function StageWorkspace({
   profile,
@@ -32,8 +31,6 @@ export default function StageWorkspace({
   context,
   children,
 }: StageWorkspaceProps) {
-  const [activeTab, setActiveTab] = useState<ArtifactTabId>('overview');
-
   return (
     <div
       className="stage-workspace"
@@ -102,7 +99,7 @@ export default function StageWorkspace({
         <span style={{ fontSize: 12, color: '#94a3b8' }}>筛选 / 分组 / 视图切换占位（Batch B 实现）</span>
       </div>
 
-      {/* Artifact tabs 占位 */}
+      {/* Artifact tabs 占位：仅视觉展示，不响应点击 */}
       <div
         className="artifact-tabs"
         style={{
@@ -115,26 +112,40 @@ export default function StageWorkspace({
           overflowX: 'auto',
         }}
       >
-        {ARTIFACT_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+        {ARTIFACT_TAB_LABELS.map((label) => (
+          <span
+            key={label}
             style={{
               padding: '8px 14px',
               borderRadius: '6px 6px 0 0',
               border: '1px solid transparent',
-              borderBottom: activeTab === tab.id ? '2px solid #1976d2' : '2px solid transparent',
-              background: activeTab === tab.id ? '#fff' : 'transparent',
-              color: activeTab === tab.id ? '#1976d2' : '#64748b',
+              borderBottom: '2px solid transparent',
+              background: 'transparent',
+              color: '#94a3b8',
               fontSize: 13,
-              fontWeight: activeTab === tab.id ? 600 : 400,
-              cursor: 'pointer',
+              fontWeight: 400,
               whiteSpace: 'nowrap',
+              userSelect: 'none',
             }}
           >
-            {tab.label}
-          </button>
+            {label}
+          </span>
         ))}
+      </div>
+
+      {/* Artifact tabs 占位说明 */}
+      <div
+        className="artifact-tabs-placeholder-notice"
+        style={{
+          padding: '6px 20px',
+          background: '#f1f5f9',
+          borderBottom: '1px solid #e2e8f0',
+          flexShrink: 0,
+        }}
+      >
+        <span style={{ fontSize: 11, color: '#64748b' }}>
+          Artifact tabs 内容迁移将在 Batch B 实现；当前主内容区保留原 StageDetail 兼容视图。
+        </span>
       </div>
 
       {/* 主内容区 + ContextPanel */}

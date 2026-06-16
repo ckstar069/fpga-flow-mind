@@ -265,3 +265,4 @@ Batch E：验收 + completion
 | 2026-06-16 | 收口修复：Batch 结构对齐为 A=骨架 / B=Artifact tabs 重组（功能等价）/ C=ContextPanel+状态隔离 / D=视觉 polish+warnings 降噪 / E=验收+completion；新增 §0 核心重构方向（Artifact tabs/ContextPanel/warnings 降噪）；§6 安全边界去重为权威单处。本轮仅文档，Phase 8 编码尚未开始。 | Claude |
 | 2026-06-16 | 审核通过，status 从 draft 转 active；允许进入 Phase 8 Batch A（P8-T01~P8-T02）；Phase 8 编码尚未开始；Batch B/C/D/E 与 Phase 9/10/11 未开始。 | Claude |
 | 2026-06-16 | Batch A 编码完成：新增 AppShell / AppHeader / LeftNav / StageWorkspace，WorkspacePage 接线为 AgentScope 风格骨架；P8-T01/P8-T02 进入审核收口；Batch B/C/D/E 与 Phase 9/10/11 未开始。 | Claude |
+| 2026-06-16 | Batch A 审核收口：明确 StageWorkspace 中 Artifact tabs 仅为视觉占位（无 activeTab 状态、不响应点击），Batch B 才进行 Evidence/Understanding/Views/Trace/Q&A/Quality 内容迁移；修复 docs/planning/README.md Markdown 加粗未闭合。 | Claude |
