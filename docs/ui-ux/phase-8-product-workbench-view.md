@@ -220,7 +220,7 @@ Phase 8 UI 以用户提供的 AgentScope 风格截图为**形态与信息架构�
 - [`../design/phase-8-workbench-architecture.md`](../design/phase-8-workbench-architecture.md) — 工作台架构（draft）
 - [`../design/phase-8-ui-state-and-navigation-design.md`](../design/phase-8-ui-state-and-navigation-design.md) — UI 状态与导航（draft）
 - [`../testing/phase-8-product-workbench-validation.md`](../testing/phase-8-product-workbench-validation.md) — 验证与验收（draft）
-- [`../planning/phase-8-implementation-plan.md`](../planning/phase-8-implementation-plan.md) — 编码实施计划（draft）
+- [`../planning/phase-8-implementation-plan.md`](../planning/phase-8-implementation-plan.md) — 编码实施计划（active）
 - [`phase-7-quality-review-view.md`](phase-7-quality-review-view.md) — Phase 7 Quality Review 视图（active，复用其质量面板）
 
 ## 15. 变更记录

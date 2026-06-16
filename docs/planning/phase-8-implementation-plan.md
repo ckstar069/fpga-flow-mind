@@ -266,4 +266,5 @@ Batch E：验收 + completion
 | 2026-06-16 | 审核通过，status 从 draft 转 active；允许进入 Phase 8 Batch A（P8-T01~P8-T02）；Phase 8 编码尚未开始；Batch B/C/D/E 与 Phase 9/10/11 未开始。 | Claude |
 | 2026-06-16 | Batch A 编码完成：新增 AppShell / AppHeader / LeftNav / StageWorkspace，WorkspacePage 接线为 AgentScope 风格骨架；P8-T01/P8-T02 进入审核收口；Batch B/C/D/E 与 Phase 9/10/11 未开始。 | Claude |
 | 2026-06-16 | Batch A 审核收口：明确 StageWorkspace 中 Artifact tabs 仅为视觉占位（无 activeTab 状态、不响应点击），Batch B 才进行 Evidence/Understanding/Views/Trace/Q&A/Quality 内容迁移；修复 docs/planning/README.md Markdown 加粗未闭合。 | Claude |
-| 2026-06-16 | Batch B 编码完成：StageWorkspace 实现真实 Artifact tabs 切换 + StageOverviewBar + StageFilterBar；StageDetail 改为按 activeTab 分区渲染；EvidencePanel 增加可展开分组与前端筛选；新增 `stage_tab` 类型预留；P8-T03/P8-T04 进入审核收口；Batch C/D/E 与 Phase 9/10/11 未开始。 | Claude |
+| 2026-06-16 | Batch B 编码完成：StageWorkspace 实现真实 Artifact tabs 切换 + StageOverviewBar + StageFilterBar；StageDetail 改为按 activeTab 分区渲染；EvidencePanel 增加可展开分组与前端筛选；P8-T03/P8-T04 进入审核收口；Batch C/D/E 与 Phase 9/10/11 未开始。 | Claude |
+| 2026-06-16 | Batch B 审核收口：从 TypeScript `PersistedUiState` 移除未接入的 `stage_tab` 字段，避免前后端契约不一致；修正 `phase-8-product-workbench-validation.md` 中 phase-8-implementation-plan 的状态为 active 并删除 stage_tab 相关描述。 | Claude |

@@ -29,7 +29,7 @@ updated: 2026-06-16
 |----|------|
 | 构建 | `npm run build` + `npx tsc --noEmit` 通过 |
 | 组件 | AppShell / LeftNav / StageWorkspace / 各 Section / 卡片 / 概览条 / 筛选条 在空/加载/有数据/错误态渲染正常 |
-| 焦点状态机 | mode/stage_tab 转移正确；切换阶段清空下游；Tab 切换保持选中态 |
+| 焦点状态机 | mode/active_stage_id 转移正确；切换阶段清空下游；Artifact tab 切换保持选中态（Batch B 为前端局部状态，未持久化） |
 | 状态隔离 | 阶段切换 / 重生成时 downstream maps 清除 + guard 过滤旧响应（延续 Phase 7 P2） |
 | 持久化恢复 | session 重载回到原焦点；旧 session 缺字段取默认不崩溃 |
 | 文案 | rg 验证前端文案不含"正确/错误""PASS/HOLD""审计结论""通过/失败裁决" |
@@ -159,7 +159,7 @@ Phase 8 完成后，方允许考虑进入：
 - [`../design/phase-8-workbench-architecture.md`](../design/phase-8-workbench-architecture.md) — 工作台架构（draft）
 - [`../design/phase-8-ui-state-and-navigation-design.md`](../design/phase-8-ui-state-and-navigation-design.md) — UI 状态与导航（draft）
 - [`../ui-ux/phase-8-product-workbench-view.md`](../ui-ux/phase-8-product-workbench-view.md) — UI/UX 设计（draft）
-- [`../planning/phase-8-implementation-plan.md`](../planning/phase-8-implementation-plan.md) — 编码实施计划（draft）
+- [`../planning/phase-8-implementation-plan.md`](../planning/phase-8-implementation-plan.md) — 编码实施计划（active）
 - [`phase-7-real-project-quality-validation.md`](phase-7-real-project-quality-validation.md) — Phase 7 验证（active，回归基线）
 
 ## 13. Batch A 验证记录（P8-T01~P8-T02）
@@ -219,7 +219,7 @@ Phase 8 完成后，方允许考虑进入：
 - 修改 `src/features/workspace/components/StageDetail.tsx`：由纵向堆叠改为按 `activeTab` switch 渲染各 tab 内容；保留所有既有入口按钮、回调、trace、Q&A、质量报告能力。
 - 修改 `src/features/workspace/components/EvidencePanel.tsx`：增加按 `source_kind` 分组的可展开列表，支持由 StageFilterBar 传入的前端筛选。
 - 修改 `src/features/workspace/WorkspacePage.tsx`：向 StageWorkspace/StageDetail 透传 stage status、qaHistory、filter 等；保持状态机、guard refs、保存/自动保存逻辑不变。
-- 修改 `src/types/workspace.ts`：`PersistedUiState` 新增可选 `stage_tab?: string` 字段，保持向后兼容；Batch B 不实际读写该字段。
+- `src/types/workspace.ts`：`PersistedUiState` 未接入 `stage_tab`；Batch B 的 active tab 状态为 `StageWorkspace` 前端局部状态，Batch C/D 如需持久化需前后端同步设计。
 
 ### 14.2 自动化验证结果
 

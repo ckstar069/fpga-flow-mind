@@ -236,7 +236,7 @@ Phase 8 明确**不做**：
 - [`../design/phase-8-ui-state-and-navigation-design.md`](../design/phase-8-ui-state-and-navigation-design.md) — UI 状态与导航设计（draft）
 - [`../ui-ux/phase-8-product-workbench-view.md`](../ui-ux/phase-8-product-workbench-view.md) — 工作台 UI/UX 设计（draft）
 - [`../testing/phase-8-product-workbench-validation.md`](../testing/phase-8-product-workbench-validation.md) — 验证与验收（draft）
-- [`../planning/phase-8-implementation-plan.md`](../planning/phase-8-implementation-plan.md) — 编码实施计划（draft）
+- [`../planning/phase-8-implementation-plan.md`](../planning/phase-8-implementation-plan.md) — 编码实施计划（active）
 - [`../planning/post-mvp-roadmap.md`](../planning/post-mvp-roadmap.md) — Post-MVP 总体路线图（draft）
 - [`../planning/phase-7-completion-review.md`](../planning/phase-7-completion-review.md) — Phase 7 完成状态（active，前置）
 
