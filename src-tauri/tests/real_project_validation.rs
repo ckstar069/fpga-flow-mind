@@ -17,8 +17,6 @@ const SECONDARY_SAMPLE: &str = "/Users/ckstar/Repo/znxt_ofdm/fpga_project_fft";
 // ─── Checksum helper (pure Rust, no Command::new) ──────────────────────
 
 fn compute_src_checksum(root: &Path) -> Vec<(String, String)> {
-    use sha2::Digest;
-
     let mut results: Vec<(String, String)> = Vec::new();
     let src_dir = root.join("src");
     if !src_dir.exists() {
