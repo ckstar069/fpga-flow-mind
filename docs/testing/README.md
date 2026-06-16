@@ -68,4 +68,4 @@ updated: 2026-06-15
 | [`phase-4-view-validation.md`](phase-4-view-validation.md) | `active` | Phase 4 视图验证设计：后端 ViewGraph 生成测试（~33 个）、前端渲染验证、hover tooltip、空状态/degraded、安全回归、桌面验收 8 步骤 | Phase 4 验证与验收依据 |
 | [`phase-5-trace-and-qa-validation.md`](phase-5-trace-and-qa-validation.md) | `active` | Phase 5 证据回链与 Grounded Q&A 验证设计：TraceResolver/SourceExcerptResolver/Q&A 测试矩阵、安全回归、桌面验收 10 步骤、完成标准 | Phase 5 验证与验收依据 |
 | [`phase-7-real-project-quality-validation.md`](phase-7-real-project-quality-validation.md) | `active` | Phase 7 真实项目质量评估验证设计：Rust 单元/集成测试方向、前端构建与组件验证、桌面验收步骤、≥2 真实样本策略、checksum 只读验证、rg 安全回归、完成标准与进入 Phase 8/9 条件 | Phase 7 验证与验收依据（active；Phase 7 全部完成） |
-| [`phase-8-product-workbench-validation.md`](phase-8-product-workbench-validation.md) | `draft` | Phase 8 产品级工作台验证：前端构建/组件验证、AgentScope 风格可用性验收、既有能力零回归、视觉语义一致性、真实桌面验收 12 步、安全回归（含重库检查）、完成标准 | Phase 8 验证与验收依据（draft，待审核转 active） |
+| [`phase-8-product-workbench-validation.md`](phase-8-product-workbench-validation.md) | `active` | Phase 8 产品级工作台验证：前端构建/组件验证、AgentScope 风格可用性验收、既有能力零回归、视觉语义一致性、真实桌面验收 12 步、安全回归（含重库检查）、完成标准 | Phase 8 验证与验收依据（active；当前仅允许进入 Batch A） |

@@ -1,7 +1,7 @@
 # Phase 8 产品级工作台验证设计
 
 ---
-status: draft
+status: active
 updated: 2026-06-16
 ---
 
@@ -9,7 +9,7 @@ updated: 2026-06-16
 >
 > 验证目标是"工作台是否把已有能力组织成用户可高效理解一个阶段的产品级形态，且不发生回归、不越界"，**不是**验证目标项目正确性。
 >
-> 本文 status 为 `draft`，审核转 `active` 后方允许进入 Phase 8 编码。Phase 8 编码尚未开始。
+> 本文 status 为 `active`，是 Phase 8 验证与验收设计的生效文档。**当前仅允许进入 Phase 8 Batch A（P8-T01~P8-T02）**；Batch B/C/D/E 与 Phase 9/10/11 均未开始。Phase 8 编码尚未开始。
 
 ## 1. 验证策略总览
 
@@ -167,3 +167,4 @@ Phase 8 完成后，方允许考虑进入：
 | 日期 | 变更 | 作者 |
 |------|------|------|
 | 2026-06-16 | 初始 draft：验证策略、AgentScope 风格可用性验收、既有能力零回归、视觉语义一致性、真实桌面验收 12 步、安全回归（含重库检查）、完成标准、进入 Phase 9 条件。审核转 active 后方允许编码。 | Claude |
+| 2026-06-16 | 审核通过，status 从 draft 转 active；允许进入 Phase 8 Batch A（P8-T01~P8-T02）；Phase 8 编码尚未开始；Batch B/C/D/E 与 Phase 9/10/11 未开始。 | Claude |

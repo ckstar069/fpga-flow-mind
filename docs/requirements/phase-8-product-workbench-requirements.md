@@ -1,7 +1,7 @@
 # Phase 8 产品级工作台需求
 
 ---
-status: draft
+status: active
 updated: 2026-06-16
 ---
 
@@ -9,7 +9,7 @@ updated: 2026-06-16
 >
 > **Phase 8 的目标不是新增语义分析能力，而是把 Phase 1~7 已有的能力重新组织成产品级本地理解工作台。** Phase 7 已在真实 `ai_project_template` 项目上把分析质量提升到可信（dataflow 非空可追溯、timing 诚实表达、quality 信号可分类），但当前 UI 仍是工程调试式长页面堆叠，没有把这些能力组织成"用户能高效理解一个阶段"的工作台。Phase 8 解决这个产品可用性缺口。
 >
-> 本文档 status 为 `draft`，是 Phase 8 需求的编制草案，**审核转 `active` 后才允许进入 Phase 8 编码**。Phase 8 编码尚未开始。
+> 本文档 status 为 `active`，是 Phase 8 需求的生效文档。**当前仅允许进入 Phase 8 Batch A（P8-T01~P8-T02）**；Batch B/C/D/E 与 Phase 9/10/11 均未开始。Phase 8 编码尚未开始。
 
 ## 1. 用户目标
 
@@ -245,3 +245,4 @@ Phase 8 明确**不做**：
 | 日期 | 变更 | 作者 |
 |------|------|------|
 | 2026-06-16 | 初始 draft：定义 R8-001~R8-010、AgentScope 风格信息架构细化、异常/空状态、退出标准、非目标、安全边界。审核转 active 后方允许进入 Phase 8 编码。 | Claude |
+| 2026-06-16 | 审核通过，status 从 draft 转 active；允许进入 Phase 8 Batch A（P8-T01~P8-T02）；Phase 8 编码尚未开始；Batch B/C/D/E 与 Phase 9/10/11 未开始。 | Claude |

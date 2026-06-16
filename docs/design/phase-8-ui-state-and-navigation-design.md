@@ -1,13 +1,13 @@
 # Phase 8 UI 状态与导航设计
 
 ---
-status: draft
+status: active
 updated: 2026-06-16
 ---
 
 > 本文档定义 Phase 8 工作台的**UI 状态机、导航结构、焦点切换与 UI state 持久化恢复**。它是 [`phase-8-workbench-architecture.md`](phase-8-workbench-architecture.md) 的状态/导航细化，落实需求 R8-002/R8-003/R8-004/R8-008。
 >
-> 本文 status 为 `draft`，审核转 `active` 后方允许进入 Phase 8 编码。Phase 8 编码尚未开始。
+> 本文 status 为 `active`，是 Phase 8 UI 状态与导航设计的生效文档。**当前仅允许进入 Phase 8 Batch A（P8-T01~P8-T02）**；Batch B/C/D/E 与 Phase 9/10/11 均未开始。Phase 8 编码尚未开始。
 
 ## 1. 设计目标
 
@@ -194,3 +194,4 @@ PersistedUiState（Phase 8 映射）
 | 日期 | 变更 | 作者 |
 |------|------|------|
 | 2026-06-16 | 初始 draft：焦点状态机、左侧导航结构与阶段状态标记、阶段 Tab 状态、加载/错误/空转换、PersistedUiState 展示性扩展、交互状态、与 Phase 7 guard 衔接、安全边界。审核转 active 后方允许编码。 | Claude |
+| 2026-06-16 | 审核通过，status 从 draft 转 active；允许进入 Phase 8 Batch A（P8-T01~P8-T02）；Phase 8 编码尚未开始；Batch B/C/D/E 与 Phase 9/10/11 未开始。 | Claude |

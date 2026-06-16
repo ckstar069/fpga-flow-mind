@@ -1,7 +1,7 @@
 # Phase 8 产品级工作台 UI/UX 设计
 
 ---
-status: draft
+status: active
 updated: 2026-06-16
 ---
 
@@ -9,7 +9,7 @@ updated: 2026-06-16
 >
 > Phase 8 是 UI 重构阶段，**不做工作台之外的能力扩张**。所有视觉与交互服从本项目定位：理解与可视化工具，非审计 dashboard，非大而全可视化平台，不输出 PASS/HOLD/正确性裁决。
 >
-> 本文 status 为 `draft`，审核转 `active` 后方允许进入 Phase 8 编码。Phase 8 编码尚未开始。
+> 本文 status 为 `active`，是 Phase 8 UI/UX 设计的生效文档。**当前仅允许进入 Phase 8 Batch A（P8-T01~P8-T02）**；Batch B/C/D/E 与 Phase 9/10/11 均未开始。Phase 8 编码尚未开始。
 
 ## 1. 设计目标
 
@@ -228,3 +228,4 @@ Phase 8 UI 以用户提供的 AgentScope 风格截图为**形态与信息架构�
 | 日期 | 变更 | 作者 |
 |------|------|------|
 | 2026-06-16 | 初始 draft：正式写入 AgentScope 风格 9 条设计语言为依据；三段式骨架；深色左导航 + 阶段状态标记；浅色主区 + 顶部概览 + 中部筛选；可展开对象列表 + 卡片化；confidence/strength/unknown/severity 视觉语义系统；蓝色强调规范；空/错误状态；文案规范；前后端边界；安全边界。审核转 active 后方允许编码。 | Claude |
+| 2026-06-16 | 审核通过，status 从 draft 转 active；允许进入 Phase 8 Batch A（P8-T01~P8-T02）；Phase 8 编码尚未开始；Batch B/C/D/E 与 Phase 9/10/11 未开始。 | Claude |

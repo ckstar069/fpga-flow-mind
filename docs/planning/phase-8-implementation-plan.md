@@ -1,7 +1,7 @@
 # Phase 8 编码实施计划
 
 ---
-status: draft
+status: active
 updated: 2026-06-16
 ---
 
@@ -9,7 +9,7 @@ updated: 2026-06-16
 >
 > Phase 8 是**前端为主**的阶段：把 Phase 1~7 已有能力重组为产品级工作台（**工作台化，不是新增更多卡片**），**不新增语义分析能力，不接真实 LLM，不做跨阶段映射**。
 >
-> 本文档 status 为 `draft`，是 Phase 8 编码的实施计划草案，**审核转 `active` 后才允许进入 Phase 8 编码**。Phase 8 编码尚未开始。Phase 7 已完成（completion review active）。
+> 本文档 status 为 `active`，是 Phase 8 编码实施计划的生效文档。**当前仅允许进入 Phase 8 Batch A（P8-T01~P8-T02）**；Batch B/C/D/E 与 Phase 9/10/11 均未开始。Phase 8 编码尚未开始。Phase 7 已完成（completion review active）。
 
 ## 0. 核心重构方向（先读）
 
@@ -263,3 +263,4 @@ Batch E：验收 + completion
 |------|------|------|
 | 2026-06-16 | 初始 draft：定义 P8-T01~P8-T10、5 个 Batch（A~E）。 | Claude |
 | 2026-06-16 | 收口修复：Batch 结构对齐为 A=骨架 / B=Artifact tabs 重组（功能等价）/ C=ContextPanel+状态隔离 / D=视觉 polish+warnings 降噪 / E=验收+completion；新增 §0 核心重构方向（Artifact tabs/ContextPanel/warnings 降噪）；§6 安全边界去重为权威单处。本轮仅文档，Phase 8 编码尚未开始。 | Claude |
+| 2026-06-16 | 审核通过，status 从 draft 转 active；允许进入 Phase 8 Batch A（P8-T01~P8-T02）；Phase 8 编码尚未开始；Batch B/C/D/E 与 Phase 9/10/11 未开始。 | Claude |

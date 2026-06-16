@@ -1,13 +1,13 @@
 # Phase 8 工作台架构设计
 
 ---
-status: draft
+status: active
 updated: 2026-06-16
 ---
 
 > 本文档定义 Phase 8（产品级 UI/UX 工作台重构）的**前端架构设计**：如何把当前工程调试式单页长堆叠（`WorkspacePage.tsx` ≈ 1300 行）重构为产品级工作台的组件树、布局、路由与分层，以及如何在重构中守住"不破坏语义契约、不改分析能力、不引入重依赖"的边界。
 >
-> 本文档 status 为 `draft`，审核转 `active` 后方允许进入 Phase 8 编码。Phase 8 编码尚未开始。
+> 本文档 status 为 `active`，是 Phase 8 前端架构设计的生效文档。**当前仅允许进入 Phase 8 Batch A（P8-T01~P8-T02）**；Batch B/C/D/E 与 Phase 9/10/11 均未开始。Phase 8 编码尚未开始。
 >
 > 本文是**前端为主**的架构文档；后端改动仅限"支撑新 UI 所需的最小展示性调整"（见 §6）。语义模型 / 分析能力 / 安全边界不变。
 
@@ -178,3 +178,4 @@ Phase 8 **允许**对 Tauri command 做**展示性**返回结构调整，**仅�
 | 日期 | 变更 | 作者 |
 |------|------|------|
 | 2026-06-16 | 初始 draft：三段式骨架、组件树分解、焦点路由模型、状态分层、与 Phase 1~7 产物只读对接、展示性 command 边界、依赖/图形库论证、安全边界。审核转 active 后方允许编码。 | Claude |
+| 2026-06-16 | 审核通过，status 从 draft 转 active；允许进入 Phase 8 Batch A（P8-T01~P8-T02）；Phase 8 编码尚未开始；Batch B/C/D/E 与 Phase 9/10/11 未开始。 | Claude |
