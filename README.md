@@ -61,7 +61,7 @@ MVP 是**技术闭环** MVP，不等于产品可用性完成。后续围绕真�
 
 - 总体路线图：[`docs/planning/post-mvp-roadmap.md`](docs/planning/post-mvp-roadmap.md)
 
-**当前状态**：Phase 7 详细文档已 `active`，Phase 7 Batch A（models + reporter）与 Batch B（后端 evaluator）已进入实现与审核收口；Phase 7 Batch C/D/E 尚未授权/尚未开始。Phase 8~11 overview 仍为 `draft`。进入任一阶段编码前，需先编制并审核该阶段详细文档为 active。本阶段及后续阶段仍禁止真实 LLM 默认接入、禁止目标项目写入、禁止输出 PASS/HOLD 等审计裁决。
+**当前状态**：MVP / Phase 0–6 已完成并 tag `v0.1.0-mvp`。Phase 7 已完成，[`completion review`](docs/planning/phase-7-completion-review.md) active。Phase 8 详细文档已 draft 完成并完成一轮 draft 收口修复，正在等待审核转 active；Phase 8 编码尚未开始。Phase 9~11 overview 仍为 `draft`。进入 Phase 8 编码前，必须先将 6 份 Phase 8 详细文档（requirements/design/ui-ux/testing/implementation-plan × 2）转 active。本阶段及后续阶段仍禁止真实 LLM 默认接入、禁止目标项目写入、禁止输出 PASS/HOLD 等审计裁决。
 
 ## 本地运行
 
