@@ -485,7 +485,7 @@ mod tests {
 
     #[test]
     fn non_empty_traceable_timing_not_flagged_empty() {
-        use crate::views::models::{EdgeType, NodeType};
+        use crate::views::models::NodeType;
         // RTL 时序回退：1 个 ClockDomain 节点（trace 到 EV-RTL-1），无 step → 无边
         let n = ViewNode {
             node_id: "N-timing-0001".to_string(),

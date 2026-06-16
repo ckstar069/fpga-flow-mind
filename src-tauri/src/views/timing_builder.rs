@@ -6,6 +6,66 @@ use crate::views::models::{
     ViewType,
 };
 
+/// 判断 processing_steps 或 claims/signals 是否含明确时序证据。
+///
+/// 明确时序依据包括：
+/// - step.description / step.name / claim 中出现 cycle / latency / clock / pipeline /
+///   stage / tick / clk / rst / reset / posedge / negedge 等时序关键词；
+/// - stage_id 或 source_kind 明确属于 RTL / L3_pipeline / L4_cycle_acc；
+/// - evidence 内容显示 RTL clock/reset/always_ff/posedge/negedge。
+fn has_temporal_evidence(iu: &ImplementationUnderstanding) -> bool {
+    let temporal_keywords = [
+        "cycle", "latency", "clock", "pipeline", "stage", "tick",
+        "clk", "rst", "reset", "posedge", "negedge", "always_ff",
+        "always@", "always @", "时钟", "流水", "时序", "复位",
+    ];
+
+    // 1. 检查 processing_steps 的 name / description
+    for step in &iu.processing_steps {
+        let text = format!("{} {}", step.name, step.description).to_lowercase();
+        if temporal_keywords.iter().any(|kw| text.contains(kw)) {
+            return true;
+        }
+    }
+
+    // 2. 检查 claims 的 description（clock/reset 相关声明）
+    for claim in &iu.claims {
+        let desc_lower = claim.description.to_lowercase();
+        if temporal_keywords.iter().any(|kw| desc_lower.contains(kw)) {
+            return true;
+        }
+    }
+
+    // 3. 检查 signal_summaries 的 name（clk/rst 信号）
+    for sig in &iu.signal_summaries {
+        let name_lower = sig.name.to_lowercase();
+        if name_lower.contains("clk") || name_lower.contains("clock")
+            || name_lower.contains("rst") || name_lower.contains("reset")
+        {
+            return true;
+        }
+    }
+
+    // 4. 检查 stage_id 是否明确属于 RTL / pipeline / cycle 阶段
+    let stage_lower = iu.stage_id.to_lowercase();
+    if stage_lower.contains("rtl")
+        || stage_lower.contains("pipeline")
+        || stage_lower.contains("cycle")
+        || stage_lower.contains("l3")
+        || stage_lower.contains("l4")
+        || stage_lower.contains("l5")
+        || stage_lower.contains("l6")
+    {
+        // 即使 stage_id 含这些关键词，仍需有 claims/signals/steps 中的时序证据
+        // 否则仍视为"无明确时序依据"（避免空 stage 被误判）
+        // 但如果有任何 steps/claims/signals，上面的检查已覆盖
+        // 这里仅当 stage_id 明确为 RTL 且没有任何 steps 时，仍可能通过 signal 回退生成节点
+        // 所以不在这里直接返回 true，而是依赖 signal 检查
+    }
+
+    false
+}
+
 /// 从 ImplementationUnderstanding 构建时序/流水图
 pub fn build_timing_view(iu: &ImplementationUnderstanding) -> ViewGraph {
     let mut node_counter: u32 = 0;
@@ -14,26 +74,31 @@ pub fn build_timing_view(iu: &ImplementationUnderstanding) -> ViewGraph {
     let mut edges: Vec<ViewEdge> = Vec::new();
 
     // ── 流水阶段节点（按 order 排序） ──
+    // P0-3 收口：禁止将普通 Python 函数顺序伪造成硬件时序图。
+    // 只有存在明确时序依据时，才允许从 processing_steps 生成 PipelineStage 节点。
+    let has_temporal = has_temporal_evidence(iu);
     let mut sorted_steps: Vec<_> = iu.processing_steps.iter().collect();
     sorted_steps.sort_by_key(|s| s.order);
 
-    for step in &sorted_steps {
-        node_counter += 1;
-        let node_id = format!("N-timing-{:04}", node_counter);
-        nodes.push(ViewNode {
-            node_id,
-            node_type: NodeType::PipelineStage,
-            label: step.name.clone(),
-            description: step.description.clone(),
-            confidence: step.confidence,
-            trace_refs: build_trace_refs(&step.evidence_refs),
-            layout: Some(ViewLayoutHint {
-                column: Some(0),
-                row: Some(node_counter - 1),
-                depth: Some(0),
-                group: None,
-            }),
-        });
+    if has_temporal {
+        for step in &sorted_steps {
+            node_counter += 1;
+            let node_id = format!("N-timing-{:04}", node_counter);
+            nodes.push(ViewNode {
+                node_id,
+                node_type: NodeType::PipelineStage,
+                label: step.name.clone(),
+                description: step.description.clone(),
+                confidence: step.confidence,
+                trace_refs: build_trace_refs(&step.evidence_refs),
+                layout: Some(ViewLayoutHint {
+                    column: Some(0),
+                    row: Some(node_counter - 1),
+                    depth: Some(0),
+                    group: None,
+                }),
+            });
+        }
     }
 
     // 记录由 processing_steps 派生的 stage 数量，用于 RTL 回退判断
@@ -190,9 +255,15 @@ pub fn build_timing_view(iu: &ImplementationUnderstanding) -> ViewGraph {
     }
 
     // ── 元信息 ──
-    // 区分 RTL（有 clk/rst 但无 step）vs Python（无任何时序依据）两种空。
+    // P0-3 收口：明确区分三种空图原因
     let empty_reason = if nodes.is_empty() {
-        if iu.processing_steps.is_empty() && clock_node_ids.is_empty() && reset_node_ids.is_empty() {
+        if !iu.processing_steps.is_empty() && !has_temporal {
+            // 有 processing_steps 但无时序依据 → 明确说明这是 Python 函数顺序，非硬件时序
+            Some(
+                "无 cycle/latency/clock/pipeline 等可追溯时序证据，未生成 timing 图（当前 processing_steps 为算法/函数顺序，非硬件时序）"
+                    .to_string(),
+            )
+        } else if iu.processing_steps.is_empty() && clock_node_ids.is_empty() && reset_node_ids.is_empty() {
             Some(
                 "时序为空：当前阶段无 processing_steps，且无可追溯的 clock/reset/pipeline 证据"
                     .to_string(),
@@ -340,15 +411,15 @@ mod tests {
         }
     }
 
-    // ─── tm_01: processing_steps → pipeline_stage nodes ──────────────
+    // ─── tm_01: processing_steps 含时序关键词 → pipeline_stage nodes ─────────
 
     #[test]
     fn tm_01_steps_become_pipeline_stages() {
         let iu = make_iu(
             vec![
-                make_step("fetch", "取指", 1),
-                make_step("decode", "译码", 2),
-                make_step("execute", "执行", 3),
+                make_step("fetch", "取指阶段，每个 clock cycle 执行", 1),
+                make_step("decode", "译码 pipeline stage", 2),
+                make_step("execute", "执行阶段", 3),
             ],
             vec![],
         );
@@ -394,14 +465,14 @@ mod tests {
         );
     }
 
-    // ─── tm_03: pipeline stage 顺序边 ────────────────────────────────
+    // ─── tm_03: pipeline stage 顺序边（含时序关键词）────────────────────────
 
     #[test]
     fn tm_03_sequential_edges_correct() {
         let iu = make_iu(
             vec![
-                make_step("s1", "阶段 1", 1),
-                make_step("s2", "阶段 2", 2),
+                make_step("s1", "pipeline 阶段 1", 1),
+                make_step("s2", "pipeline 阶段 2", 2),
             ],
             vec![],
         );
@@ -453,14 +524,14 @@ mod tests {
         }
     }
 
-    // ─── tm_06: node_id 唯一，edge endpoint 存在 ─────────────────────
+    // ─── tm_06: node_id 唯一，edge endpoint 存在（含 clk claim 触发时序）────
 
     #[test]
     fn tm_06_node_ids_unique_edge_endpoints_exist() {
         let iu = make_iu(
             vec![
-                make_step("a", "A", 1),
-                make_step("b", "B", 2),
+                make_step("a", "A pipeline stage", 1),
+                make_step("b", "B pipeline stage", 2),
             ],
             vec![make_claim("CL-001", "clk signal")],
         );
@@ -548,14 +619,14 @@ mod tests {
         );
     }
 
-    /// tm_09: processing_steps 顺序边有 trace_refs
+    /// tm_09: processing_steps 顺序边有 trace_refs（含时序关键词）
     #[test]
     fn tm_09_stage_edges_carry_trace_refs() {
         let iu = make_iu_full(
             vec![
-                make_step_with_ev("fetch", "取指", 1, "EV-1"),
-                make_step_with_ev("decode", "译码", 2, "EV-2"),
-                make_step_with_ev("execute", "执行", 3, "EV-3"),
+                make_step_with_ev("fetch", "取指 pipeline stage", 1, "EV-1"),
+                make_step_with_ev("decode", "译码 pipeline stage", 2, "EV-2"),
+                make_step_with_ev("execute", "执行 pipeline stage", 3, "EV-3"),
             ],
             vec![],
             vec![],
@@ -586,5 +657,99 @@ mod tests {
             .filter_map(|t| t.evidence_id.as_deref())
             .collect();
         assert!(ev_ids.contains(&"EV-RTL-000001"), "ClockDomain 节点应 trace 到 EV-RTL-000001, 实际: {:?}", ev_ids);
+    }
+
+    /// tm_11: Python 阶段含多个 processing_steps 但无时序关键词 → timing 为空，empty_reason 明确
+    #[test]
+    fn tm_11_python_steps_no_temporal_keywords_empty() {
+        // 模拟 MockProvider 从 Python 函数/类符号派生的 processing_steps
+        // 这些是算法/调用顺序，不是硬件 timing
+        let iu = make_iu_full(
+            vec![
+                make_step_with_ev("load_samples", "加载采样数据", 1, "EV-L0-000001"),
+                make_step_with_ev("correlate", "计算互相关", 2, "EV-L0-000002"),
+                make_step_with_ev("detect_peak", "检测峰值", 3, "EV-L0-000003"),
+                make_step_with_ev("estimate_cfo", "估计 CFO", 4, "EV-L0-000004"),
+            ],
+            vec![],
+            vec![],
+        );
+        let graph = build_timing_view(&iu);
+
+        // 必须为空图：普通 Python 函数顺序不得伪造成硬件时序
+        assert!(graph.nodes.is_empty(), "Python 函数顺序无时序关键词时应保持空图，实际节点: {:?}", graph.nodes.iter().map(|n| &n.label).collect::<Vec<_>>());
+        assert!(graph.edges.is_empty(), "空图不应有边");
+
+        // empty_reason 必须非空且明确说明原因
+        let reason = graph.meta.empty_reason.as_deref().unwrap_or("");
+        assert!(
+            reason.contains("cycle") || reason.contains("latency") || reason.contains("clock")
+                || reason.contains("pipeline") || reason.contains("时序"),
+            "empty_reason 应明确说明缺少时序证据: {}", reason
+        );
+        assert!(
+            reason.contains("processing_steps") || reason.contains("算法/函数顺序"),
+            "empty_reason 应说明 processing_steps 为算法/函数顺序: {}", reason
+        );
+    }
+
+    fn make_claim_with_ev(id: &str, desc: &str, ev_id: &str) -> ImplementationClaim {
+        ImplementationClaim {
+            claim_id: id.to_string(),
+            category: ClaimCategory::Configuration,
+            description: desc.to_string(),
+            confidence: ClaimConfidence::Supported,
+            evidence_refs: vec![EvidenceRef { evidence_id: ev_id.to_string(), relevance: None }],
+            has_evidence_gap: false,
+        }
+    }
+
+    /// tm_12: RTL 含 always_ff/posedge 证据 → timing 可生成非空图，trace_refs 完整
+    #[test]
+    fn tm_12_rtl_always_ff_timing_non_empty() {
+        // RTL 阶段：claims 含 always_ff/posedge 时序声明
+        let iu = make_iu_full(
+            vec![
+                make_step_with_ev("sample_reg", "在 posedge clk 采样输入", 1, "EV-RTL-000001"),
+                make_step_with_ev("corr_reg", "在 posedge clk 更新相关值", 2, "EV-RTL-000002"),
+            ],
+            vec![
+                make_claim_with_ev("CL-RTL-001", "主时钟 clk 100MHz 驱动所有 always_ff", "EV-RTL-000005"),
+                make_claim_with_ev("CL-RTL-002", "异步复位 rst_n 低电平有效", "EV-RTL-000006"),
+            ],
+            vec![
+                make_signal_with_ev("clk", "100MHz 时钟", Some("input"), "EV-RTL-000003"),
+                make_signal_with_ev("rst_n", "异步复位", Some("input"), "EV-RTL-000004"),
+            ],
+        );
+        let graph = build_timing_view(&iu);
+
+        // 应生成非空图：PipelineStage + ClockDomain + ResetDomain
+        assert!(!graph.nodes.is_empty(), "RTL 含时序证据时应生成非空 timing 图");
+        assert!(
+            graph.nodes.iter().any(|n| n.node_type == NodeType::PipelineStage),
+            "应有 PipelineStage 节点"
+        );
+        assert!(
+            graph.nodes.iter().any(|n| n.node_type == NodeType::ClockDomain),
+            "应有 ClockDomain 节点"
+        );
+        assert!(
+            graph.nodes.iter().any(|n| n.node_type == NodeType::ResetDomain),
+            "应有 ResetDomain 节点"
+        );
+
+        // 所有节点必须有 trace_refs
+        for node in &graph.nodes {
+            assert!(!node.trace_refs.is_empty(), "节点 {} 缺少 trace_refs", node.node_id);
+        }
+
+        // 边必须有 trace_refs
+        for edge in &graph.edges {
+            assert!(!edge.trace_refs.is_empty(), "边 {} 缺少 trace_refs", edge.edge_id);
+        }
+
+        // 非空 → 无 empty_reason
+        assert!(graph.meta.empty_reason.is_none(), "有节点时不应有 empty_reason");
     }
 }
