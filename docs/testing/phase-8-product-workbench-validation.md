@@ -50,6 +50,9 @@ updated: 2026-06-16
 | 蓝色强调 | 主操作/选中/可追溯链接蓝色；无红绿裁决色 |
 | 密度层级 | 高密度可读，层级清晰 |
 | 一体化工作流 | 收集→生成→视图→trace→Q&A 顺滑，无需记忆步骤 |
+| Artifact tabs 不长堆叠 | Evidence/Understanding/Views/Trace/Q&A/Quality 作为 tab，质量报告/trace/source excerpt/Q&A 不向下堆叠 |
+| ContextPanel 联动 | 选中 evidence/trace/source excerpt/quality issue 进右侧面板；阶段切换/重生成清空 |
+| warnings 降噪 | scan_timeout 等警告折叠/分类/计数/可展开，不长期占底部 |
 
 ## 4. 既有能力回归（零退化）
 
@@ -93,6 +96,7 @@ UI 重构不得破坏 Phase 4/5/6/7 已验收能力：
 | 10 | 空阶段 / 命名异常 / 源码变更状态 | 清晰表达 + 可操作 |
 | 11 | session 保存 / 重载 | 回到原焦点；checksum 不变 |
 | 12 | 最近项目切换 | 一次点击切换 |
+| 13 | warnings 折叠/分类/计数 | scan_timeout 等警告不再长期占底部，可折叠计数 + 展开查看 |
 
 ## 7. 安全回归
 

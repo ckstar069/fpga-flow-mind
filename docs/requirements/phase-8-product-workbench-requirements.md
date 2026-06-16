@@ -19,6 +19,7 @@ updated: 2026-06-16
 - 用户能快速在项目 / 阶段 / 功能区之间切换，最近项目与阶段可达一次点击。
 - session / 最近项目 / 空状态 / 错误状态达到产品级可用度，降低使用摩擦。
 - 用户感知到工作台"信息密度高但层级清晰"——既不空旷浪费屏幕，也不混乱难读。
+- 用户感到界面是"工作台"而非"更多卡片"——Phase 8 的目标是工作台化，不是堆砌更多面板。
 
 ## 2. 业务背景
 
@@ -34,6 +35,7 @@ Phase 7 已提升真实项目分析质量，但 UI 仍停留在工程调试形�
 | 导航薄弱 | 无固定主导航；项目/阶段切换路径长；最近项目体验单薄 |
 | 视觉层级薄弱 | confidence / 证据强度 / unknown / evidence_gap 未被一致地层级化表达 |
 | 空/错误状态粗糙 | `source_changed` / `source_missing` / `stage_empty` 有横幅但体验粗糙 |
+| warnings 喧宾夺主 | scan_timeout 等警告长期占据底部横幅，分散用户对质量报告与理解的注意力 |
 
 用户反馈归结为：**"界面粗糙、功能看起来弱、实际项目分析可用性仍存疑"**——即便 Phase 7 已让分析可信，UI 形态掩盖了这份可信度。
 
@@ -75,15 +77,15 @@ Phase 8 UI 以用户提供的 AgentScope 风格截图为参考形态，提炼为
 | **验收标准** | 从任意工作区状态一次点击可达：最近项目、任一阶段、当前阶段的功能区；阶段状态（available/empty/missing/naming_anomaly）有视觉区分 |
 | **非目标** | 不做跨项目对比导航（属 Phase 10+）；不做多项目同时打开 |
 
-### R8-003 阶段工作区分区
+### R8-003 Artifact tabs 阶段工作区
 
 | 维度 | 说明 |
 |------|------|
-| **目标** | 选中阶段后，主工作区按"概览 / 证据 / 理解 / 视图 / 追溯 / 问答 / 质量"分区呈现，而非全部堆叠；用户在分区内完成该维度的理解任务 |
+| **目标** | 选中阶段后，把 Evidence / Understanding / Views / Trace / Q&A / Quality 等现有产物组织为 **Artifact tabs**（Overview / Evidence / Understanding / Views / Trace / Q&A / Quality），**功能等价**地替代调试式长页面堆叠；质量报告、trace、source excerpt、Q&A 不再全部向下堆叠，选中对象进入右侧 ContextPanel（见 §4） |
 | **输入** | 阶段的 `EvidenceCollection` / `ImplementationUnderstanding` / `ViewGraph[]` / trace 产物 / Q&A 历史 / `QualityReport` |
-| **输出** | 阶段工作区 Tab（或等价分区）：Overview / Evidence / Understanding / Views / Trace / Q&A / Quality |
-| **验收标准** | 每个分区聚焦一个维度，分区之间可一键切换且保留当前节点/对象选中态；退化视图、空 timing、quality issue 在对应分区内就地表达 |
-| **非目标** | 不强制固定分区顺序为唯一形态（详细设计可收敛为 Tab / 分栏，但不得回到长堆叠） |
+| **输出** | Artifact tabs 阶段工作区：tab 切换各维度产物，复用既有展示组件渲染逻辑（不丢能力、不改语义） |
+| **验收标准** | tab 间一键切换且保留当前节点/对象选中态；质量报告/trace/source excerpt/Q&A 不在同页纵向堆叠；退化视图、空 timing、quality issue 在对应 tab 内就地表达 |
+| **非目标** | 不重写既有展示组件渲染逻辑（功能等价迁移，非推倒重写）；不得回到长页面堆叠 |
 
 ### R8-004 阶段理解一体化工作流
 
@@ -166,6 +168,9 @@ Phase 8 UI 以用户提供的 AgentScope 风格截图为参考形态，提炼为
 5. **筛选 / 分组 / 切换**：对对象列表与视图提供按 confidence / source_kind / severity / view type 的快速收敛。
 6. **密度与层级**：高信息密度（屏幕利用率高）但通过卡片、间距、字号、颜色建立清晰层级，避免混乱。
 7. **蓝色强调约束**：蓝色限定于主操作、当前焦点、可追溯链接；不得用于表达"目标项目通过/失败"。
+8. **Artifact tabs 不长堆叠**：Evidence / Understanding / Views / Trace / Q&A / Quality 作为 tab，不再把质量报告 / trace / source excerpt / Q&A 全部向下堆叠在一个长页面里。
+9. **ContextPanel 右侧上下文**：当前选中的 evidence / trace / source excerpt / quality issue 进入右侧 ContextPanel，与 Artifact tabs 联动；阶段切换与产物重生成必须清空 ContextPanel。
+10. **warnings 降噪**：scan_timeout 等警告折叠 / 分类 / 计数 / 可展开查看，不再长期占据底部横幅。
 
 ## 5. 异常 / 空状态
 
@@ -211,6 +216,9 @@ Phase 8 明确**不做**：
 - **不做"大而全可视化平台"**（`product-scope.md` 非目标）：仍聚焦三类核心视图 + 证据 + Q&A 的可用化。
 - **不做多窗口 / 多标签浏览器 / 自定义 dashboard 编辑器**。
 - **不改变后端 command 的语义契约**：仅允许不改语义、不破坏既有契约的展示性结构调整。
+- **不做调试式长页面堆叠**：Artifact tabs + ContextPanel 替代纵向长堆叠，这是 Phase 8 的核心，不是可选美化。
+- **不靠堆砌更多卡片替代工作台化**：目标是工作台信息架构，不是新增更多面板 / 卡片。
+- **不照搬 AgentScope 品牌或无关功能**：只参考其信息密度与布局方式，服从本项目定位。
 
 ## 9. 安全边界
 

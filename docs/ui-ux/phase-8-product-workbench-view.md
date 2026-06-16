@@ -18,6 +18,7 @@ updated: 2026-06-16
 3. **一次可达**：项目、阶段、功能区一次点击可达。
 4. **诚实可见**：confidence / 证据强度 / unknown / 退化视图 / quality 一致地层级化表达，不掩盖也不裁决。
 5. **产品级体验**：session / 最近项目 / 空 / 错误状态达到真实可用。
+6. **工作台化，不是新增更多卡片**：把已有能力重组为工作台信息架构（Artifact tabs + ContextPanel），而非堆砌更多面板/卡片。
 
 ## 2. AgentScope 风格参考（正式写入）
 
@@ -36,6 +37,8 @@ Phase 8 UI 以用户提供的 AgentScope 风格截图为**形态与信息架构�
 | 9 | **不再纵向堆叠所有面板** | 导航 + 分区 + Tab 替代长滚动（§3） |
 
 > 参考约束：本设计服从技术栈（Tauri + React/TS，视图 SVG+CSS）与产品定位。AgentScope 的"指标概览/对象列表"在本项目中映射为"阶段理解指标 + evidence/claim/node 列表"，**不是**把产品做成监控 dashboard。
+>
+> 只参考 AgentScope 的信息密度与布局方式，**不照搬其品牌或无关功能**。
 
 ## 3. 信息架构与布局
 
@@ -56,8 +59,9 @@ Phase 8 UI 以用户提供的 AgentScope 风格截图为**形态与信息架构�
 ```
 
 - **LeftNav**：固定宽度、深色、常驻。
-- **MainWorkspace**：自适应剩余宽度、浅色、按焦点切换内容。
-- **不再**在 MainWorkspace 同屏纵向堆叠全部维度；用 Tab/分区聚焦。
+- **MainWorkspace**：自适应剩余宽度、浅色，内含 **Artifact tabs**（Overview/Evidence/Understanding/Views/Trace/Q&A/Quality，**功能等价迁移、不长堆叠**）+ 顶部概览 + 中部筛选。
+- **ContextPanel（右侧）**：承载当前选中的 evidence / trace / source excerpt / quality issue，与 Artifact tabs 联动。
+- **不再**在 MainWorkspace 同屏纵向堆叠全部维度（含质量报告/trace/source excerpt/Q&A）；用 Artifact tabs + ContextPanel 聚焦。
 
 ### 3.2 响应式与最小宽度
 
@@ -186,6 +190,8 @@ Phase 8 UI 以用户提供的 AgentScope 风格截图为**形态与信息架构�
 | timing 诚实空 | Views 内提示 | "无时序证据，未生成 timing 图" | 查看 dataflow |
 | Q&A 无证据 | Q&A 内提示 | "证据不足，无法回答" | 查看缺口 |
 | session 加载失败 | 错误卡 + 可恢复 | "会话加载失败" | 重试 / 新建 |
+
+> **warnings 降噪**：scan_timeout 等警告不再长期占据底部横幅，而是**折叠 / 分类 / 计数 / 可展开查看**（默认折叠为计数徽标，展开看详情），与上述空/错误状态分层呈现，不喧宾夺主。
 
 ## 11. 文案规范
 
