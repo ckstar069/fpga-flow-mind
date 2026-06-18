@@ -46,6 +46,8 @@ Phase 9 在 **MockProvider / 确定性 heuristic** 之上引入**真实 LLM Prov
 - `api_key` **不进日志、不进 session 明文、不进审计记录**。
 - UI 不显示明文 `api_key`。
 
+> 说明：审计记录脱敏字段清单见架构 §9；不记录项包括 `api_key`、完整 prompt 正文、完整源码片段、用户私密内容。`token_estimate` 可记录，但完整 prompt 不记录。
+
 ### R9-004 受控上下文构造（输入边界）
 
 - 仅发送为回答当前问题 / 生成当前 understanding 所需的**证据片段（evidence excerpt）+ 必要 stage context 摘要 + 当前已选 trace/context**。

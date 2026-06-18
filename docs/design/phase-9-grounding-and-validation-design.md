@@ -95,9 +95,12 @@ EvidenceSelection（按相关性/强度选取证据片段）
 | `network_error` | 网络失败 | 降级 + degraded + 审计 |
 | `timeout` | 超时 | 降级 + degraded |
 | `rate_limited` | 429/限流 | 降级 + degraded，尊重 Retry-After |
+| `cancelled` | 用户取消进行中的调用 | 降级 + degraded（已取消，不视为 error，但走 fallback/unknown 链路，审计记录 `cancelled`） |
 | `invalid_response` | 解析/schema 失败 | 拒绝该产出或降级 unknown |
 | `citation_invalid` | citation 不存在/越界 | 拒绝或降级 unknown |
 | `grounding_failed` | grounding 整体不通过 | 降级 unknown |
+
+> 说明：本表 failure mode 是 **grounding/降级处置层** 的语义分类（snake_case）。Provider 调用层另有 `ProviderError` 枚举（PascalCase，定义见架构 §2.1/§6）。两层不混用：`ProviderError` 描述"调用本身为何失败"，本表描述"对最终产物的处置"。
 
 ## 10. 安全边界
 

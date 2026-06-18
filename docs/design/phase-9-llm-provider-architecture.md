@@ -74,7 +74,10 @@ UI 配置 (ProviderConfig)
 | `timeout` | 可配置，默认有界（如 30~60s），到点判 `Timeout` |
 | `retry` | 有界重试（如 1~2 次），仅对幂等可重试错误（网络瞬断/5xx）重试；4xx/限流不盲目重试 |
 | `rate limit` | 尊重 429/Retry-After；本地轻量节流，避免无界调用 |
-| `error mapping` | 网络→`NetworkError`；超时→`Timeout`；429→`RateLimited`；解析失败→`InvalidResponse`；其他→`ProviderCallFailed` |
+| `cancellation` | 用户可取消进行中的 LLM 调用；取消与 timeout 同等处理（终止调用、不残留半成品、按 §10 降级到 Mock/unknown、标 degraded）。Transport 抽象暴露取消信号，便于注入测试断言。 |
+| `error mapping` | 网络→`NetworkError`；超时→`Timeout`；429→`RateLimited`；解析失败→`InvalidResponse`；用户取消→作为降级处理（不视为 error，但标 degraded/已取消）；其他→`ProviderCallFailed` |
+
+> 说明：`ProviderError` 是 **Provider 调用层** 的错误枚举（见 §2.1）。grounding 校验层另有 failure mode（`citation_invalid` / `grounding_failed`，snake_case），属不同层枚举，定义见 grounding 设计 §9；两层不混用。
 
 ## 7. prompt / context 构造
 
@@ -97,8 +100,9 @@ UI 配置 (ProviderConfig)
 
 ## 10. fallback
 
-- 真实 LLM 失败（网络/超时/限流/校验失败）→ 回退 `MockProvider` / heuristic，或返回 unknown。
+- 真实 LLM 失败（网络/超时/限流/校验失败/用户取消）→ 回退 `MockProvider` / heuristic，或返回 unknown。
 - 回退产物明确标记 `provider` 与 `is_degraded`，UI 可见（详见 UI/UX 文档）。
+- 用户取消按降级处理（不视为 error，但标 degraded/已取消，避免用户取消被误报为调用失败）。
 - 不存在"信任 LLM 原文输出而绕过 grounding"的旁路。
 
 ## 11. 与既有 Phase 3/5/8 对接
