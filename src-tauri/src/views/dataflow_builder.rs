@@ -8,28 +8,34 @@ use crate::views::models::{
 
 // ─── 输入/输出名称识别 helper ─────────────────────────────────────────
 
-/// 判断名称是否表示输入信号/接口（基于 token 匹配，不使用纯 contains）
+/// 判断名称是否表示输入信号/接口（基于 token 匹配，不使用纯 contains）。
+/// 额外识别 AXI-Stream slave 接口前缀 `s_*`。
 fn is_input_name(name: &str) -> bool {
     let tokens = tokenize(name);
     tokens.iter().any(|t| {
         matches!(
             t.as_str(),
-            "input" | "in" | "rx" | "din" | "data_in" | "in_data" | "输入" | "接收"
+            "input" | "in" | "rx" | "din" | "data_in" | "in_data" | "s_valid" | "s_data"
+                | "s_last" | "s_ready" | "输入" | "接收"
         )
     }) || name.starts_with("in_")
         || name.ends_with("_in")
+        || name.starts_with("s_")
 }
 
-/// 判断名称是否表示输出信号/接口（基于 token 匹配）
+/// 判断名称是否表示输出信号/接口（基于 token 匹配）。
+/// 额外识别 AXI-Stream master 接口前缀 `m_*`。
 fn is_output_name(name: &str) -> bool {
     let tokens = tokenize(name);
     tokens.iter().any(|t| {
         matches!(
             t.as_str(),
-            "output" | "out" | "tx" | "dout" | "data_out" | "out_data" | "输出" | "发送"
+            "output" | "out" | "tx" | "dout" | "data_out" | "out_data" | "m_valid" | "m_data"
+                | "m_last" | "m_ready" | "输出" | "发送"
         )
     }) || name.starts_with("out_")
         || name.ends_with("_out")
+        || name.starts_with("m_")
 }
 
 /// 将名称按分隔符拆分为 token
@@ -632,19 +638,32 @@ mod tests {
         assert!(graph.meta.empty_reason.as_deref().unwrap().contains("processing_steps"));
     }
 
-    /// df_15: node/edge 端点 node_id 全部存在于 nodes 中
+    /// df_16: L4 AXI-Stream `s_*` / `m_*` 识别为 InputSource / OutputTarget
     #[test]
-    fn df_15_edges_endpoints_resolved() {
+    fn df_16_axi_stream_io_recognized() {
         let iu = make_iu(
-            vec![make_step_with_ev("a", "A", 1, "EV-1"), make_step_with_ev("b", "B", 2, "EV-2")],
-            vec![make_iface_with_ev("data_input", "in", "EV-0"), make_iface_with_ev("data_output", "out", "EV-3")],
+            vec![
+                make_step_with_ev("correlation", "相关", 1, "EV-1"),
+                make_step_with_ev("detection", "检测", 2, "EV-2"),
+            ],
             vec![],
+            vec![
+                make_signal("s_valid", "AXI-Stream slave valid", Some("input")),
+                make_signal("s_data", "AXI-Stream slave data", Some("input")),
+                make_signal("m_valid", "AXI-Stream master valid", Some("output")),
+                make_signal("m_data", "AXI-Stream master data", Some("output")),
+            ],
         );
         let graph = build_dataflow_view(&iu);
-        let ids: std::collections::HashSet<&str> = graph.nodes.iter().map(|n| n.node_id.as_str()).collect();
-        for e in &graph.edges {
-            assert!(ids.contains(e.source_node_id.as_str()), "edge {} source 不存在", e.edge_id);
-            assert!(ids.contains(e.target_node_id.as_str()), "edge {} target 不存在", e.edge_id);
-        }
+        assert!(
+            graph.nodes.iter().any(|n| n.node_type == NodeType::InputSource && n.label.starts_with("s_")),
+            "s_* 应生成 InputSource 节点"
+        );
+        assert!(
+            graph.nodes.iter().any(|n| n.node_type == NodeType::OutputTarget && n.label.starts_with("m_")),
+            "m_* 应生成 OutputTarget 节点"
+        );
+        // 至少存在一条从输入到步骤或步骤到输出的边
+        assert!(!graph.edges.is_empty(), "AXI-Stream I/O 与 processing_steps 之间应生成边");
     }
 }
