@@ -489,6 +489,129 @@ fn derive_conservative_summaries(
 /// P1: 为每个 evidence 符号生成独立的 claim 和 module_summary，不做数量封顶。
 pub struct MockProvider;
 
+/// 为 evidence context item 打分，用于选择高质量 claim 候选。
+fn claim_evidence_score(stage_id: &str, ctx: &EvidenceContextItem) -> i32 {
+    let sym = ctx.symbol.as_deref().unwrap_or("");
+    let summary = &ctx.summary;
+    let sym_lower = sym.to_lowercase();
+    let sum_lower = summary.to_lowercase();
+
+    // 排除明显低价值证据
+    if sym.starts_with("__") && sym.ends_with("__") {
+        return -1;
+    }
+    if ctx.source_kind == "python_stage" {
+        if is_low_value_python_symbol(sym, summary) {
+            return -1;
+        }
+        // import / typing / decorator / type-alias 上下文不生成 claim
+        if sum_lower.starts_with("import ") || sum_lower.starts_with("from ") || sum_lower.starts_with("@") {
+            return -1;
+        }
+        if sum_lower.starts_with("->") || sum_lower.contains("typing.") {
+            return -1;
+        }
+        // 纯大写常量视为配置，不提升为 claim
+        if sym.chars().all(|c| c.is_uppercase() || c == '_' || c.is_ascii_digit()) {
+            return -1;
+        }
+    }
+
+    let mut score = 1;
+
+    // RTL 时序/端口证据价值较高
+    if ctx.source_kind == "rtl" {
+        score += 3;
+        if is_axi_stream_signal(sym).is_some() {
+            score += 2;
+        }
+    }
+
+    // 类定义 / 业务函数 / AXI-Stream 信号优先级高
+    let is_class = is_camel_case(sym) && summary.lines().next().unwrap_or("").trim_start().starts_with("class ");
+    let is_business_fn = is_python_function_definition(sym, summary) && is_business_python_symbol(sym, summary);
+    if is_class {
+        score += 5;
+    } else if is_business_fn {
+        score += 4;
+    }
+    if is_axi_stream_signal(sym).is_some() {
+        score += 3;
+    }
+
+    // 端口声明证据
+    if sum_lower.starts_with("input ") || sum_lower.starts_with("output ") || sum_lower.starts_with("inout ") {
+        score += 2;
+    }
+
+    // L0/L4 claim 优先绑定到标准流水线步骤语义
+    let text = format!("{} {}", sym_lower, sum_lower);
+    if stage_id.starts_with("L0") {
+        if L0_PIPELINE_STEPS.iter().any(|(_, kws)| kws.iter().any(|kw| text.contains(kw))) {
+            score += 3;
+        }
+    } else if stage_id.starts_with("L4") {
+        if L4_PIPELINE_STEPS.iter().any(|(_, kws)| kws.iter().any(|kw| text.contains(kw))) {
+            score += 3;
+        }
+    }
+
+    score
+}
+
+/// 根据 evidence 内容生成更具体的 claim 描述。
+fn claim_description_for(ctx: &EvidenceContextItem) -> String {
+    let ev_id = &ctx.evidence_id;
+    let sym = ctx.symbol.as_deref().unwrap_or("");
+    let summary = &ctx.summary;
+    let sum_lower = summary.to_lowercase();
+    let is_class = is_camel_case(sym) && summary.lines().next().unwrap_or("").trim_start().starts_with("class ");
+    let is_business_fn = is_python_function_definition(sym, summary) && is_business_python_symbol(sym, summary);
+
+    if ctx.source_kind == "rtl" {
+        return format!("识别到时序/接口证据 {} [{}]", ev_id, sym);
+    }
+    if is_class {
+        return format!("识别到模块/类 {} [{}]", sym, ev_id);
+    }
+    if is_business_fn {
+        return format!("识别到处理步骤 {} [{}]", sym, ev_id);
+    }
+    if is_axi_stream_signal(sym).is_some() {
+        return format!("识别到 AXI-Stream 信号 {} [{}]", sym, ev_id);
+    }
+    if sum_lower.starts_with("input ") || sum_lower.starts_with("output ") || sum_lower.starts_with("inout ") {
+        return format!("识别到端口 {} [{}]", sym, ev_id);
+    }
+    if sym.is_empty() {
+        format!("基于证据 {} 的观察", ev_id)
+    } else {
+        format!("基于证据 {} [{}] 的观察", ev_id, sym)
+    }
+}
+
+/// 根据 evidence 内容选择更贴切的 claim category。
+fn claim_category_for(ctx: &EvidenceContextItem) -> &'static str {
+    let sym = ctx.symbol.as_deref().unwrap_or("");
+    let summary = &ctx.summary;
+    let is_class = is_camel_case(sym) && summary.lines().next().unwrap_or("").trim_start().starts_with("class ");
+    let is_business_fn = is_python_function_definition(sym, summary) && is_business_python_symbol(sym, summary);
+
+    if ctx.source_kind == "rtl" {
+        return "signal_definition";
+    }
+    if is_class {
+        return "module_structure";
+    }
+    if is_business_fn {
+        return "data_processing";
+    }
+    if is_axi_stream_signal(sym).is_some() {
+        return "interface_description";
+    }
+    "configuration"
+}
+
 impl UnderstandingProvider for MockProvider {
     fn generate(&self, input: &GeneratorOutput) -> Result<serde_json::Value, ProviderError> {
         // 直接从 input.stage_id 获取，不解析 prompt 文案
@@ -499,39 +622,34 @@ impl UnderstandingProvider for MockProvider {
         // 构建确定性 mock ImplementationUnderstanding JSON
         let mut claims = Vec::new();
         let mut module_summaries = Vec::new();
-        let categories = [
-            "module_structure",
-            "signal_definition",
-            "data_processing",
-            "interface_description",
-            "configuration",
-        ];
 
         if !input.evidence_context_items.is_empty() {
-            // P8: 仅对非低价值 evidence 生成 claim，彻底停止“一条 evidence 一条 claim”。
+            // P8: 按 evidence 质量打分，优先选择高价值来源生成 claim，
+            // 彻底停止“一条 evidence 一条 claim”。
             const MAX_CLAIMS: usize = 8;
-            let claim_candidates: Vec<&EvidenceContextItem> = input
+            let mut scored: Vec<(i32, &EvidenceContextItem)> = input
                 .evidence_context_items
                 .iter()
-                .filter(|ctx| {
-                    let sym = ctx.symbol.as_deref().unwrap_or("");
-                    !is_low_value_python_symbol(sym, &ctx.summary)
-                })
+                .map(|ctx| (claim_evidence_score(stage_id, ctx), ctx))
+                .filter(|(score, _)| *score > 0)
+                .collect();
+            // 按分数降序、evidence_id 升序，保证确定性
+            scored.sort_by(|(a_score, a_ctx), (b_score, b_ctx)| {
+                b_score.cmp(a_score).then_with(|| a_ctx.evidence_id.cmp(&b_ctx.evidence_id))
+            });
+            let claim_candidates: Vec<&EvidenceContextItem> = scored
+                .into_iter()
+                .map(|(_, ctx)| ctx)
                 .take(MAX_CLAIMS)
                 .collect();
 
             for (i, ctx) in claim_candidates.iter().enumerate() {
                 let ev_id = &ctx.evidence_id;
                 let claim_id = format!("CL-{}-{:06}", stage_id, i + 1);
-                let desc = if let Some(sym) = &ctx.symbol {
-                    format!("基于证据 {} [{}] 的声明 {}", ev_id, sym, i + 1)
-                } else {
-                    format!("基于证据 {} 的声明 {}", ev_id, i + 1)
-                };
                 claims.push(serde_json::json!({
                     "claim_id": claim_id,
-                    "category": categories[i % categories.len()],
-                    "description": desc,
+                    "category": claim_category_for(ctx),
+                    "description": claim_description_for(ctx),
                     "confidence": "inferred",
                     "evidence_refs": [{"evidence_id": ev_id}],
                     "has_evidence_gap": false
@@ -549,9 +667,14 @@ impl UnderstandingProvider for MockProvider {
                     let is_business_fn = is_python_function_definition(sym, &ctx.summary)
                         && is_business_python_symbol(sym, &ctx.summary);
                     if (is_class || is_business_fn) && mod_seen.insert(sym.clone()) {
+                        let desc = if is_class {
+                            format!("模块/类 {}（证据 {}）", sym, ctx.evidence_id)
+                        } else {
+                            format!("处理步骤 {}（证据 {}）", sym, ctx.evidence_id)
+                        };
                         module_summaries.push(serde_json::json!({
                             "name": sym.clone(),
-                            "description": format!("基于证据 {} [{}] 的模块", ctx.evidence_id, sym),
+                            "description": desc,
                             "evidence_refs": [{"evidence_id": ctx.evidence_id.as_str()}],
                             "confidence": "supported"
                         }));
@@ -1549,6 +1672,87 @@ mod tests {
         let signal_names: Vec<&str> = iu.signal_summaries.iter().map(|s| s.name.as_str()).collect();
         assert!(signal_names.contains(&"s_valid"), "应识别 s_valid 为 AXI-Stream 输入信号");
         assert!(signal_names.contains(&"m_valid"), "应识别 m_valid 为 AXI-Stream 输出信号");
+    }
+
+    /// gen_20: 低价值 / import / typing / decorator / type-alias 证据不提升为 claim
+    #[test]
+    fn gen_20_claim_quality_excludes_noise() {
+        let items = vec![
+            make_item_with_kind("EV-L0-000001", Some("annotations"), "from __future__ import annotations", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L0-000002", Some("dataclass"), "@dataclass", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L0-000003", Some("Optional"), "def process(self) -> Optional[dict]", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L0-000004", Some("np"), "import numpy as np", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L0-000005", Some("PARAMS"), "from config.parameters import PARAMS", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L0-000006", Some("data_width"), "from config.parameters import data_width", SourceKind::PythonStage, Language::Python),
+            // 保留两条非低价值 evidence，用于验证排序与描述
+            make_item_with_kind("EV-L0-000007", Some("coarse_sync"), "def coarse_sync(rx_signal):", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L0-000008", Some("md_coarse"), "def md_coarse(rx_signal):\n    p_vec = ...", SourceKind::PythonStage, Language::Python),
+        ];
+        let collection = make_collection("L0", items);
+        let iu = UnderstandingGenerator::new(Box::new(MockProvider)).generate(&collection).unwrap();
+
+        let noise_names = ["annotations", "dataclass", "Optional", "np", "PARAMS", "data_width"];
+        for name in &noise_names {
+            assert!(
+                !iu.claims.iter().any(|c| c.description.contains(name)),
+                "噪声符号 {} 不应出现在 claim 描述中", name
+            );
+        }
+        // 不再输出“基于证据 X 的声明 N”这类模板化描述
+        for claim in &iu.claims {
+            assert!(
+                !claim.description.contains(" 的声明 "),
+                "claim 描述应避免模板化：{}", claim.description
+            );
+        }
+        assert!(!iu.claims.is_empty(), "非低价值 evidence 应仍生成 claim");
+    }
+
+    /// gen_21: L0 claim 优先绑定标准流水线语义，而不是通用业务函数
+    #[test]
+    fn gen_21_l0_claims_prefer_pipeline_steps() {
+        let items = vec![
+            make_item_with_kind("EV-L0-000001", Some("helper_log"), "def helper_log(msg):", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L0-000002", Some("md_coarse"), "def md_coarse(rx_signal):\n    p_vec = ...", SourceKind::PythonStage, Language::Python),
+        ];
+        let collection = make_collection("L0", items);
+        let iu = UnderstandingGenerator::new(Box::new(MockProvider)).generate(&collection).unwrap();
+
+        assert!(!iu.claims.is_empty(), "应有 claim");
+        let first = &iu.claims[0];
+        assert!(
+            first.description.contains("md_coarse") || first.description.contains("correlation"),
+            "L0 首条 claim 应优先命中流水线语义，实际：{}", first.description
+        );
+        assert_eq!(first.category, ClaimCategory::DataProcessing);
+    }
+
+    /// gen_22: L4 claim 优先识别 AXI-Stream 接口与周期精确流水线
+    #[test]
+    fn gen_22_l4_claims_prefer_axi_and_pipeline() {
+        let items = vec![
+            make_item_with_kind("EV-L4-000001", Some("helper"), "def helper():", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L4-000002", Some("s_valid"), "self.s_valid = False", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L4-000003", Some("m_valid"), "self.m_valid = False", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L4-000004", Some("CoarseSyncCycleAcc"), "class CoarseSyncCycleAcc:\n    def _stage_correlation(self):", SourceKind::PythonStage, Language::Python),
+        ];
+        let collection = make_collection("L4", items);
+        let iu = UnderstandingGenerator::new(Box::new(MockProvider)).generate(&collection).unwrap();
+
+        let s_claim = iu.claims.iter().find(|c| c.description.contains("s_valid"));
+        assert!(s_claim.is_some(), "应生成 s_valid 相关 claim");
+        assert_eq!(s_claim.unwrap().category, ClaimCategory::InterfaceDescription);
+
+        let m_claim = iu.claims.iter().find(|c| c.description.contains("m_valid"));
+        assert!(m_claim.is_some(), "应生成 m_valid 相关 claim");
+
+        let first = &iu.claims[0];
+        assert!(
+            first.description.contains("CoarseSyncCycleAcc")
+                || first.description.contains("s_valid")
+                || first.description.contains("m_valid"),
+            "L4 首条 claim 应优先高价值接口/类证据，实际：{}", first.description
+        );
     }
 
     // ─── P0-3 真实项目只读验证 harness（#[ignore]，手动 --ignored 触发） ────

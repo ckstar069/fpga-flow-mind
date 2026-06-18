@@ -48,13 +48,24 @@ fn has_temporal_evidence(iu: &ImplementationUnderstanding) -> bool {
         }
     }
 
-    // 4. L4 / cycle_acc 兜底：只要阶段明确为周期精确且存在 processing_steps，
-    //    即认为具备时序依据，避免被噪声抑制导致 timing 图为空。
+    // 4. L4 / cycle_acc 语义门控：阶段明确为周期精确时，
+    //    只有 processing_steps 的 name/description 命中周期精确语义关键词才视为时序证据。
+    //    不再“有 processing_steps 就生成 timing”，避免普通函数顺序被伪造成硬件时序。
     let stage_lower = iu.stage_id.to_lowercase();
-    if (stage_lower.starts_with("l4") || stage_lower.contains("cycle_acc"))
-        && !iu.processing_steps.is_empty()
-    {
-        return true;
+    let is_l4_or_cycle_acc = stage_lower.starts_with("l4") || stage_lower.contains("cycle_acc");
+    if is_l4_or_cycle_acc {
+        let l4_semantic_keywords = [
+            "input", "correlation", "energy", "metric", "detection", "output",
+            "_stage_", "cycle", "latency", "pipeline", "clock", "stage",
+            "s_valid", "s_data", "s_last", "s_ready",
+            "m_valid", "m_data", "m_last", "m_ready",
+        ];
+        for step in &iu.processing_steps {
+            let text = format!("{} {}", step.name, step.description).to_lowercase();
+            if l4_semantic_keywords.iter().any(|kw| text.contains(kw)) {
+                return true;
+            }
+        }
     }
 
     false
@@ -696,6 +707,55 @@ mod tests {
             evidence_refs: vec![EvidenceRef { evidence_id: ev_id.to_string(), relevance: None }],
             has_evidence_gap: false,
         }
+    }
+
+    /// tm_12: RTL 含 always_ff/posedge 证据 → timing 可生成非空图，trace_refs 完整
+    #[test]
+    fn tm_12_rtl_always_ff_timing_non_empty() {
+        // RTL 阶段：claims 含 always_ff/posedge 时序声明
+        let iu = make_iu_full(
+            vec![
+                make_step_with_ev("sample_reg", "在 posedge clk 采样输入", 1, "EV-RTL-000001"),
+                make_step_with_ev("corr_reg", "在 posedge clk 更新相关值", 2, "EV-RTL-000002"),
+            ],
+            vec![
+                make_claim_with_ev("CL-RTL-001", "主时钟 clk 100MHz 驱动所有 always_ff", "EV-RTL-000005"),
+                make_claim_with_ev("CL-RTL-002", "异步复位 rst_n 低电平有效", "EV-RTL-000006"),
+            ],
+            vec![
+                make_signal_with_ev("clk", "100MHz 时钟", Some("input"), "EV-RTL-000003"),
+                make_signal_with_ev("rst_n", "异步复位", Some("input"), "EV-RTL-000004"),
+            ],
+        );
+        let graph = build_timing_view(&iu);
+
+        // 应生成非空图：PipelineStage + ClockDomain + ResetDomain
+        assert!(!graph.nodes.is_empty(), "RTL 含时序证据时应生成非空 timing 图");
+        assert!(
+            graph.nodes.iter().any(|n| n.node_type == NodeType::PipelineStage),
+            "应有 PipelineStage 节点"
+        );
+        assert!(
+            graph.nodes.iter().any(|n| n.node_type == NodeType::ClockDomain),
+            "应有 ClockDomain 节点"
+        );
+        assert!(
+            graph.nodes.iter().any(|n| n.node_type == NodeType::ResetDomain),
+            "应有 ResetDomain 节点"
+        );
+
+        // 所有节点必须有 trace_refs
+        for node in &graph.nodes {
+            assert!(!node.trace_refs.is_empty(), "节点 {} 缺少 trace_refs", node.node_id);
+        }
+
+        // 边必须有 trace_refs
+        for edge in &graph.edges {
+            assert!(!edge.trace_refs.is_empty(), "边 {} 缺少 trace_refs", edge.edge_id);
+        }
+
+        // 非空 → 无 empty_reason
+        assert!(graph.meta.empty_reason.is_none(), "有节点时不应有 empty_reason");
     }
 
     /// tm_13: L4 阶段含 _stage_* processing_steps → has_temporal_evidence 为 true

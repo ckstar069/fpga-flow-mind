@@ -263,6 +263,19 @@ fn primary_sample_l0_l4_quality_blockers_fixed() {
         l4_timing.nodes.iter().any(|n| n.node_type == NodeType::PipelineStage),
         "L4 timing view 应包含 PipelineStage 节点"
     );
+    // 精确断言 L4 timing PipelineStage 标签覆盖完整周期精确流水线
+    let l4_timing_labels: Vec<&str> = l4_timing
+        .nodes
+        .iter()
+        .filter(|n| n.node_type == NodeType::PipelineStage)
+        .map(|n| n.label.as_str())
+        .collect();
+    assert_eq!(
+        l4_timing_labels,
+        vec!["input", "correlation", "energy", "metric", "detection", "output"],
+        "L4 timing PipelineStage 标签必须按顺序覆盖完整周期精确流水线，实际：{:?}",
+        l4_timing_labels
+    );
 
     let l4_dataflow = l4_views.iter().find(|v| v.view_type == ViewType::Dataflow).unwrap();
     assert!(
@@ -273,6 +286,23 @@ fn primary_sample_l0_l4_quality_blockers_fixed() {
         l4_dataflow.nodes.iter().any(|n| n.node_type == NodeType::OutputTarget && n.label.starts_with("m_")),
         "L4 dataflow 应包含 m_* 输出节点"
     );
+
+    // dataflow / timing 均不得出现 import/typing/decorator 噪声节点
+    let noise_symbols = ["annotations", "dataclass", "Optional", "np", "PARAMS", "config", "data_width"];
+    for noise in &noise_symbols {
+        assert!(
+            !l0_dataflow.nodes.iter().any(|n| n.label == *noise),
+            "L0 dataflow 不应出现噪声节点 {}", noise
+        );
+        assert!(
+            !l4_dataflow.nodes.iter().any(|n| n.label == *noise),
+            "L4 dataflow 不应出现噪声节点 {}", noise
+        );
+        assert!(
+            !l4_timing.nodes.iter().any(|n| n.label == *noise),
+            "L4 timing 不应出现噪声节点 {}", noise
+        );
+    }
 
     // ── QualityReport: 诚实暴露退化 ──
     let l0_expected_paths: Vec<String> = l0_ctx.files.iter().map(|f| f.source_path.clone()).collect();

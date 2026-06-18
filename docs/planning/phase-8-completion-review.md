@@ -192,24 +192,27 @@ rg -n "OpenAI|Anthropic|api_key|Vivado|synthesis|implementation|bitstream|ReactF
 
 ### 7.1 问题与修复
 
-在真实项目 `fpga_project_coarse_sync` 的桌面验收准备中发现：L0/L4 视图被 `annotations`、`dataclass`、`Optional`、`np`、`PARAMS`、`config`、`data_width` 等 import/typing/decorator 噪声符号主导，淹没了 coarse-sync 算法语义。
-
-修复措施（确定性、不接 LLM、不改目标项目）：
+> 在真实项目 `fpga_project_coarse_sync` 的桌面验收准备中发现：L0/L4 视图被 `annotations`、`dataclass`、`Optional`、`np`、`PARAMS`、`config`、`data_width` 等 import/typing/decorator 噪声符号主导，淹没了 coarse-sync 算法语义。
+>
+> 修复措施（**确定性启发式**，不接 LLM、不改目标项目）：
 
 - 噪声符号保留为 evidence，但不再被提升为 claim / module / processing step。
-- `MockProvider` 停止“一条 evidence 一条 claim”，仅对非低价值 evidence 生成 claim。
+- `MockProvider` 停止“一条 evidence 一条 claim”，改为按证据质量打分选择 claim 候选：排除 import/typing/decorator/dunder/config/type-alias；优先 class 定义、业务函数、AXI-Stream 接口、端口声明、命中 L0/L4 标准流水线关键词的证据。
+- claim 描述与 category 根据证据类型语义化（“识别到模块/类 …”、“识别到处理步骤 …”、“识别到 AXI-Stream 信号 …” 等），不再输出“基于证据 X 的声明 N”模板。
 - L0 dataflow 反映真实粗同步流水线：correlation → energy → metric → smoothing → peak detection → CFO。
-- L4 timing/dataflow 反映周期精确流水线：input → correlation → energy → metric → detection → output，并识别 AXI-Stream `s_*` / `m_*` I/O。
-- `QualityReport` 诚实暴露退化：`NoisyEvidence` / `LowSemanticDiversity` 负向记录。
+- L4 timing/dataflow 反映周期精确流水线：input → correlation → energy → metric → detection → output，并识别 AXI-Stream `s_*` / `m_*` I/O；`has_temporal_evidence` 对 L4/cycle_acc 增加语义门控，避免普通函数顺序被伪造成硬件时序。
+- `QualityReport` 诚实暴露退化：`NoisyEvidence` 负向记录。
+- **结构限制**：当前 claim/流水线/摘要均为 keyword/symbol 启发式，未解析函数体语义；Phase 9 仍需接入真实 LLM 替代 heuristic。
 
 ### 7.2 验证
 
-- 新增 8 个单元/集成测试覆盖噪声过滤、L0/L4 流水线、AXI-Stream I/O、temporal evidence、退化标记。
-- `cargo test --lib` 549 passed；`cargo test --test real_project_validation -- --ignored` 6 passed（含新增端到端测试）。
+- 新增 11 个单元/集成测试覆盖噪声过滤、L0/L4 流水线、AXI-Stream I/O、temporal evidence、claim 质量、退化标记。
+- `cargo test --lib` 553 passed；`cargo test --test real_project_validation -- --ignored` 5 passed（含新增端到端测试）。
 - 目标项目 checksum 修复前后一致，未修改目标项目任何文件。
 - GUI 截图审阅受 CLI 环境限制未完成，截图目录 `docs/screenshots/phase-8-quality-fixes/` 已预留。
 
 ### 7.3 结论
 
 - Phase 8 全部编码（含质量阻塞修复）已完成，自动化验证全部通过。
+- 本次质量修复为**确定性启发式**，claim/流水线/摘要基于 symbol/summary 关键词派生；Phase 9 仍需接入真实 LLM 以替换 heuristic、提升语义准确性。
 - 真实 GUI 桌面验收仍未完成；待真实桌面环境补录截图后，方可将 completion review 转 active。
