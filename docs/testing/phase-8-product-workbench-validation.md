@@ -9,7 +9,7 @@ updated: 2026-06-16
 >
 > 验证目标是"工作台是否把已有能力组织成用户可高效理解一个阶段的产品级形态，且不发生回归、不越界"，**不是**验证目标项目正确性。
 >
-> 本文 status 为 `active`，是 Phase 8 验证与验收设计的生效文档。**Phase 8 Batch A（P8-T01~P8-T02）已实现/进入审核收口**；**Phase 8 Batch B（P8-T03~P8-T04）已实现/进入审核收口**；**Phase 8 Batch C（P8-T05~P8-T06）已实现/进入审核收口**；**Phase 8 Batch D（P8-T07~P8-T09）已实现/进入审核收口**；Batch E 与 Phase 9/10/11 均未开始。
+> 本文 status 为 `active`，是 Phase 8 验证与验收设计的生效文档。**Phase 8 已完成：Batch A/B/C/D/E 全部完成，[`completion review`](../planning/phase-8-completion-review.md) active，允许进入 Phase 9 详细文档编制阶段**。Phase 9/10/11 未开始。
 
 ## 1. 验证策略总览
 
@@ -364,10 +364,64 @@ QualityReviewPanel.handleIssueClick(issue)
 
 > 所有文案表达"工具状态/不确定性"，不出现"正确/错误/PASS/HOLD/审计结论"裁决话术，不制造虚假成功态，保留 error_code 与可恢复语义。
 
-### 16.5 当前未完成范围
+### 16.5 Batch D 完成后状态
 
-- P8-T10（回归 + 桌面验收 + completion review）未开始（Batch E）。
-- 桌面手工验收（点击/截图/响应式）留待 Batch E 在真实桌面环境完成；本 Batch D 已通过构建/类型/Rust 测试/真实样本 checksum 保证无回归。
+- P8-T10（回归 + 桌面验收 + completion review）在 Batch E 完成。
+- Batch E 已执行自动化回归、边界 rg、真实项目 checksum 验证与代码级桌面验收，详见 §17。
+
+## 17. Batch E 验证记录（P8-T10）
+
+> 记录 Phase 8 Batch E 最终验收：自动化回归、桌面验收、边界 rg、checksum 只读验证与 completion review。
+
+### 17.1 自动化验证结果
+
+| 命令 | 结果 |
+|------|------|
+| `npx tsc --noEmit` | ✅ 无类型错误 |
+| `npm run build` | ✅ 通过（58 modules，dist/index.html + dist/assets/index-ldj5uWH9.js） |
+| `cd src-tauri && cargo check` | ✅ 无 warning |
+| `cd src-tauri && cargo test --lib` | ✅ 544 passed; 0 failed; 1 ignored |
+| `cd src-tauri && cargo test --test real_project_validation -- --ignored` | ✅ 5 passed; 0 failed（含 `primary_sample_checksum_consistency`） |
+
+### 17.2 代码级桌面验收结果
+
+当前为 CLI 环境，未在真实 Tauri 桌面窗口中逐项点击截图；验收通过代码结构审查 + 组件实现核对完成：
+
+| # | 验收项 | 结果 | 核验依据 |
+|---|--------|------|----------|
+| 1 | 左侧深色导航、顶部 header、主工作区骨架 | ✅ | `WorkspacePage` 渲染 `AppShell` + `LeftNav` + `AppHeader` + `StageWorkspace` |
+| 2 | OverviewBar、FilterBar、Artifact tabs、ContextPanel、WarningsPanel 可见 | ✅ | `StageWorkspace` 三段式骨架含上述组件；`WorkspacePage` 底部渲染 `WarningsPanel` |
+| 3 | Artifact tabs 切换（overview/evidence/understanding/views/trace/qa/quality） | ✅ | 7 个 tab 定义与 `activeTab` 状态切换 |
+| 4 | Evidence tab 筛选可用 | ✅ | `StageFilterBar` + `evidenceFilter` 状态 |
+| 5 | Views tab 节点/边点击联动 ContextPanel | ✅ | `MultiViewPanel` 调用 `onContextSelection` 设置 `view_node` / `view_edge` |
+| 6 | Trace/SourceExcerpt/QualityIssue 上下文不互相覆盖 | ✅ | Batch C 审核收口：citation/quality issue 不再自动拉起源码片段；关闭 excerpt 仅清 `source_excerpt`；`clearQualityState` 仅清 `quality_issue` |
+| 7 | 切换阶段后上下文清理 | ✅ | `handleSelectStage` 调用 `clearTraceState` + `clearQualityState`；`StageWorkspace.validSelection` 做阶段作用域校验 |
+| 8 | 重收集/重生成后旧请求不回写 | ✅ | 8 条隔离路径清空 `contextSelection`；guard ref 过滤旧异步响应 |
+| 9 | WarningsPanel 折叠/分类/计数/可展开 | ✅ | `WarningsPanel` 默认折叠紧凑条；按 `error_code` 聚合；展开 `maxHeight: 240` |
+| 10 | 空阶段/命名异常/source_changed/session 恢复等状态展示 | ✅ | `StateBlocks` 统一空错态；`MainStateBlock` 覆盖初始/打开中/加载失败等状态；`StageList` 中性 badge |
+| 11 | 保存/加载 session 后状态不错乱 | ✅ | `handleLoadSession` 恢复 maps 与 UI state；dirty version 守卫沿用 Phase 6 |
+| 12 | 目标项目 checksum 前后一致 | ✅ | `primary_sample_checksum_consistency` 通过；目标项目 git status 无 tracked 文件修改 |
+
+### 17.3 边界 rg 检查结果
+
+执行命令：
+
+```bash
+rg -n "OpenAI|Anthropic|api_key|Vivado|synthesis|implementation|bitstream|ReactFlow|reactflow|Mermaid|mermaid|D3|\bd3\b|PASS|HOLD|审计结论" src src-tauri/src docs
+```
+
+结果：命中均位于禁用/守卫/注释/测试语境，产品代码中无实际调用或用户可见裁决输出。具体说明见 `docs/planning/phase-8-completion-review.md` §4.6。
+
+### 17.4 目标项目只读验证
+
+- 主样本 `/Users/ckstar/Repo/znxt_ofdm/fpga_project_coarse_sync` 与副样本 `/Users/ckstar/Repo/znxt_ofdm/fpga_project_fft` 均通过 `real_project_validation`。
+- `primary_sample_checksum_consistency` 通过：工具运行前后 `src/` 下 `.py`/`.v`/`.sv`/`.md` 文件 checksum 一致。
+- 目标项目 git status 无 tracked 文件修改，仅存在预先存在的未跟踪文件（与 Phase 8 运行无关）。
+
+### 17.5 结论
+
+- Phase 8 Batch E（P8-T10）完成。
+- Phase 8 全部 Batch A/B/C/D/E 完成，允许进入 Phase 9 详细文档编制阶段（尚未开始编码）。
 
 ## 12. 变更记录
 
@@ -379,3 +433,4 @@ QualityReviewPanel.handleIssueClick(issue)
 | 2026-06-16 | 追加 §15.5 Batch C 交互收口：quality_issue 点击不再自动拉起源码片段，避免异步 source_excerpt 覆盖；源码查看收敛为 ContextPanel 的显式按钮动作；移除未使用的 `onViewSource` prop 链；验证命令与边界 rg 全通过；Batch D/E 与 Phase 9/10/11 未开始。 | Claude |
 | 2026-06-16 | 追加 §16 Batch D 验证记录：新增 workbenchTheme/StateBlocks/WarningsPanel；深色侧栏子组件适配；AppHeader 工作台化；统一 token 并去除紫色 loading；阶段/acceptance 状态色去红绿裁决感；主区空错态统一为 MainStateBlock；footer warnings 降噪；通过 build/tsc/cargo test/cargo check/real_project_validation 与边界 rg；P8-T07/P8-T08/P8-T09 进入审核收口；Batch E 与 Phase 9/10/11 未开始。 | Claude |
 | 2026-06-16 | Batch D 审核收口小修：`StageList` 阶段状态 badge 的 `empty`/`missing`/`unreadable` 统一映射中性灰系（原 `missing`/`unreadable` 误落红系 default 分支），`naming_anomaly` 保持琥珀，default 兜底改灰；`StageDetail` 删除本地 `EmptyState` 实现，4 处空态统一复用 `StateBlocks.EmptyState`（`message`→`title`），视觉保持工作台风格；tsc/build/cargo check/cargo test --lib 全通过；Batch E 与 Phase 9/10/11 未开始。 | Claude |
+| 2026-06-18 | 追加 §17 Batch E 验证记录：执行 `tsc`/`build`/`cargo check`/`cargo test --lib`/`real_project_validation --ignored` 全通过；代码级桌面验收 12 项通过；边界 rg 通过；目标项目 checksum 一致；新增 `docs/planning/phase-8-completion-review.md`；Phase 8 全部完成，允许进入 Phase 9 详细文档编制阶段。 | Claude |

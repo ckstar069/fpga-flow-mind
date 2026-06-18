@@ -34,9 +34,9 @@ updated: 2026-06-16
 | Phase 5 | 证据回链与 grounded Q&A | 支持节点点击追溯证据、用户追问 |
 | Phase 6 | 持久化、回放与 MVP 验收 | 产物可持久化加载，完成 MVP 闭环验收 |
 
-### Post-MVP 阶段（Phase 7 已完成；Phase 8 Batch A/B/C/D 已实现/进入审核收口；Phase 9~11 overview 仍为 draft）
+### Post-MVP 阶段（Phase 7 已完成；**Phase 8 已完成**，completion review active；Phase 9~11 overview 仍为 draft）
 
-> MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP，不等于产品可用性完成。Post-MVP 总体路线图见 [`post-mvp-roadmap.md`](post-mvp-roadmap.md)。**Phase 7 详细文档（requirements/design/ui-ux/testing/implementation-plan）已全部 active，Phase 7 全部完成（Batch A/B/C/D，completion review active）**。Phase 8 详细文档（requirements/design/ui-ux/testing/implementation-plan）**已全部 active**；**Phase 8 Batch A（P8-T01~P8-T02）、Batch B（P8-T03~P8-T04）、Batch C（P8-T05~P8-T06）与 Batch D（P8-T07~P8-T09）已实现/进入审核收口；Batch E 与 Phase 9/10/11 均未开始。Phase 9~11 overview 仍为 `draft`**。
+> MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP，不等于产品可用性完成。Post-MVP 总体路线图见 [`post-mvp-roadmap.md`](post-mvp-roadmap.md)。**Phase 7 详细文档（requirements/design/ui-ux/testing/implementation-plan）已全部 active，Phase 7 全部完成（Batch A/B/C/D，completion review active）**。Phase 8 详细文档（requirements/design/ui-ux/testing/implementation-plan）**已全部 active**；**Phase 8 已完成（Batch A/B/C/D/E 全部完成，[`completion review`](phase-8-completion-review.md) active），允许进入 Phase 9 详细文档编制阶段**。Phase 9~11 overview 仍为 `draft`。
 
 | 阶段 | 名称 | 核心目标 | overview 文档 |
 |------|------|----------|---------------|
@@ -112,7 +112,8 @@ updated: YYYY-MM-DD
 | [`phase-7-implementation-plan.md`](phase-7-implementation-plan.md) | `active` | Phase 7 编码实施计划：P7-T01~P7-T10 任务拆解、5 个 Batch（A~E）划分与允许/禁止边界、依赖关系、进入/退出条件、安全边界。**Phase 7 Batch A/B/C/D 全部完成** | Phase 7 编码实施依据（active） |
 | [`phase-7-completion-review.md`](phase-7-completion-review.md) | `active` | Phase 7 收尾验收与完成审查：P7-T01~P7-T10 完成状态、真实项目验收（主/副样本）、前后对比、安全边界、**允许进入 Phase 8 详细文档编制** | Phase 7 完成后必读 |
 | [`phase-8-overview-product-ui-workbench.md`](phase-8-overview-product-ui-workbench.md) | `draft` | Phase 8 overview：产品级 UI/UX 工作台重构 | Phase 8 详细文档编制前必读 |
-| [`phase-8-implementation-plan.md`](phase-8-implementation-plan.md) | `active` | Phase 8 编码实施计划：P8-T01~P8-T10 任务拆解、5 个 Batch（A~E）划分、进入/退出条件、安全边界。**Phase 8 详细文档已 active，Phase 8 Batch A（P8-T01~P8-T02）、Batch B（P8-T03~P8-T04）、Batch C（P8-T05~P8-T06）与 Batch D（P8-T07~P8-T09）已实现/进入审核收口，Batch E 未开始** | Phase 8 编码实施依据（active；Batch A/B/C/D 入口） |
+| [`phase-8-implementation-plan.md`](phase-8-implementation-plan.md) | `active` | Phase 8 编码实施计划：P8-T01~P8-T10 任务拆解、5 个 Batch（A~E）划分、进入/退出条件、安全边界。**Phase 8 已完成（Batch A/B/C/D/E 全部完成，completion review active）** | Phase 8 编码实施依据（active） |
+| [`phase-8-completion-review.md`](phase-8-completion-review.md) | `active` | Phase 8 完成审查：P8-T01~P8-T10 完成状态、Batch A/B/C/D/E 状态、自动化回归结果、桌面验收结果、checksum 只读验证、允许进入 Phase 9 详细文档编制 | Phase 8 完成后必读 |
 | [`phase-9-overview-real-llm-grounding.md`](phase-9-overview-real-llm-grounding.md) | `draft` | Phase 9 overview：真实 LLM Provider 与 grounding 生产化 | Phase 9 详细文档编制前必读 |
 | [`phase-10-overview-cross-stage-python-rtl.md`](phase-10-overview-cross-stage-python-rtl.md) | `draft` | Phase 10 overview：跨阶段理解与 Python-to-RTL 映射 | Phase 10 详细文档编制前必读 |
 | [`phase-11-overview-semantic-memory-and-integration.md`](phase-11-overview-semantic-memory-and-integration.md) | `draft` | Phase 11 overview：多阶段语义记忆、测试覆盖图与 agent-scope 联动 | Phase 11 详细文档编制前必读 |
@@ -121,4 +122,4 @@ updated: YYYY-MM-DD
 >
 > 当前 active 文档：`phase-6-persistence-and-mvp-requirements.md`、`phase-6-persistence-model.md`、`phase-6-persistence-and-replay-design.md`、`phase-6-session-and-mvp-view.md`、`phase-6-mvp-validation.md`、`phase-6-implementation-plan.md`、`phase-6-completion-review.md`、`mvp-release-notes.md`，以及 Phase 7 详细文档（requirements/design/ui-ux/testing/implementation-plan，均 active）。
 >
-> **Post-MVP 阶段状态**：Phase 7 详细文档（requirements/design/ui-ux/testing/implementation-plan）**已全部审核转 `active`**，**Phase 7 全部完成（Batch A/B/C/D，[`completion review`](phase-7-completion-review.md) active）**。Phase 8 详细文档（requirements/design/ui-ux/testing/implementation-plan）**已全部 active**；**Phase 8 Batch A（P8-T01~P8-T02）、Batch B（P8-T03~P8-T04）、Batch C（P8-T05~P8-T06）与 Batch D（P8-T07~P8-T09）已实现/进入审核收口；Batch E 与 Phase 9/10/11 均未开始。Phase 9~11 overview 仍为 `draft`**。
+> **Post-MVP 阶段状态**：Phase 7 详细文档（requirements/design/ui-ux/testing/implementation-plan）**已全部审核转 `active`**，**Phase 7 全部完成（Batch A/B/C/D，[`completion review`](phase-7-completion-review.md) active）**。Phase 8 详细文档（requirements/design/ui-ux/testing/implementation-plan）**已全部 active**；**Phase 8 已完成（Batch A/B/C/D/E 全部完成，[`completion review`](phase-8-completion-review.md) active），允许进入 Phase 9 详细文档编制阶段**。Phase 9~11 overview 仍为 `draft`。
