@@ -161,4 +161,5 @@ Phase 9 **不做**：
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
-| 2026-06-18 | 初始 draft：Phase 9 真实 LLM 与 grounding 需求，覆盖可配置 Provider、显式配置、凭据安全、受控上下文、grounding/citation、unknown 行为、降级、可审计、heuristic 辅助、安全边界、非目标。`status: draft`，Phase 9 编码尚未开始，未接入真实 LLM。 | Claude |
+| 2026-06-18 | 初始 draft：Phase 9 真实 LLM 与 grounding 需求，覆盖可配置 Provider、显式配置、凭据安全、受控上下文、grounding/citation、unknown 行为、降级、可审计、heuristic 辅助、安全边界、非目标。`status: draft`，Phase 9 编码尚未开始，未接入真实 LLM。 |
+| 2026-06-18 | 审核通过，`status` 从 draft 转 active，作为 Phase 9 编码依据；Phase 9 Batch A 编码已完成（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试），未接入真实 LLM，未发起真实网络调用；Batch B/C/D/E 尚未开始。 | Claude |

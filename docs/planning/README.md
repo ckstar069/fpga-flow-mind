@@ -34,7 +34,7 @@ updated: 2026-06-16
 | Phase 5 | 证据回链与 grounded Q&A | 支持节点点击追溯证据、用户追问 |
 | Phase 6 | 持久化、回放与 MVP 验收 | 产物可持久化加载，完成 MVP 闭环验收 |
 
-### Post-MVP 阶段（Phase 7 已完成；**Phase 8 已完成**，completion review active；**Phase 9 详细文档已审核通过并转 `active`；当前允许进入 Phase 9 Batch A（P9-T01~P9-T02）编码；Phase 9 编码尚未开始，真实 LLM 尚未接入；Batch B/C/D/E 尚未开始**；Phase 9~11 overview 仍为 `draft`）
+### Post-MVP 阶段（Phase 7 已完成；**Phase 8 已完成**，completion review active；**Phase 9 详细文档已审核通过并转 `active`；Phase 9 Batch A 编码已完成（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试），未接入真实 LLM，未发起真实网络调用；Batch B/C/D/E 尚未开始**；Phase 9~11 overview 仍为 `draft`）
 
 > MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP，不等于产品可用性完成。Post-MVP 总体路线图见 [`post-mvp-roadmap.md`](post-mvp-roadmap.md)。**Phase 7 详细文档（requirements/design/ui-ux/testing/implementation-plan）已全部 active，Phase 7 全部完成（Batch A/B/C/D，completion review active）**。Phase 8 详细文档（requirements/design/ui-ux/testing/implementation-plan）**已全部 active**；**Phase 8 已完成（Batch A/B/C/D/E 全部完成，真实 GUI 桌面验收通过，[`completion review`](phase-8-completion-review.md) active）**。**Phase 9 详细文档（requirements/design×2/ui-ux/testing/implementation-plan + review-gap-report）已审核通过并转 `active`；Phase 9 Batch A 编码已完成（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试），未接入真实 LLM，未发起真实网络调用；Batch B/C/D/E 尚未开始**。Phase 9~11 overview 仍为 `draft`。
 

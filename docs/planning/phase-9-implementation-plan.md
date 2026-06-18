@@ -22,15 +22,15 @@ updated: 2026-06-18
 |------|----------|
 | Phase 8 完成审查 active | ✅（Phase 8 已完成） |
 | Phase 9 overview 已编制 | ✅ `phase-9-overview-real-llm-grounding.md`（draft） |
-| Phase 9 需求文档 active | ⏳ `phase-9-real-llm-grounding-requirements.md`（draft，待审核） |
-| Phase 9 架构设计 active | ⏳ `phase-9-llm-provider-architecture.md`（draft，待审核） |
-| Phase 9 grounding 设计 active | ⏳ `phase-9-grounding-and-validation-design.md`（draft，待审核） |
-| Phase 9 UI/UX 设计 active | ⏳ `phase-9-llm-configuration-and-grounded-qa-view.md`（draft，待审核） |
-| Phase 9 验证文档 active | ⏳ `phase-9-real-llm-grounding-validation.md`（draft，待审核） |
-| Phase 9 实施计划 active | ⏳ 本文档（draft，待审核） |
-| **以上 Phase 9 详细文档全部转 active** | ⏳ 待审核通过 |
+| Phase 9 需求文档 active | ✅ `phase-9-real-llm-grounding-requirements.md`（active） |
+| Phase 9 架构设计 active | ✅ `phase-9-llm-provider-architecture.md`（active） |
+| Phase 9 grounding 设计 active | ✅ `phase-9-grounding-and-validation-design.md`（active） |
+| Phase 9 UI/UX 设计 active | ✅ `phase-9-llm-configuration-and-grounded-qa-view.md`（active） |
+| Phase 9 验证文档 active | ✅ `phase-9-real-llm-grounding-validation.md`（active） |
+| Phase 9 实施计划 active | ✅ 本文档（active） |
+| **以上 Phase 9 详细文档全部转 active** | ✅ 已审核通过 |
 
-> 纪律：Phase 9 详细文档全部审核转 `active` 后，方允许进入 Batch A 编码。审核前不得编写 Phase 9 产品代码。
+> 纪律：Phase 9 详细文档全部审核转 `active` 后，方允许进入 Batch A 编码。当前该前置已满足；Batch A 编码已完成，未接入真实 LLM，未发起真实网络调用。
 
 ## 2. 任务拆分
 
@@ -251,4 +251,5 @@ P9-T01 (Provider/config 模型)
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
-| 2026-06-18 | 初始 draft：Phase 9 编码实施计划，Batch A~E（P9-T01~P9-T10），含允许/禁止范围、输入输出、验收、必跑测试、真实网络调用开关、退出条件；明确 6 份详细文档转 active 前不得编码。`status: draft`，Phase 9 编码尚未开始，未接入真实 LLM。 | Claude |
+| 2026-06-18 | 初始 draft：Phase 9 编码实施计划，Batch A~E（P9-T01~P9-T10），含允许/禁止范围、输入输出、验收、必跑测试、真实网络调用开关、退出条件；明确 6 份详细文档转 active 前不得编码。`status: draft`，Phase 9 编码尚未开始，未接入真实 LLM。 |
+| 2026-06-18 | 审核通过，`status` 从 draft 转 active，作为 Phase 9 编码依据；Phase 9 Batch A 编码已完成（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试），未接入真实 LLM，未发起真实网络调用；Batch B/C/D/E 尚未开始。 | Claude |
