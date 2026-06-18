@@ -105,12 +105,67 @@ pub fn trace_ref_ok(
     ok
 }
 
-/// 检测 summary 中是否包含噪声标记（TODO / FIXME / XXX / HACK）。
+/// 低价值 Python 符号集合：typing/annotation、decorator/meta、常见模块别名、
+/// 配置导入、通用数据词（在 import/return-type 上下文中）。
+const PYTHON_TYPING_SYMBOLS: &[&str] = &[
+    "annotations", "optional", "list", "dict", "tuple", "union", "any", "callable",
+    "typevar", "generic", "protocol", "final", "literal", "classvar", "self",
+];
+const PYTHON_DECORATOR_SYMBOLS: &[&str] = &[
+    "dataclass", "abstractmethod", "property", "staticmethod", "classmethod", "overload",
+];
+const PYTHON_MODULE_ALIASES: &[&str] = &["np", "numpy", "pd", "pandas"];
+const PYTHON_CONFIG_SYMBOLS: &[&str] = &["params", "config", "parameters", "settings"];
+const PYTHON_GENERIC_DATA_WORDS: &[&str] = &["data", "data_width", "width", "size", "value", "result"];
+
+/// 判断一个 Python 符号是否为低价值噪声（typing/decorator/import 上下文）。
 ///
-/// 大小写不敏感匹配。
-pub fn is_noisy(summary: &str) -> bool {
+/// 注意：仅跳过 `__` dunder，不跳过单下划线业务函数（如 `_stage_correlation`）。
+pub fn is_low_value_python_symbol(sym: &str, summary: &str) -> bool {
+    if sym.starts_with("__") && sym.ends_with("__") {
+        return true;
+    }
+    let sym_lower = sym.to_lowercase();
+    let sum_lower = summary.to_lowercase();
+    if PYTHON_TYPING_SYMBOLS.contains(&sym_lower.as_str())
+        || PYTHON_DECORATOR_SYMBOLS.contains(&sym_lower.as_str())
+        || PYTHON_MODULE_ALIASES.contains(&sym_lower.as_str())
+        || PYTHON_CONFIG_SYMBOLS.contains(&sym_lower.as_str())
+    {
+        return true;
+    }
+    // 通用数据词仅在 import / return-type / typing 上下文中视为噪声
+    let is_import_or_typing_context = sum_lower.starts_with("import")
+        || sum_lower.starts_with("from")
+        || sum_lower.contains("->")
+        || sum_lower.contains("typing");
+    if is_import_or_typing_context && PYTHON_GENERIC_DATA_WORDS.contains(&sym_lower.as_str()) {
+        return true;
+    }
+    false
+}
+
+/// 检测 summary / symbol 中是否包含噪声标记。
+///
+/// - TODO / FIXME / XXX / HACK（大小写不敏感）
+/// - 低价值 Python import / typing / decorator 符号证据
+pub fn is_noisy(summary: &str, symbol: Option<&str>) -> bool {
     let upper = summary.to_uppercase();
-    upper.contains("TODO") || upper.contains("FIXME") || upper.contains("XXX") || upper.contains("HACK")
+    if upper.contains("TODO") || upper.contains("FIXME") || upper.contains("XXX") || upper.contains("HACK") {
+        return true;
+    }
+    if let Some(sym) = symbol {
+        let sum_lower = summary.to_lowercase();
+        if is_low_value_python_symbol(sym, &sum_lower)
+            && (sum_lower.starts_with("import")
+                || sum_lower.starts_with("from")
+                || sum_lower.contains("->")
+                || sum_lower.contains("typing"))
+        {
+            return true;
+        }
+    }
+    false
 }
 
 /// 检查 `EvidenceItem` 的 `source_kind` 与 `language` 标注是否自洽。
@@ -157,10 +212,29 @@ mod tests {
 
     #[test]
     fn is_noisy_detects_markers() {
-        assert!(is_noisy("TODO: fix this"));
-        assert!(is_noisy("FIXME urgent"));
-        assert!(is_noisy("xxx hack"));
-        assert!(!is_noisy("normal summary"));
+        assert!(is_noisy("TODO: fix this", None));
+        assert!(is_noisy("FIXME urgent", None));
+        assert!(is_noisy("xxx hack", None));
+        assert!(!is_noisy("normal summary", None));
+    }
+
+    #[test]
+    fn is_noisy_flags_python_import_noise() {
+        assert!(is_noisy("from __future__ import annotations", Some("annotations")));
+        assert!(is_noisy("import numpy as np", Some("np")));
+        assert!(is_noisy("from config.parameters import PARAMS", Some("PARAMS")));
+        assert!(is_noisy("def process(self) -> Optional[dict]", Some("Optional")));
+        assert!(!is_noisy("def coarse_sync(rx_signal):", Some("coarse_sync")));
+    }
+
+    #[test]
+    fn is_low_value_python_symbol_filters_noise() {
+        assert!(is_low_value_python_symbol("annotations", "from __future__ import annotations"));
+        assert!(is_low_value_python_symbol("dataclass", "@dataclass"));
+        assert!(is_low_value_python_symbol("np", "import numpy as np"));
+        assert!(is_low_value_python_symbol("PARAMS", "from config.parameters import PARAMS"));
+        assert!(!is_low_value_python_symbol("coarse_sync", "def coarse_sync(rx_signal):"));
+        assert!(!is_low_value_python_symbol("_stage_correlation", "def _stage_correlation(self):"));
     }
 
     #[test]
