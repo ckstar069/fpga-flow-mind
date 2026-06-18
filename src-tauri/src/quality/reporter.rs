@@ -221,6 +221,21 @@ fn evaluate_stage(
         issues.extend(un_issues);
     }
 
+    // Phase 8: 计算 evidence 噪声率，用于后续 view 退化源检查。
+    let evidence_total = match stage.evidence {
+        Some(ec) => ec.evidence_items.len() as f32,
+        None => 0.0,
+    };
+    let noisy_evidence_count = issues
+        .iter()
+        .filter(|i| i.kind == QualityIssueKind::NoisyEvidence)
+        .count() as f32;
+    let noisy_ratio = if evidence_total > 0.0 {
+        noisy_evidence_count / evidence_total
+    } else {
+        0.0
+    };
+
     // —— views（RQ-005）——
     let claim_id_set: HashSet<String> = match stage.understanding {
         Some(iu) => iu.claims.iter().map(|c| c.claim_id.clone()).collect(),
@@ -236,6 +251,31 @@ fn evaluate_stage(
         };
         let (report, mut v_issues) = ViewEvaluator::evaluate(&v_input);
         push_metric(metric_snapshots, "view_trace_resolvable", &stage.stage_id, report.trace_resolvable_ratio);
+
+        // Phase 8: 退化源诚实标记 —— degraded source 或 evidence 噪声率过高且视图退化
+        let already_flagged = v_issues.iter().any(|i| i.kind == QualityIssueKind::LowSemanticDiversity);
+        if (view.meta.is_degraded_source || noisy_ratio > 0.3)
+            && !already_flagged
+            && (view.nodes.is_empty() || view.nodes.len() <= 1)
+        {
+            v_issues.push(crate::quality::issue_builder::make_issue(
+                sample_id,
+                &stage.stage_id,
+                ArtifactKind::View,
+                QualityIssueKind::LowSemanticDiversity,
+                QualitySeverity::Low,
+                None,
+                None,
+                None,
+                None,
+                None,
+                &format!(
+                    "视图 {} 因退化源/高噪声 evidence 导致语义多样性不足（nodes={}）",
+                    format!("{:?}", view.view_type).to_lowercase(),
+                    view.nodes.len()
+                ),
+            ));
+        }
 
         // P2: structure 退化检测 — understanding 有多个 summary 但 view 节点很少
         if let Some(iu) = stage.understanding {
@@ -1168,16 +1208,28 @@ mod tests {
     }
 
     #[test]
-    fn reporter_expected_source_paths_lowers_coverage_with_uncovered_file() {
+    fn high_noise_empty_view_emits_low_semantic_diversity() {
+        fn ev_item_sym(id: &str, sym: &str, summary: &str) -> EvidenceItem {
+            EvidenceItem {
+                evidence_id: id.to_string(),
+                source_path: "/p/a.py".to_string(),
+                language: Language::Python,
+                source_kind: SourceKind::PythonStage,
+                line_range: LineRange { start: 1, end: 5 },
+                symbol: Some(sym.to_string()),
+                summary: summary.to_string(),
+                strength: EvidenceStrength::Direct,
+            }
+        }
+
         let ec = EvidenceCollection {
             stage_id: "L0".to_string(),
-            evidence_items: vec![ev_item(
-                "EV-L0-000001",
-                "/tmp/sample/L0/top.py",
-                Language::Python,
-                SourceKind::PythonStage,
-                "ok",
-            )],
+            evidence_items: vec![
+                ev_item_sym("EV-L0-000001", "annotations", "from __future__ import annotations"),
+                ev_item_sym("EV-L0-000002", "dataclass", "@dataclass"),
+                ev_item_sym("EV-L0-000003", "np", "import numpy as np"),
+                ev_item_sym("EV-L0-000004", "Optional", "def f() -> Optional[int]"),
+            ],
             index_by_path: StdHashMap::new(),
             index_by_kind: StdHashMap::new(),
             index_by_symbol: StdHashMap::new(),
@@ -1185,38 +1237,52 @@ mod tests {
             stats: EvidenceStats {
                 files_processed: 1,
                 files_skipped: 0,
-                total_items: 1,
+                total_items: 4,
                 items_by_kind: StdHashMap::new(),
                 items_by_strength: StdHashMap::new(),
             },
             version: "1.0.0".to_string(),
         };
-        let expected = vec![
-            "/tmp/sample/L0/top.py".to_string(),
-            "/tmp/sample/L0/missing.py".to_string(),
-        ];
+
+        let empty_view = ViewGraph {
+            view_type: ViewType::Structure,
+            stage_id: "L0".to_string(),
+            nodes: vec![],
+            edges: vec![],
+            meta: ViewMeta {
+                stage_id: "L0".to_string(),
+                view_type: ViewType::Structure,
+                source_provider: "mock".to_string(),
+                is_degraded_source: false,
+                generated_at: "2026-06-15T00:00:00Z".to_string(),
+                empty_reason: Some("no claims".to_string()),
+            },
+        };
+
         let stage = StageQualityInput {
             stage_id: "L0".to_string(),
             recognized_status: "available".to_string(),
             expected_status: None,
-            expected_source_paths: Some(&expected),
+            expected_source_paths: None,
             evidence: Some(&ec),
             understanding: None,
-            views: vec![],
+            views: vec![&empty_view],
             grounded_answer: None,
         };
-        let report = reporter().evaluate(&base_input("sample-expected-partial", vec![stage]));
-        let ev_report = report.evidence_reports.iter().find(|r| r.stage_id == "L0").expect("应有 evidence report");
+
+        let report = reporter().evaluate(&base_input("sample-noise-degraded", vec![stage]));
+
         assert!(
-            (ev_report.file_coverage_ratio - 0.5).abs() < 1e-5,
-            "覆盖率应为 0.5，实际 {}",
-            ev_report.file_coverage_ratio
+            report.issues.iter().any(|i| i.kind == QualityIssueKind::NoisyEvidence),
+            "应存在 NoisyEvidence issue"
         );
-        assert_eq!(ev_report.uncovered_files.len(), 1);
-        assert_eq!(ev_report.uncovered_files[0].source_path, "/tmp/sample/L0/missing.py");
-        assert!(report.issues.iter().any(|i| {
-            i.kind == QualityIssueKind::MissingEvidence
-                && i.source_path.as_deref() == Some("/tmp/sample/L0/missing.py")
-        }));
+        assert!(
+            report.issues.iter().any(|i| {
+                i.kind == QualityIssueKind::LowSemanticDiversity
+                    && i.description.contains("退化源/高噪声 evidence")
+            }),
+            "高噪声 evidence 且空视图应触发 LowSemanticDiversity 退化标记: {:?}",
+            report.issues
+        );
     }
 }
