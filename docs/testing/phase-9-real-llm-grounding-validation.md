@@ -1,11 +1,11 @@
 # Phase 9 真实 LLM 与 grounding 验证设计
 
 ---
-status: draft
+status: active
 updated: 2026-06-18
 ---
 
-> 本文档是 Phase 9 的 **验证与验收设计草案**。`status: draft`，尚未审核生效。Phase 9 **编码尚未开始**，**未接入任何真实 LLM**。需与需求 / 架构 / grounding 设计 / UI/UX / 实施计划一同审核转 `active` 后方允许编码。
+> 本文档是 Phase 9 的 **验证与验收设计**。`status: active`，已审核通过。Phase 9 **编码尚未开始**，**未接入任何真实 LLM**。当前允许进入 **Phase 9 Batch A（P9-T01~P9-T02）**编码；Batch A 仅允许 Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试，不得真实联网调用。Batch B/C/D/E 尚未开始。
 >
 > 核心原则：**默认测试路径不发真实网络请求**；真实 LLM 仅作为 `#[ignore]` 可选 smoke test，需显式 env/config 才运行，不进 CI 默认路径。
 

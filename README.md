@@ -61,7 +61,7 @@ MVP 是**技术闭环** MVP，不等于产品可用性完成。后续围绕真�
 
 - 总体路线图：[`docs/planning/post-mvp-roadmap.md`](docs/planning/post-mvp-roadmap.md)
 
-**当前状态**：MVP / Phase 0–6 已完成并 tag `v0.1.0-mvp`。Phase 7 已完成，[`completion review`](docs/planning/phase-7-completion-review.md) active。**Phase 8 已完成**，真实 GUI 桌面验收通过，[`completion review`](docs/planning/phase-8-completion-review.md) active。**Phase 9 详细文档已编制（requirements/design×2/ui-ux/testing/implementation-plan，全部 `draft` 待审核）**；Phase 9 编码尚未开始，未接入真实 LLM；审核转 `active` 后方允许进入 Phase 9 Batch A 编码。Phase 9~11 overview 仍为 `draft`。
+**当前状态**：MVP / Phase 0–6 已完成并 tag `v0.1.0-mvp`。Phase 7 已完成，[`completion review`](docs/planning/phase-7-completion-review.md) active。**Phase 8 已完成**，真实 GUI 桌面验收通过，[`completion review`](docs/planning/phase-8-completion-review.md) active。**Phase 9 详细文档已审核通过并转 `active`（requirements/design×2/ui-ux/testing/implementation-plan + review-gap-report）**；当前允许进入 **Phase 9 Batch A（P9-T01~P9-T02）**编码；Phase 9 编码尚未开始，真实 LLM 尚未接入；Batch A 仅允许 Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试，不得真实联网调用；Batch B/C/D/E 尚未开始。Phase 9~11 overview 仍为 `draft`。
 
 ## 本地运行
 

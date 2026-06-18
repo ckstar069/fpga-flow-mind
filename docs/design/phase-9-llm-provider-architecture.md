@@ -1,11 +1,11 @@
 # Phase 9 LLM Provider 架构设计
 
 ---
-status: draft
+status: active
 updated: 2026-06-18
 ---
 
-> 本文档是 Phase 9 的 **Provider 架构设计草案**。`status: draft`，尚未审核生效。Phase 9 **编码尚未开始**，**未接入任何真实 LLM**。需与需求 / grounding 设计 / UI/UX / 测试 / 实施计划一同审核转 `active` 后方允许编码。
+> 本文档是 Phase 9 的 **Provider 架构设计**。`status: active`，已审核通过。Phase 9 **编码尚未开始**，**未接入任何真实 LLM**。当前允许进入 **Phase 9 Batch A（P9-T01~P9-T02）**编码；Batch A 仅允许 Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试，不得真实联网调用。Batch B/C/D/E 尚未开始。
 >
 > 上游：[`phase-9-overview-real-llm-grounding.md`](../planning/phase-9-overview-real-llm-grounding.md)、需求 [`phase-9-real-llm-grounding-requirements.md`](../requirements/phase-9-real-llm-grounding-requirements.md)。
 

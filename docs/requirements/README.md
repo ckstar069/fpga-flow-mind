@@ -99,7 +99,7 @@ updated: YYYY-MM-DD
 | [`phase-6-persistence-and-mvp-requirements.md`](phase-6-persistence-and-mvp-requirements.md) | `active` | Phase 6 持久化、回放与 MVP 验收需求：P6-001~P6-008、session 自动保存、最近项目、变更检测、版本兼容、删除与安全边界、非目标 | Phase 6 设计和实施前必读 |
 | [`phase-7-real-project-quality-requirements.md`](phase-7-real-project-quality-requirements.md) | `active` | Phase 7 真实项目评估与 evidence/understanding 质量补强需求：RQ-001~RQ-008、真实项目样本覆盖、非目标、退出标准。**Phase 7 全部完成（completion review 已 active）** | Phase 7 设计和实施前必读（active；Phase 7 全部完成） |
 | [`phase-8-product-workbench-requirements.md`](phase-8-product-workbench-requirements.md) | `active` | Phase 8 产品级工作台需求：R8-001~R8-010、AgentScope 风格信息架构细化、异常/空状态、退出标准、非目标 | Phase 8 设计和实施前必读（active；Phase 8 已完成） |
-| [`phase-9-real-llm-grounding-requirements.md`](phase-9-real-llm-grounding-requirements.md) | `draft` | Phase 9 真实 LLM 与 grounding 需求：R9-001~R9-012、可配置 Provider（默认关闭/显式启用）、凭据安全、受控上下文、grounding/citation、unknown 行为、降级、可审计、heuristic 辅助、安全边界、非目标 | Phase 9 设计和实施前必读（**draft；Phase 9 编码尚未开始，未接入真实 LLM**） |
+| [`phase-9-real-llm-grounding-requirements.md`](phase-9-real-llm-grounding-requirements.md) | `active` | Phase 9 真实 LLM 与 grounding 需求：R9-001~R9-012、可配置 Provider（默认关闭/显式启用）、凭据安全、受控上下文、grounding/citation、unknown 行为、降级、可审计、heuristic 辅助、安全边界、非目标 | Phase 9 设计和实施前必读（**active；当前允许进入 Phase 9 Batch A（P9-T01~P9-T02）编码；Phase 9 编码尚未开始，真实 LLM 尚未接入；Batch A 仅允许 Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试，不得真实联网调用；Batch B/C/D/E 尚未开始**） |
 
 > **需求文档职责分层**：
 >

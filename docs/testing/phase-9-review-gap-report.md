@@ -1,13 +1,13 @@
 # Phase 9 详细文档正式审核记录
 
 ---
-status: draft
+status: active
 updated: 2026-06-18
 ---
 
-> 本文档是 Phase 9 6 份详细文档的**正式审核记录**。`status: draft`，与 6 份详细文档一同审核转 `active` 后方允许进入 Batch A 编码。
+> 本文档是 Phase 9 6 份详细文档的**正式审核记录**。`status: active`，与 6 份详细文档一同审核通过并转 `active`。当前允许进入 **Phase 9 Batch A（P9-T01~P9-T02）**编码；Batch A 仅允许 Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试，不得真实联网调用。Batch B/C/D/E 尚未开始。
 >
-> 审核原则：不做代码实现，不接真实 LLM，不转 active；只发现问题并修正文档。
+> 审核原则：不做代码实现，不接真实 LLM；审核期间未转 active，审核完成后统一转 active。
 
 ## 1. 审核结论总览
 

@@ -1,13 +1,13 @@
 # Phase 9 编码实施计划
 
 ---
-status: draft
+status: active
 updated: 2026-06-18
 ---
 
-> 本文档是 Phase 9（真实 LLM Provider 与 grounding 生产化）的**编码实施计划草案**。`status: draft`，尚未审核生效。Phase 9 **编码尚未开始**，**未接入任何真实 LLM**。
+> 本文档是 Phase 9（真实 LLM Provider 与 grounding 生产化）的**编码实施计划**。`status: active`，已审核通过。Phase 9 **编码尚未开始**，**未接入任何真实 LLM**。当前允许进入 **Phase 9 Batch A（P9-T01~P9-T02）**编码；Batch A 仅允许 Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试，不得真实联网调用。Batch B/C/D/E 尚未开始。
 >
-> **进入 Phase 9 编码的硬前置**：本文档与需求 / 架构 / grounding 设计 / UI/UX / 测试 5 份详细文档**全部审核通过并转 `active`** 后，方允许进入 Batch A 编码。在文档转 `active` 前，不得编写任何 Phase 9 产品代码。
+> **进入 Phase 9 编码的硬前置**：本文档与需求 / 架构 / grounding 设计 / UI/UX / 测试 5 份详细文档**全部审核通过并转 `active`** 后，方允许进入 Batch A 编码。当前该前置已满足。
 
 ## 0. 核心方向（先读）
 
