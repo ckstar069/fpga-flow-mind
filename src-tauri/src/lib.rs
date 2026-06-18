@@ -1,5 +1,6 @@
 pub mod commands;
 pub mod evidence;
+pub mod llm;
 pub mod models;
 pub mod persistence;
 pub mod quality;

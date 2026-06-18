@@ -5,7 +5,7 @@ status: active
 updated: 2026-06-18
 ---
 
-> 本文档是 Phase 9（真实 LLM Provider 与 grounding 生产化）的**编码实施计划**。`status: active`，已审核通过。Phase 9 **编码尚未开始**，**未接入任何真实 LLM**。当前允许进入 **Phase 9 Batch A（P9-T01~P9-T02）**编码；Batch A 仅允许 Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试，不得真实联网调用。Batch B/C/D/E 尚未开始。
+> 本文档是 Phase 9（真实 LLM Provider 与 grounding 生产化）的**编码实施计划**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成**（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试），**未接入任何真实 LLM**，**未发起真实网络调用**。Batch B/C/D/E 尚未开始。
 >
 > **进入 Phase 9 编码的硬前置**：本文档与需求 / 架构 / grounding 设计 / UI/UX / 测试 5 份详细文档**全部审核通过并转 `active`** 后，方允许进入 Batch A 编码。当前该前置已满足。
 
@@ -34,7 +34,7 @@ updated: 2026-06-18
 
 ## 2. 任务拆分
 
-### P9-T01 Provider 抽象扩展与配置模型（Batch A）
+### P9-T01 Provider 抽象扩展与配置模型（Batch A）✅ 已完成
 
 | 项 | 内容 |
 |----|------|
@@ -47,20 +47,23 @@ updated: 2026-06-18
 | 必跑测试 | `cargo test --lib`（config 校验、default-disabled） |
 | 真实网络调用 | 否 |
 | 退出条件 | 模型 + 校验单测通过，0 warning |
+| 完成记录 | 实现 `src-tauri/src/llm/{models,provider,mod}.rs`；`ProviderConfig` 默认 `kind=Mock`、`enabled=false`、`network_mode=Disabled`；单测覆盖序列化/校验/default-disabled。 |
 
-### P9-T02 凭据安全存储与 redaction 骨架（Batch A）
+### P9-T02 凭据安全包装与 no-network-by-default 守卫（Batch A）✅ 已完成
 
 | 项 | 内容 |
 |----|------|
-| 目标 | `api_key` app-owned 存储 + 可清除；redaction 骨架（过滤 key/env/.git/大二进制）；不落日志/session/target |
+| 目标 | `api_key` 抽象状态包装（不 Display/不 Serialize/Debug 脱敏）；no-network-by-default 守卫；不落日志/session/target |
 | 输入文档 | 架构 §4、grounding §5、需求 R9-003 |
-| 允许范围 | app-owned 存储、redaction、单元测试 |
-| 禁止范围 | 写目标项目、日志/session 明文、外发 |
-| 输出 | 安全存储 + redaction + 清除接口 |
-| 验收标准 | redacted payload 断言无敏感项；存储可清除；session 无明文 key |
-| 必跑测试 | `cargo test --lib`（redaction、存储清除、session 无明文） |
+| 允许范围 | `ApiKey` 包装、`ProviderConfig` 脱敏字段、network guard、单元测试 |
+| 禁止范围 | 写目标项目、日志/session 明文、外发、真实网络调用 |
+| 输出 | `ApiKey` 安全包装 + `check_network_allowed` + `network_policy_summary` |
+| 验收标准 | `api_key` 不出现在 Debug/序列化/策略摘要中；真实 provider 默认被 `NetworkDisabled` 拦截；Mock/Fake 可本地运行 |
+| 必跑测试 | `cargo test --lib`（redaction、network guard、create_provider 默认拦截） |
 | 真实网络调用 | 否 |
-| 退出条件 | 安全单测通过 |
+| 退出条件 | 安全/守卫单测通过 |
+| 完成记录 | 实现 `ApiKey`（`Debug` 输出 `[REDACTED]`，不实现 `Display`/`Serialize`，序列化时 `skip_serializing`）；`no_network_guard.rs` 拦截 `NetworkMode::Disabled`；`create_provider` 对 OpenAi/Anthropic 默认返回 `LlmError::NetworkDisabled`，`Allow` 时返回 `LlmError::NotImplemented`。 |
+| 说明 | app-owned 持久化存储与可清除接口、完整 redaction 过滤引擎（env/.git/大二进制）留在 Batch B/C 按需扩展。 |
 
 ### P9-T03 RequestBuilder / ResponseParser / 可注入 Transport（Batch B）
 

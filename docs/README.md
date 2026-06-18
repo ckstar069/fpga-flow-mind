@@ -96,7 +96,7 @@ docs/
 
 ### Post-MVP 路线图 / 后续阶段规划任务
 
-> MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP，不等于产品可用性完成。下列 Post-MVP 文档中，**Phase 7 详细文档已 `active`**；**Phase 7 已全部完成（Batch A/B/C/D，[completion review](planning/phase-7-completion-review.md) active）**；Phase 7 overview 与 Phase 9~11 overview 仍为 `draft`。**Phase 8 详细文档均已 `active`；Phase 8 已完成（Batch A/B/C/D/E 全部完成，真实 GUI 桌面验收通过，[completion review](planning/phase-8-completion-review.md) active）**。**Phase 9 详细文档（requirements/design×2/ui-ux/testing/implementation-plan + review-gap-report）已审核通过并转 `active`；当前允许进入 Phase 9 Batch A（P9-T01~P9-T02）编码；Phase 9 编码尚未开始，真实 LLM 尚未接入；Batch A 仅允许 Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试，不得真实联网调用；Batch B/C/D/E 尚未开始**。Phase 9~11 overview 仍为 `draft`。
+> MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP，不等于产品可用性完成。下列 Post-MVP 文档中，**Phase 7 详细文档已 `active`**；**Phase 7 已全部完成（Batch A/B/C/D，[completion review](planning/phase-7-completion-review.md) active）**；Phase 7 overview 与 Phase 9~11 overview 仍为 `draft`。**Phase 8 详细文档均已 `active`；Phase 8 已完成（Batch A/B/C/D/E 全部完成，真实 GUI 桌面验收通过，[completion review](planning/phase-8-completion-review.md) active）**。**Phase 9 详细文档（requirements/design×2/ui-ux/testing/implementation-plan + review-gap-report）已审核通过并转 `active`；Phase 9 Batch A 编码已完成（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试），未接入真实 LLM，未发起真实网络调用；Batch B/C/D/E 尚未开始**。Phase 9~11 overview 仍为 `draft`。
 
 1. `docs/planning/post-mvp-roadmap.md`（Post-MVP 总体路线图：Phase 7~11 阶段关系、依赖顺序、进入纪律，draft）
 2. `docs/planning/phase-7-overview-real-project-quality.md`（Phase 7 overview：真实项目质量补强，draft）
@@ -116,7 +116,7 @@ docs/
      - `docs/testing/phase-8-product-workbench-validation.md`（验证与验收，active）
      - `docs/planning/phase-8-implementation-plan.md`（编码实施计划，active）
 4. `docs/planning/phase-9-overview-real-llm-grounding.md`（Phase 9 overview：真实 LLM 与 grounding 生产化，draft）
-   - Phase 9 详细文档（**均已审核通过并转 `active`**；当前允许进入 **Phase 9 Batch A（P9-T01~P9-T02）**编码；Phase 9 编码尚未开始，真实 LLM 尚未接入；Batch A 仅允许 Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试，不得真实联网调用；Batch B/C/D/E 尚未开始）：
+   - Phase 9 详细文档（**均已审核通过并转 `active`**；Phase 9 Batch A 编码已完成（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试），未接入真实 LLM，未发起真实网络调用；Batch B/C/D/E 尚未开始）：
      - `docs/requirements/phase-9-real-llm-grounding-requirements.md`（需求 R9-001~R9-012，active）
      - `docs/design/phase-9-llm-provider-architecture.md`（Provider 架构，active）
      - `docs/design/phase-9-grounding-and-validation-design.md`（grounding 与校验设计，active）

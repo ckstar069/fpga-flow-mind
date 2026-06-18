@@ -28,3 +28,8 @@ dist-ssr
 src-tauri/target
 src-tauri/gen
 dist/
+
+# Local tooling indexes
+.codegraph/
+.zcode/
+docs/superpowers/

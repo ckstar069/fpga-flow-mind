@@ -5,7 +5,7 @@ status: active
 updated: 2026-06-16
 ---
 
-> 注：本索引的 `status: active` 表示**索引文件本身**为生效文档；下表中 Phase 7 详细文档已 active，**Phase 7 已全部完成（completion review active）**；**Phase 8 已完成**，completion review active；**Phase 9 详细文档已审核通过并转 `active`（requirements/design×2/ui-ux/testing/implementation-plan + review-gap-report）；当前允许进入 Phase 9 Batch A（P9-T01~P9-T02）编码；Phase 9 编码尚未开始，真实 LLM 尚未接入；Batch A 仅允许 Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试，不得真实联网调用；Batch B/C/D/E 尚未开始**；Phase 9~11 overview 仍为 `draft`。
+> 注：本索引的 `status: active` 表示**索引文件本身**为生效文档；下表中 Phase 7 详细文档已 active，**Phase 7 已全部完成（completion review active）**；**Phase 8 已完成**，completion review active；**Phase 9 详细文档已审核通过并转 `active`（requirements/design×2/ui-ux/testing/implementation-plan + review-gap-report）；Phase 9 Batch A 编码已完成（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试），未接入真实 LLM，未发起真实网络调用；Batch B/C/D/E 尚未开始**；Phase 9~11 overview 仍为 `draft`。
 
 ## Planning 目录用途
 
@@ -36,7 +36,7 @@ updated: 2026-06-16
 
 ### Post-MVP 阶段（Phase 7 已完成；**Phase 8 已完成**，completion review active；**Phase 9 详细文档已审核通过并转 `active`；当前允许进入 Phase 9 Batch A（P9-T01~P9-T02）编码；Phase 9 编码尚未开始，真实 LLM 尚未接入；Batch B/C/D/E 尚未开始**；Phase 9~11 overview 仍为 `draft`）
 
-> MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP，不等于产品可用性完成。Post-MVP 总体路线图见 [`post-mvp-roadmap.md`](post-mvp-roadmap.md)。**Phase 7 详细文档（requirements/design/ui-ux/testing/implementation-plan）已全部 active，Phase 7 全部完成（Batch A/B/C/D，completion review active）**。Phase 8 详细文档（requirements/design/ui-ux/testing/implementation-plan）**已全部 active**；**Phase 8 已完成（Batch A/B/C/D/E 全部完成，真实 GUI 桌面验收通过，[`completion review`](phase-8-completion-review.md) active）**。**Phase 9 详细文档（requirements/design×2/ui-ux/testing/implementation-plan + review-gap-report）已审核通过并转 `active`；当前允许进入 Phase 9 Batch A（P9-T01~P9-T02）编码；Phase 9 编码尚未开始，真实 LLM 尚未接入；Batch A 仅允许 Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试，不得真实联网调用；Batch B/C/D/E 尚未开始**。Phase 9~11 overview 仍为 `draft`。
+> MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP，不等于产品可用性完成。Post-MVP 总体路线图见 [`post-mvp-roadmap.md`](post-mvp-roadmap.md)。**Phase 7 详细文档（requirements/design/ui-ux/testing/implementation-plan）已全部 active，Phase 7 全部完成（Batch A/B/C/D，completion review active）**。Phase 8 详细文档（requirements/design/ui-ux/testing/implementation-plan）**已全部 active**；**Phase 8 已完成（Batch A/B/C/D/E 全部完成，真实 GUI 桌面验收通过，[`completion review`](phase-8-completion-review.md) active）**。**Phase 9 详细文档（requirements/design×2/ui-ux/testing/implementation-plan + review-gap-report）已审核通过并转 `active`；Phase 9 Batch A 编码已完成（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试），未接入真实 LLM，未发起真实网络调用；Batch B/C/D/E 尚未开始**。Phase 9~11 overview 仍为 `draft`。
 
 | 阶段 | 名称 | 核心目标 | overview 文档 |
 |------|------|----------|---------------|
@@ -115,7 +115,7 @@ updated: YYYY-MM-DD
 | [`phase-8-implementation-plan.md`](phase-8-implementation-plan.md) | `active` | Phase 8 编码实施计划：P8-T01~P8-T10 任务拆解、5 个 Batch（A~E）划分、进入/退出条件、安全边界。**Phase 8 已完成（Batch A/B/C/D/E 全部完成，真实 GUI 桌面验收通过）** | Phase 8 编码实施依据（active） |
 | [`phase-8-completion-review.md`](phase-8-completion-review.md) | `active` | Phase 8 完成审查：P8-T01~P8-T10 全部完成、Batch A~E 完成、真实 GUI 桌面验收通过、**允许进入 Phase 9 详细文档编制** | Phase 8 完成后必读 |
 | [`phase-9-overview-real-llm-grounding.md`](phase-9-overview-real-llm-grounding.md) | `draft` | Phase 9 overview：真实 LLM Provider 与 grounding 生产化 | Phase 9 详细文档编制前必读 |
-| [`phase-9-implementation-plan.md`](phase-9-implementation-plan.md) | `active` | Phase 9 编码实施计划：P9-T01~P9-T10 任务拆解、5 个 Batch（A~E）划分、进入/退出条件、安全边界、真实网络调用开关。**Phase 9 详细文档已审核通过并转 `active`；当前允许进入 Phase 9 Batch A（P9-T01~P9-T02）编码；Phase 9 编码尚未开始，真实 LLM 尚未接入；Batch A 仅允许 Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试，不得真实联网调用；Batch B/C/D/E 尚未开始** | Phase 9 编码实施依据（active） |
+| [`phase-9-implementation-plan.md`](phase-9-implementation-plan.md) | `active` | Phase 9 编码实施计划：P9-T01~P9-T10 任务拆解、5 个 Batch（A~E）划分、进入/退出条件、安全边界、真实网络调用开关。**Phase 9 详细文档已审核通过并转 `active`；Phase 9 Batch A 编码已完成（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试），未接入真实 LLM，未发起真实网络调用；Batch B/C/D/E 尚未开始** | Phase 9 编码实施依据（active） |
 | [`phase-10-overview-cross-stage-python-rtl.md`](phase-10-overview-cross-stage-python-rtl.md) | `draft` | Phase 10 overview：跨阶段理解与 Python-to-RTL 映射 | Phase 10 详细文档编制前必读 |
 | [`phase-11-overview-semantic-memory-and-integration.md`](phase-11-overview-semantic-memory-and-integration.md) | `draft` | Phase 11 overview：多阶段语义记忆、测试覆盖图与 agent-scope 联动 | Phase 11 详细文档编制前必读 |
 
@@ -123,4 +123,4 @@ updated: YYYY-MM-DD
 >
 > 当前 active 文档：`phase-6-persistence-and-mvp-requirements.md`、`phase-6-persistence-model.md`、`phase-6-persistence-and-replay-design.md`、`phase-6-session-and-mvp-view.md`、`phase-6-mvp-validation.md`、`phase-6-implementation-plan.md`、`phase-6-completion-review.md`、`mvp-release-notes.md`，以及 Phase 7 详细文档（requirements/design/ui-ux/testing/implementation-plan，均 active）。
 >
-> **Post-MVP 阶段状态**：Phase 7 详细文档（requirements/design/ui-ux/testing/implementation-plan）**已全部审核转 `active`**，**Phase 7 全部完成（Batch A/B/C/D，[`completion review`](phase-7-completion-review.md) active）**。Phase 8 详细文档（requirements/design/ui-ux/testing/implementation-plan）**已全部 active**；**Phase 8 已完成（Batch A/B/C/D/E 全部完成，真实 GUI 桌面验收通过，[`completion review`](phase-8-completion-review.md) active）**。**Phase 9 详细文档（requirements/design×2/ui-ux/testing/implementation-plan + review-gap-report）已审核通过并转 `active`；当前允许进入 Phase 9 Batch A（P9-T01~P9-T02）编码；Phase 9 编码尚未开始，真实 LLM 尚未接入；Batch A 仅允许 Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试，不得真实联网调用；Batch B/C/D/E 尚未开始**。Phase 9~11 overview 仍为 `draft`。
+> **Post-MVP 阶段状态**：Phase 7 详细文档（requirements/design/ui-ux/testing/implementation-plan）**已全部审核转 `active`**，**Phase 7 全部完成（Batch A/B/C/D，[`completion review`](phase-7-completion-review.md) active）**。Phase 8 详细文档（requirements/design/ui-ux/testing/implementation-plan）**已全部 active**；**Phase 8 已完成（Batch A/B/C/D/E 全部完成，真实 GUI 桌面验收通过，[`completion review`](phase-8-completion-review.md) active）**。**Phase 9 详细文档（requirements/design×2/ui-ux/testing/implementation-plan + review-gap-report）已审核通过并转 `active`；Phase 9 Batch A 编码已完成（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试），未接入真实 LLM，未发起真实网络调用；Batch B/C/D/E 尚未开始**。Phase 9~11 overview 仍为 `draft`。
