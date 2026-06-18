@@ -13,7 +13,7 @@
 
 use std::collections::HashSet;
 
-use crate::quality::issue_builder::{make_issue, trace_ref_ok};
+use crate::quality::issue_builder::{is_low_value_python_symbol, make_issue, trace_ref_ok};
 use crate::quality::models::{
     ArtifactKind, QualityIssue, QualityIssueKind, QualitySeverity, ViewQualityReport,
 };
@@ -206,6 +206,40 @@ impl ViewEvaluator {
                     &format!(
                         "视图 {} 节点标签高度重复（共 {} 节点，唯一标签 {} 个），信息价值低",
                         view_type_str, node_count, unique_count
+                    ),
+                ));
+            }
+        }
+
+        // 3b. Phase 8: 检测 import/typing/decorator 噪声节点占比
+        if !input.view.nodes.is_empty() {
+            let noise_node_count = input.view.nodes.iter().filter(|n| {
+                let label = &n.label;
+                let core = label
+                    .strip_prefix("module_")
+                    .or_else(|| label.strip_prefix("dep_"))
+                    .or_else(|| label.strip_prefix("inst_"))
+                    .unwrap_or(label);
+                is_low_value_python_symbol(core, "")
+            }).count();
+            let node_count = input.view.nodes.len();
+            if noise_node_count > 0
+                && (noise_node_count as f32) / (node_count as f32) >= 0.3
+            {
+                issues.push(make_issue(
+                    input.sample_id,
+                    input.stage_id,
+                    ArtifactKind::View,
+                    QualityIssueKind::LowSemanticDiversity,
+                    QualitySeverity::Low,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    &format!(
+                        "视图 {} 超过 30% 节点为 import/typing/decorator 噪声标签（{} / {}），语义价值低",
+                        view_type_str, noise_node_count, node_count
                     ),
                 ));
             }
@@ -790,16 +824,19 @@ mod tests {
         assert_eq!(report.trace_resolvable_ratio, 1.0);
     }
 
-    /// P2: 标签多样性正常时不触发 LowSemanticDiversity
+    /// Phase 8: 视图中超 30% 节点为 import/typing/decorator 噪声标签 → LowSemanticDiversity
     #[test]
-    fn varied_labels_no_low_semantic_diversity() {
-        let n1 = make_node("N-1", "module_a", vec![make_trace_ref(Some("EV-1"), None)]);
-        let n2 = make_node("N-2", "module_b", vec![make_trace_ref(Some("EV-2"), None)]);
-        let edge = make_edge("E-1", "N-1", "N-2", vec![make_trace_ref(Some("EV-1"), None)]);
-        let graph = make_view_graph(ViewType::Structure, vec![n1, n2], vec![edge], None);
+    fn noise_dominant_view_emits_low_semantic_diversity() {
+        let n1 = make_node("N-1", "module_annotations", vec![make_trace_ref(Some("EV-1"), None)]);
+        let n2 = make_node("N-2", "dep_Optional", vec![make_trace_ref(Some("EV-2"), None)]);
+        let n3 = make_node("N-3", "inst_np", vec![make_trace_ref(Some("EV-3"), None)]);
+        let n4 = make_node("N-4", "coarse_sync", vec![make_trace_ref(Some("EV-4"), None)]);
         let mut ev = HashSet::new();
         ev.insert("EV-1".to_string());
         ev.insert("EV-2".to_string());
+        ev.insert("EV-3".to_string());
+        ev.insert("EV-4".to_string());
+        let graph = make_view_graph(ViewType::Structure, vec![n1, n2, n3, n4], vec![], None);
         let input = ViewEvaluatorInput {
             sample_id: "S1",
             stage_id: "L0",
@@ -807,13 +844,12 @@ mod tests {
             evidence_id_set: &ev,
             claim_id_set: &HashSet::new(),
         };
-        let (_, issues) = ViewEvaluator::evaluate(&input);
-
+        let (_report, issues) = ViewEvaluator::evaluate(&input);
         let diversity_issues: Vec<_> = issues.iter().filter(|i| i.kind == QualityIssueKind::LowSemanticDiversity).collect();
         assert!(
-            diversity_issues.is_empty(),
-            "正常多样性不应产生 LowSemanticDiversity: {:?}",
-            issues
+            !diversity_issues.is_empty(),
+            "噪声节点占比 75% 应触发 LowSemanticDiversity: {:?}", issues
         );
+        assert!(diversity_issues.iter().any(|i| i.description.contains("30%")));
     }
 }

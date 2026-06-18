@@ -144,7 +144,7 @@ impl EvidenceEvaluator {
             }
 
             // noisy evidence
-            if is_noisy(&item.summary) {
+            if is_noisy(&item.summary, item.symbol.as_deref()) {
                 issues.push(make_issue(
                     input.sample_id,
                     input.stage_id,

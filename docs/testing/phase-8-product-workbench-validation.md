@@ -425,6 +425,104 @@ rg -n "OpenAI|Anthropic|api_key|Vivado|synthesis|implementation|bitstream|ReactF
 - **真实 GUI 桌面验收尚未完成**，因此 Phase 8 completion review 仍为 draft / pending_desktop_acceptance，不得标记为 active completion。
 - Phase 9 仅可在 Phase 8 completion review 转 active 后进入；当前 Phase 9/10/11 编码均未开始，overview 仍为 `draft`。
 
+## 18. Phase 8 真实项目 L0/L4 质量阻塞修复验证记录
+
+> 针对 `fpga_project_coarse_sync` 真实项目分析中 L0/L4 视图被 import/typing/decorator 噪声符号主导的问题，在 Rust 后端做**确定性启发式修复**，并补充回归测试。本次修复不接入真实 LLM、不修改目标项目；Phase 9 仍需用真实 LLM 替代当前 heuristic，以提升 claim/摘要质量。
+
+### 18.1 修复范围
+
+- `src-tauri/src/quality/issue_builder.rs`：新增 `is_low_value_python_symbol`，扩展 `is_noisy` 以识别 Python 噪声证据。
+- `src-tauri/src/quality/evidence_evaluator.rs`：调用 `is_noisy` 时传入 symbol。
+- `src-tauri/src/understanding/generator.rs`：
+  - 新增 L0 标准粗同步流水线推导（correlation → energy → metric → smoothing → peak_detection → cfo_estimation）。
+  - 新增 L4 周期精确流水线推导（input → correlation → energy → metric → detection → output）。
+  - 改写 `derive_conservative_summaries`：非 L0/L4 阶段仅对业务 Python 函数生成 step；import 证据不再默认生成 `external_dependency` interface。
+  - 改写 `MockProvider::generate`：
+    - 引入 claim 候选打分，排除 import/typing/decorator/dunder/config/type-alias 等低价值证据；
+    - 优先选择 class 定义、业务函数、AXI-Stream 接口信号、端口声明以及命中 L0/L4 标准流水线关键词的证据；
+    - claim 描述不再使用“基于证据 X 的声明 N”模板，改为“识别到 …”语义化描述；
+    - claim category 根据证据类型自动映射（module_structure / data_processing / signal_definition / interface_description / configuration）；
+    - 上限仍为 8 条，彻底停止“一条 evidence 一条 claim”。
+  - `module_summaries` 描述同步改为“模块/类 …”或“处理步骤 …”。
+- `src-tauri/src/views/dataflow_builder.rs`：扩展 `is_input_name` / `is_output_name`，识别 AXI-Stream `s_*` / `m_*` 接口。
+- `src-tauri/src/views/timing_builder.rs`：
+  - `has_temporal_evidence` 改为 stage-aware：L0/L1/L2 等 Python 算法阶段仅允许 `cycle/latency/clock/clk/rst/reset/posedge/negedge/always_ff` 等硬件时序关键词触发 timing；泛化的 `pipeline/stage/流水/步骤` 不再触发。
+  - L4 / `cycle_acc` 保留 input/correlation/energy/metric/detection/output/_stage_/s_*/m_* 等周期精确语义门控。
+  - RTL clock/reset fallback 保持不变。
+- `src-tauri/src/quality/view_evaluator.rs`：新增视图噪声节点占比检测，>30% 时发出 `LowSemanticDiversity`。
+- `src-tauri/src/quality/reporter.rs`：view 评估后检查退化源/高噪声率，补充 `LowSemanticDiversity` 负向记录。
+- `src-tauri/tests/real_project_validation.rs`：新增端到端 `primary_sample_l0_l4_quality_blockers_fixed`，并强化断言（精确 L4 timing 标签、dataflow/timing 噪声节点清零）。
+
+### 18.2 新增/更新测试
+
+| 测试文件 | 测试名 | 目的 |
+|---------|--------|------|
+| `src/understanding/generator.rs` | `gen_17_noise_symbols_filtered` | 低价值符号不生成 claim / module / step |
+| `src/understanding/generator.rs` | `gen_18_l0_canonical_pipeline` | L0 生成 6 个标准粗同步步骤 |
+| `src/understanding/generator.rs` | `gen_19_l4_cycle_accurate_pipeline` | L4 生成 input/correlation/energy/metric/detection/output |
+| `src/understanding/generator.rs` | `gen_20_claim_quality_excludes_noise` | import/typing/decorator/type-alias 不提升为 claim，描述去模板化 |
+| `src/understanding/generator.rs` | `gen_21_l0_claims_prefer_pipeline_steps` | L0 claim 优先绑定标准流水线语义 |
+| `src/understanding/generator.rs` | `gen_22_l4_claims_prefer_axi_and_pipeline` | L4 claim 优先识别 AXI-Stream 接口与周期精确流水线 |
+| `src/views/dataflow_builder.rs` | `df_16_axi_stream_io_recognized` | `s_*` / `m_*` 识别为 InputSource / OutputTarget |
+| `src/views/timing_builder.rs` | `tm_12_rtl_always_ff_timing_non_empty` | RTL `always_ff` 证据生成非空 timing 图 |
+| `src/views/timing_builder.rs` | `tm_13_l4_stage_steps_have_temporal_evidence` | L4 `_stage_*` 触发非空 timing 图 |
+| `src/views/timing_builder.rs` | `tm_14_l0_algorithm_steps_no_timing` | L0 算法步骤无硬件时序关键词时 timing 为空 |
+| `src/quality/view_evaluator.rs` | `noise_dominant_view_emits_low_semantic_diversity` | 噪声节点占比 >30% 触发 LowSemanticDiversity |
+| `src/quality/reporter.rs` | `high_noise_empty_view_emits_low_semantic_diversity` | 高噪声 evidence + 空视图触发退化标记 |
+| `tests/real_project_validation.rs` | `primary_sample_l0_l4_quality_blockers_fixed` | 端到端 L0/L4 质量阻塞修复验证 |
+
+### 18.3 自动化验证结果
+
+| 命令 | 结果 |
+|------|------|
+| `npx tsc --noEmit` | ✅ 无类型错误 |
+| `npm run build` | ✅ 通过（58 modules，dist/index.html + dist/assets/index-ldj5uWH9.js） |
+| `cd src-tauri && cargo check --tests` | ✅ 通过，0 warning |
+| `cd src-tauri && cargo test --lib` | ✅ 554 passed; 0 failed; 1 ignored |
+| `cd src-tauri && cargo test --test real_project_validation -- --ignored` | ✅ 5 passed; 0 failed（含新增 `primary_sample_l0_l4_quality_blockers_fixed`） |
+| 边界 rg（OpenAI/Anthropic/api_key/Vivado/synthesis/implementation/bitstream/ReactFlow/Mermaid/D3/PASS/HOLD/审计结论） | ✅ 仅既有禁用/守卫/注释/测试语境命中 |
+| 目标项目 checksum 一致性 | ✅ `primary_sample_l0_l4_quality_blockers_fixed` 通过；`fpga_project_coarse_sync` 修复前后 `src/` 下 `.py`/`.v`/`.sv`/`.md` 文件 checksum 一致 |
+
+### 18.4 端到端测试结果
+
+`primary_sample_l0_l4_quality_blockers_fixed` 验证内容：
+
+- L0 `processing_steps` 包含 `correlation` / `energy` / `metric` / `smoothing` / `peak_detection` / `cfo_estimation`。
+- L0 dataflow 节点不含 `annotations` / `dataclass` / `Optional` / `np` / `PARAMS` / `config` / `data_width` 噪声标签，并含上述标准步骤节点。
+- **L0 为 Python 算法阶段，无 cycle/clock/posedge 等硬件时序证据时 timing view 必须为空，且 `empty_reason` 明确说明当前 processing_steps 为算法/函数顺序、非硬件时序。**
+- L4 `processing_steps` 包含 `input` / `correlation` / `energy` / `metric` / `detection` / `output`。
+- L4 timing view 非空，且其 `PipelineStage` 节点标签**精确按顺序**覆盖 `input` → `correlation` → `energy` → `metric` → `detection` → `output`。
+- L4 dataflow 含 `s_*` 输入节点与 `m_*` 输出节点；L4 dataflow / timing 均不含上述 import/typing/decorator 噪声标签。
+- QualityReport 记录 `NoisyEvidence`，诚实暴露仍有噪声证据被收集但未提升为产物的退化事实。
+- 目标项目 `fpga_project_coarse_sync` 修复前后 checksum 一致。
+
+结构限制：当前 claim 与流水线推导均为确定性启发式，仅基于 symbol/summary 关键词匹配；未能解析函数体语义，Phase 9 需接入真实 LLM 以生成更准确的模块/接口/步骤摘要。
+
+### 18.5 GUI 审阅（真实 GUI 桌面验收已完成）
+
+真实 GUI 桌面验收已于真实项目 `/Users/ckstar/Repo/znxt_ofdm/fpga_project_coarse_sync` 完成（Tauri 应用，人在桌面逐项操作并截图）。验收内容与结果：
+
+1. **阶段识别**：左侧"阶段列表"识别 L0、L1、L2、L3、L4、L5、L6、RTL 共 8 个。
+2. **L0 evidence/understanding/views**：依次"收集证据 → 生成理解 → 生成视图"，徽标 `证据 244 · 声明 8 · 视图 3`。
+3. **L0 dataflow 算法链**：节点 `correlation → energy → metric → smoothing → peak_detection → cfo_estimation`，无噪声节点。
+4. **L0 timing 空 + empty_reason**：时序流水 `(空)`，显示 "无 cycle/latency/clock/posedge 等可追溯硬件时序证据，未生成 timing 图（当前 processing_steps 为算法/函数顺序，非硬件时序）"，未伪造硬件 timing。
+5. **L4 evidence/understanding/views**：依次执行，徽标 `证据 185 · 声明 8 · 视图 3`。
+6. **L4 timing 周期精确流水**：节点 `input → correlation → energy → metric → detection → output`（+ `reset_7` 复位域）。
+7. **点击节点 → ContextPanel 追溯**：L4 点击 `energy` 节点，右侧显示 "L4 周期精确流水线步骤：energy" + "追溯引用 13 条"。
+8. **Quality report 诚实暴露**：`noisy_evidence: 7`、`traceability_gap: 37` 等负向记录；`View·timing·L4` / `View·dataflow·L4` 追溯可解析率 100%。
+
+截图证据（位于 `docs/screenshots/phase-8-quality-fixes/`）：`01-stage-list.png`、`02-l0-collected.png`、`03-l0-dataflow.png`、`04-l0-timing-empty.png`、`05-l4-collected.png`、`06-l4-timing-pipeline.png`、`07-l4-dataflow-axi.png`、`08-context-panel.png`、`09-quality-report.png`。
+
+> 截图文字核验说明：本次会话为纯语言模型（非多模态），无法直接看图，故对截图做 OCR 文字提取做客观交叉核验（empty_reason 文案、节点标签、阶段列表文字均逐字命中预期）；真实桌面交互与最终视觉判断由人在桌面完成。
+
+### 18.6 结论
+
+- Phase 8 真实项目 L0/L4 质量阻塞修复已完成，所有自动化验证（构建、类型、单元测试、集成测试、边界 rg、checksum）通过。
+- 本次修复为**确定性启发式**：claim/流水线/摘要均基于 symbol/summary 关键词与阶段规则派生，未接入真实 LLM；Phase 9 仍需用 LLM 替换 heuristic 以提升语义准确性。
+- **真实 GUI 桌面验收已完成**（§18.5，9 张截图证据）；`docs/planning/phase-8-completion-review.md` 已由 `draft` 激活为 `active`，P8-T10 完成。
+- **Phase 8 completion 通过**：允许进入 Phase 9 详细文档编制；Phase 9 编码尚未开始；Phase 9~11 overview 仍为 `draft`。
+- 本次修复未修改目标项目、未接入真实 LLM、未引入禁用库，安全边界保持。
+
 ## 12. 变更记录
 
 | 日期 | 变更 | 作者 |
@@ -436,3 +534,5 @@ rg -n "OpenAI|Anthropic|api_key|Vivado|synthesis|implementation|bitstream|ReactF
 | 2026-06-16 | 追加 §16 Batch D 验证记录：新增 workbenchTheme/StateBlocks/WarningsPanel；深色侧栏子组件适配；AppHeader 工作台化；统一 token 并去除紫色 loading；阶段/acceptance 状态色去红绿裁决感；主区空错态统一为 MainStateBlock；footer warnings 降噪；通过 build/tsc/cargo test/cargo check/real_project_validation 与边界 rg；P8-T07/P8-T08/P8-T09 进入审核收口；Batch E 与 Phase 9/10/11 未开始。 | Claude |
 | 2026-06-16 | Batch D 审核收口小修：`StageList` 阶段状态 badge 的 `empty`/`missing`/`unreadable` 统一映射中性灰系（原 `missing`/`unreadable` 误落红系 default 分支），`naming_anomaly` 保持琥珀，default 兜底改灰；`StageDetail` 删除本地 `EmptyState` 实现，4 处空态统一复用 `StateBlocks.EmptyState`（`message`→`title`），视觉保持工作台风格；tsc/build/cargo check/cargo test --lib 全通过；Batch E 与 Phase 9/10/11 未开始。 | Claude |
 | 2026-06-18 | 追加 §17 Batch E 验证记录：执行 `tsc`/`build`/`cargo check`/`cargo test --lib`/`real_project_validation --ignored` 全通过；代码级桌面验收 12 项通过；边界 rg 通过；目标项目 checksum 一致；新增 `docs/planning/phase-8-completion-review.md` 草稿；P8-T10 的真实 GUI 桌面验收尚未完成，Phase 8 completion review 暂不激活；Phase 9/10/11 编码未开始。 | Claude |
+| 2026-06-18 | 合并前最终收口：同步 `has_temporal_evidence` 注释为 stage-aware 描述（不改行为）；`cargo test --lib` 升至 554 passed；Tauri app 复验可正常编译启动（debug 二进制运行无 panic）；记录交互式 GUI 桌面复验阻塞项（CLI 无桌面交互 + 模型非多模态）与 checksum 指纹；completion review 保持 draft / pending_desktop_acceptance，未合并 main，Phase 9 未进入。 | Claude |
+| 2026-06-18 | Phase 8 completion 激活：真实 GUI 桌面验收完成（§18.5，9 张截图证据，OCR 文字交叉核验通过）；`phase-8-completion-review.md` draft→active，P8-T10 完成；同步 README/docs/planning-README/impl-plan 状态为 Phase 8 完成；允许进入 Phase 9 详细文档编制，Phase 9 编码未开始。 | Claude |
