@@ -81,7 +81,7 @@ Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.66s
 cd src-tauri && cargo test --lib
 ```
 
-结果：**通过**。`544 passed; 0 failed; 1 ignored`。
+结果：**通过**。`549 passed; 0 failed; 1 ignored`（含 Phase 8 L0/L4 质量阻塞修复新增 5 个单元测试）。
 
 ### 2.5 真实项目只读验证
 
@@ -89,17 +89,18 @@ cd src-tauri && cargo test --lib
 cd src-tauri && cargo test --test real_project_validation -- --ignored
 ```
 
-结果：**通过**。5 个 ignored 测试全部通过：
+结果：**通过**。6 个 ignored 测试全部通过（含新增 `primary_sample_l0_l4_quality_blockers_fixed`）：
 
 ```text
-running 5 tests
+running 6 tests
 test primary_sample_deep_scan_no_timeout ... ok
 test primary_sample_detects_l0_l1_rtl ... ok
+test primary_sample_l0_l4_quality_blockers_fixed ... ok
 test primary_sample_skips_noise_dirs ... ok
-test secondary_sample_detects_stages ... ok
 test primary_sample_checksum_consistency ... ok
+test secondary_sample_detects_stages ... ok
 
-test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 ```
 
 主样本：`/Users/ckstar/Repo/znxt_ofdm/fpga_project_coarse_sync`  
@@ -186,3 +187,29 @@ rg -n "OpenAI|Anthropic|api_key|Vivado|synthesis|implementation|bitstream|ReactF
 - **Phase 8 编码已完成**：Batch A/B/C/D 已完成；Batch E 中自动化回归、checksum 只读验证、边界 rg 检查、代码级桌面验收均已完成。
 - **Phase 8 暂不允许 completion**：真实 GUI 桌面验收尚未完成，因此 `phase-8-completion-review.md` 保持 `status: draft`。
 - **Phase 9 尚未进入**：只有在真实桌面验收完成、completion review 转 active 后，方可进入 Phase 9 详细文档编制阶段；目前 Phase 9/10/11 overview 仍为 `draft`，不得开始编码。
+
+## 7. Phase 8 真实项目 L0/L4 质量阻塞修复收口
+
+### 7.1 问题与修复
+
+在真实项目 `fpga_project_coarse_sync` 的桌面验收准备中发现：L0/L4 视图被 `annotations`、`dataclass`、`Optional`、`np`、`PARAMS`、`config`、`data_width` 等 import/typing/decorator 噪声符号主导，淹没了 coarse-sync 算法语义。
+
+修复措施（确定性、不接 LLM、不改目标项目）：
+
+- 噪声符号保留为 evidence，但不再被提升为 claim / module / processing step。
+- `MockProvider` 停止“一条 evidence 一条 claim”，仅对非低价值 evidence 生成 claim。
+- L0 dataflow 反映真实粗同步流水线：correlation → energy → metric → smoothing → peak detection → CFO。
+- L4 timing/dataflow 反映周期精确流水线：input → correlation → energy → metric → detection → output，并识别 AXI-Stream `s_*` / `m_*` I/O。
+- `QualityReport` 诚实暴露退化：`NoisyEvidence` / `LowSemanticDiversity` 负向记录。
+
+### 7.2 验证
+
+- 新增 8 个单元/集成测试覆盖噪声过滤、L0/L4 流水线、AXI-Stream I/O、temporal evidence、退化标记。
+- `cargo test --lib` 549 passed；`cargo test --test real_project_validation -- --ignored` 6 passed（含新增端到端测试）。
+- 目标项目 checksum 修复前后一致，未修改目标项目任何文件。
+- GUI 截图审阅受 CLI 环境限制未完成，截图目录 `docs/screenshots/phase-8-quality-fixes/` 已预留。
+
+### 7.3 结论
+
+- Phase 8 全部编码（含质量阻塞修复）已完成，自动化验证全部通过。
+- 真实 GUI 桌面验收仍未完成；待真实桌面环境补录截图后，方可将 completion review 转 active。

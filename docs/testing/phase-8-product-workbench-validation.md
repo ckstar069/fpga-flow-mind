@@ -425,6 +425,76 @@ rg -n "OpenAI|Anthropic|api_key|Vivado|synthesis|implementation|bitstream|ReactF
 - **真实 GUI 桌面验收尚未完成**，因此 Phase 8 completion review 仍为 draft / pending_desktop_acceptance，不得标记为 active completion。
 - Phase 9 仅可在 Phase 8 completion review 转 active 后进入；当前 Phase 9/10/11 编码均未开始，overview 仍为 `draft`。
 
+## 18. Phase 8 真实项目 L0/L4 质量阻塞修复验证记录
+
+> 针对 `fpga_project_coarse_sync` 真实项目分析中 L0/L4 视图被 import/typing/decorator 噪声符号主导的问题，在 Rust 后端做确定性修复，并补充回归测试。
+
+### 18.1 修复范围
+
+- `src-tauri/src/quality/issue_builder.rs`：新增 `is_low_value_python_symbol`，扩展 `is_noisy` 以识别 Python 噪声证据。
+- `src-tauri/src/quality/evidence_evaluator.rs`：调用 `is_noisy` 时传入 symbol。
+- `src-tauri/src/understanding/generator.rs`：
+  - 新增 L0 标准粗同步流水线推导（correlation → energy → metric → smoothing → peak_detection → cfo_estimation）。
+  - 新增 L4 周期精确流水线推导（input → correlation → energy → metric → detection → output）。
+  - 改写 `derive_conservative_summaries`：非 L0/L4 阶段仅对业务 Python 函数生成 step；import 证据不再默认生成 `external_dependency` interface。
+  - 改写 `MockProvider::generate`：只为非低价值 evidence 生成 claim，上限 8 条，停止“一条 evidence 一条 claim”。
+- `src-tauri/src/views/dataflow_builder.rs`：扩展 `is_input_name` / `is_output_name`，识别 AXI-Stream `s_*` / `m_*` 接口。
+- `src-tauri/src/views/timing_builder.rs`：扩展 `has_temporal_evidence` 关键词与 L4/cycle_acc 兜底分支。
+- `src-tauri/src/quality/view_evaluator.rs`：新增视图噪声节点占比检测，>30% 时发出 `LowSemanticDiversity`。
+- `src-tauri/src/quality/reporter.rs`：view 评估后检查退化源/高噪声率，补充 `LowSemanticDiversity` 负向记录。
+- `src-tauri/tests/real_project_validation.rs`：新增端到端 `primary_sample_l0_l4_quality_blockers_fixed`。
+
+### 18.2 新增/更新测试
+
+| 测试文件 | 测试名 | 目的 |
+|---------|--------|------|
+| `src/understanding/generator.rs` | `gen_17_noise_symbols_filtered` | 低价值符号不生成 claim / module / step |
+| `src/understanding/generator.rs` | `gen_18_l0_canonical_pipeline` | L0 生成 6 个标准粗同步步骤 |
+| `src/understanding/generator.rs` | `gen_19_l4_cycle_accurate_pipeline` | L4 生成 input/correlation/energy/metric/detection/output |
+| `src/views/dataflow_builder.rs` | `df_16_axi_stream_io_recognized` | `s_*` / `m_*` 识别为 InputSource / OutputTarget |
+| `src/views/timing_builder.rs` | `tm_13_l4_stage_steps_have_temporal_evidence` | L4 `_stage_*` 触发非空 timing 图 |
+| `src/quality/view_evaluator.rs` | `noise_dominant_view_emits_low_semantic_diversity` | 噪声节点占比 >30% 触发 LowSemanticDiversity |
+| `src/quality/reporter.rs` | `high_noise_empty_view_emits_low_semantic_diversity` | 高噪声 evidence + 空视图触发退化标记 |
+| `tests/real_project_validation.rs` | `primary_sample_l0_l4_quality_blockers_fixed` | 端到端 L0/L4 质量阻塞修复验证 |
+
+### 18.3 自动化验证结果
+
+| 命令 | 结果 |
+|------|------|
+| `npx tsc --noEmit` | ✅ 无类型错误 |
+| `npm run build` | ✅ 通过（58 modules，dist/index.html + dist/assets/index-ldj5uWH9.js） |
+| `cd src-tauri && cargo check` | ✅ 通过 |
+| `cd src-tauri && cargo test --lib` | ✅ 549 passed; 0 failed; 1 ignored |
+| `cd src-tauri && cargo test --test real_project_validation -- --ignored` | ✅ 5 passed; 0 failed（含新增 `primary_sample_l0_l4_quality_blockers_fixed`） |
+| 边界 rg（OpenAI/Anthropic/api_key/Vivado/synthesis/implementation/bitstream/ReactFlow/Mermaid/D3/PASS/HOLD/审计结论） | ✅ 仅既有禁用/守卫/注释/测试语境命中 |
+| 目标项目 checksum 一致性 | ✅ `primary_sample_l0_l4_quality_blockers_fixed` 通过；`fpga_project_coarse_sync` 修复前后 `src/` 下 `.py`/`.v`/`.sv`/`.md` 文件 checksum 一致 |
+
+### 18.4 端到端测试结果
+
+`primary_sample_l0_l4_quality_blockers_fixed` 验证内容：
+
+- L0 `processing_steps` 包含 `correlation` / `energy` / `metric` / `smoothing` / `peak_detection` / `cfo_estimation`。
+- L0 dataflow 节点不含 `annotations` / `dataclass` / `Optional` / `np` / `PARAMS` / `config` / `data_width` 噪声标签，并含上述标准步骤节点。
+- L4 `processing_steps` 包含 `input` / `correlation` / `energy` / `metric` / `detection` / `output`。
+- L4 timing view 非空且含 `PipelineStage` 节点。
+- L4 dataflow 含 `s_*` 输入节点与 `m_*` 输出节点。
+- QualityReport 记录 `NoisyEvidence`，并因退化源/高噪声 evidence 触发 `LowSemanticDiversity`。
+- 目标项目 `fpga_project_coarse_sync` 修复前后 checksum 一致。
+
+### 18.5 GUI 审阅
+
+- 当前 CLI 环境无法自动完成 Tauri 桌面应用的完整交互与截图；已尝试启动 `npm run tauri dev`，Rust 后端编译运行正常，窗口拉起受环境限制未生成可用截图。
+- 截图目录 `docs/screenshots/phase-8-quality-fixes/` 已预留，待真实桌面环境补充以下截图：
+  - L0 Structure/Dataflow（无噪声节点，dataflow 为标准粗同步流水线）。
+  - L4 Structure/Dataflow/Timing（周期精确流水线，timing 非空，dataflow 含 `s_*` / `m_*` I/O）。
+  - QualityReport（`NoisyEvidence` / `LowSemanticDiversity` 负向记录）。
+
+### 18.6 结论
+
+- Phase 8 真实项目 L0/L4 质量阻塞修复已完成，所有自动化验证（构建、类型、单元测试、集成测试、边界 rg、checksum）通过。
+- GUI 截图审阅仍受环境限制，需在真实桌面环境补录后写入 `docs/screenshots/phase-8-quality-fixes/`。
+- 本次修复未修改目标项目、未接入真实 LLM、未引入禁用库，安全边界保持。
+
 ## 12. 变更记录
 
 | 日期 | 变更 | 作者 |
