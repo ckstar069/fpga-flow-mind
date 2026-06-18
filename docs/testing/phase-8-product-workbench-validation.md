@@ -9,7 +9,7 @@ updated: 2026-06-16
 >
 > 验证目标是"工作台是否把已有能力组织成用户可高效理解一个阶段的产品级形态，且不发生回归、不越界"，**不是**验证目标项目正确性。
 >
-> 本文 status 为 `active`，是 Phase 8 验证与验收设计的生效文档。**Phase 8 编码已完成：Batch A/B/C/D 已完成，Batch E 中 P8-T10 的自动化回归、checksum 只读验证、边界 rg 检查与代码级桌面验收已完成，但真实 GUI 桌面验收尚未完成，因此 [completion review](../planning/phase-8-completion-review.md) 仍为 draft / pending_desktop_acceptance**。Phase 9/10/11 未开始编码。
+> 本文 status 为 `active`，是 Phase 8 验证与验收设计的生效文档。**Phase 8 已完成：Batch A/B/C/D/E 全部完成，真实 GUI 桌面验收通过（见 §18.5），[completion review](../planning/phase-8-completion-review.md) active。允许进入 Phase 9 详细文档编制；Phase 9 编码尚未开始；Phase 9/10/11 overview 仍为 `draft`**。
 
 ## 1. 验证策略总览
 
@@ -160,7 +160,7 @@ Phase 8 完成后，方允许考虑进入：
 - [`../design/phase-8-ui-state-and-navigation-design.md`](../design/phase-8-ui-state-and-navigation-design.md) — UI 状态与导航（active）
 - [`../ui-ux/phase-8-product-workbench-view.md`](../ui-ux/phase-8-product-workbench-view.md) — UI/UX 设计（active）
 - [`../planning/phase-8-implementation-plan.md`](../planning/phase-8-implementation-plan.md) — 编码实施计划（active）
-- [`../planning/phase-8-completion-review.md`](../planning/phase-8-completion-review.md) — 完成审查（draft / pending_desktop_acceptance）
+- [`../planning/phase-8-completion-review.md`](../planning/phase-8-completion-review.md) — 完成审查（active）
 - [`phase-7-real-project-quality-validation.md`](phase-7-real-project-quality-validation.md) — Phase 7 验证（active，回归基线）
 
 ## 13. Batch A 验证记录（P8-T01~P8-T02）
@@ -421,9 +421,11 @@ rg -n "OpenAI|Anthropic|api_key|Vivado|synthesis|implementation|bitstream|ReactF
 
 ### 17.5 结论
 
-- Phase 8 Batch E（P8-T10）部分完成：自动化回归、边界 rg、checksum 只读验证、代码级桌面验收均已完成。
-- **真实 GUI 桌面验收尚未完成**，因此 Phase 8 completion review 仍为 draft / pending_desktop_acceptance，不得标记为 active completion。
-- Phase 9 仅可在 Phase 8 completion review 转 active 后进入；当前 Phase 9/10/11 编码均未开始，overview 仍为 `draft`。
+- Phase 8 Batch E（P8-T10）已完成：自动化回归、边界 rg、checksum 只读验证、代码级桌面验收、**真实 GUI 桌面验收**（见 §18.5）均已完成。
+- **Phase 8 completion 通过**：[`completion review`](../planning/phase-8-completion-review.md) 已由 `draft` 激活为 `active`（原 `pending_desktop_acceptance` 已解除）。
+- 允许进入 Phase 9 详细文档编制；Phase 9 编码尚未开始；Phase 9/10/11 overview 仍为 `draft`。
+
+> 历史记录：§17.x 此前出现的“真实 GUI 桌面验收尚未完成 / completion review 仍为 draft / pending_desktop_acceptance / 不得标记为 active completion”为合并前的历史表述，已被后续 §18.5/§18.6 的真实 GUI 桌面验收与 completion 激活取代（详见 §12 变更记录 2026-06-18 末两条）。
 
 ## 18. Phase 8 真实项目 L0/L4 质量阻塞修复验证记录
 
