@@ -1,15 +1,15 @@
 # Phase 8 完成审查
 
 ---
-status: active
+status: draft
 updated: 2026-06-18
 ---
 
-> 本文档是 Phase 8（产品级 UI/UX 工作台重构）的完成审查。P8-T01~P8-T10 已完成，自动化回归通过，真实项目 checksum 只读验证通过，边界 rg 检查通过。
+> 本文档是 Phase 8（产品级 UI/UX 工作台重构）的完成审查草稿。P8-T01~P8-T09 已完成；P8-T10 的自动化回归、checksum 只读验证、边界 rg 检查与代码级桌面验收已完成，但**真实 GUI 桌面验收尚未完成**。
 >
-> **结论：Phase 8 完成，允许进入 Phase 9 详细文档编制阶段。**
+> **结论：Phase 8 暂不允许 completion。待真实桌面验收（含截图/交互验证）完成后，方可将本文档转 active 并允许进入 Phase 9 详细文档编制阶段。**
 >
-> 本审查基于 CLI 环境执行自动化验证与代码级桌面验收；未生成实时 GUI 截图，但逐项记录了人工核验结果。
+> 本审查基于 CLI 环境执行自动化验证与代码级桌面验收；未生成实时 GUI 截图。代码级核验不能替代真实桌面验收。
 
 ## 1. 任务完成状态
 
@@ -24,7 +24,7 @@ updated: 2026-06-18
 | P8-T07 | 视觉 polish：AgentScope 风格 | D | ✅ | `npm run build` + 视觉语义一致性检查 |
 | P8-T08 | warnings 降噪 | D | ✅ | `npm run build` + WarningsPanel 折叠/计数验收 |
 | P8-T09 | 空/错误/session/UI state 恢复 | D | ✅ | `npm run build` + 状态组件验收 |
-| P8-T10 | 回归 + 桌面验收 + completion review | E | ✅ | 自动化回归 + checksum + rg + 代码级桌面验收 |
+| P8-T10 | 回归 + 桌面验收 + completion review | E | ⏳ pending_desktop_acceptance | 自动化回归 + checksum + rg + 代码级桌面验收已完成；真实 GUI 桌面验收待完成 |
 
 ### Batch 状态
 
@@ -34,7 +34,7 @@ updated: 2026-06-18
 | Batch B（P8-T03~P8-T04） | Artifact tabs 重组 + 概览/筛选/可展开列表 | 已完成 |
 | Batch C（P8-T05~P8-T06） | ContextPanel 真实联动 + 状态隔离 | 已完成 |
 | Batch D（P8-T07~P8-T09） | AgentScope 视觉 polish + warnings 降噪 + 空/错误/session 状态产品化 | 已完成 |
-| Batch E（P8-T10） | 回归测试 + 桌面验收 + completion review | 已完成 |
+| Batch E（P8-T10） | 回归测试 + 桌面验收 + completion review | ⏳ pending_desktop_acceptance（自动化回归/代码级核验已完成；真实 GUI 桌面验收未完成） |
 
 ## 2. 自动化验证结果
 
@@ -105,9 +105,11 @@ test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 主样本：`/Users/ckstar/Repo/znxt_ofdm/fpga_project_coarse_sync`  
 副样本：`/Users/ckstar/Repo/znxt_ofdm/fpga_project_fft`
 
-## 3. 桌面验收结果
+## 3. 代码级桌面验收结果（不能替代真实 GUI 桌面验收）
 
-> 当前为 CLI 环境，无法运行 Tauri 桌面应用并截取实时 GUI 截图。以下验收项通过**代码结构审查 + 自动化构建 + 组件实现核对**完成。
+> ⚠️ 当前为 CLI 环境，无法运行 Tauri 桌面应用并截取实时 GUI 截图。以下验收项通过**代码结构审查 + 自动化构建 + 组件实现核对**完成，属于 P8-T10 的“桌面验收”前置准备工作，**不能替代真实 GUI 桌面验收**。
+>
+> 真实桌面验收必须在可运行 Tauri 应用的桌面环境中完成：逐项点击、布局可视、响应式宽度、截图记录。完成前不得将 Phase 8 标记为 completion。
 
 | # | 验收项 | 结果 | 核验依据 |
 |---|--------|------|----------|
@@ -171,15 +173,16 @@ rg -n "OpenAI|Anthropic|api_key|Vivado|synthesis|implementation|bitstream|ReactF
 
 结论：**边界检查通过**。
 
-## 5. 已知限制
+## 5. 已知限制与未完成项
 
-1. **CLI 环境无实时 GUI 截图**：本次 Batch E 未在真实桌面窗口中逐项点击验证，验收依据为代码审查 + 自动化测试 + 组件结构核对。后续若发现 GUI 交互细节缺陷，应以极小修复收口，不视为 Phase 8 未完成。
-2. **ContextPanel 未持久化**：符合设计，阶段切换 / session 加载后右侧上下文清空，不恢复之前选中的 evidence / node / issue。
-3. **WarningsPanel 空状态时隐藏**：当 warnings 为空时不渲染，不占用底部空间；有 warnings 时默认折叠。
-4. **视觉 polish 仍为内联 style + 设计 token 阶段**：未引入 CSS-in-JS 库或 Tailwind，符合 Phase 8 范围约束。
+1. **真实 GUI 桌面验收未完成**：当前为 CLI 环境，无法运行 Tauri 桌面应用并截取实时 GUI 截图。代码结构审查 + 自动化测试 + 组件核对不能替代真实桌面验收。
+2. **Phase 8 completion review 仍为 draft**：待真实桌面验收完成后，方可将本文档转 active 并给出最终 completion 结论。
+3. **ContextPanel 未持久化**：符合设计，阶段切换 / session 加载后右侧上下文清空，不恢复之前选中的 evidence / node / issue。
+4. **WarningsPanel 空状态时隐藏**：当 warnings 为空时不渲染，不占用底部空间；有 warnings 时默认折叠。
+5. **视觉 polish 仍为内联 style + 设计 token 阶段**：未引入 CSS-in-JS 库或 Tailwind，符合 Phase 8 范围约束。
 
-## 6. 结论
+## 6. 当前结论
 
-- **Phase 8 已完成**：Batch A/B/C/D/E 全部闭环，自动化回归通过，边界检查通过，目标项目只读验证通过。
-- **允许进入 Phase 9 详细文档编制阶段**：下一步可开始 Phase 9（真实 LLM Provider 与 grounding 生产化）的需求、架构、UI/UX、测试与实施计划文档编制，但**不得进入 Phase 9 编码**。
-- Phase 9/10/11 overview 仍为 `draft`，需按纪律先完成详细文档并审核转 `active` 后方可编码。
+- **Phase 8 编码已完成**：Batch A/B/C/D 已完成；Batch E 中自动化回归、checksum 只读验证、边界 rg 检查、代码级桌面验收均已完成。
+- **Phase 8 暂不允许 completion**：真实 GUI 桌面验收尚未完成，因此 `phase-8-completion-review.md` 保持 `status: draft`。
+- **Phase 9 尚未进入**：只有在真实桌面验收完成、completion review 转 active 后，方可进入 Phase 9 详细文档编制阶段；目前 Phase 9/10/11 overview 仍为 `draft`，不得开始编码。

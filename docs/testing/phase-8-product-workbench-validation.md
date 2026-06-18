@@ -9,7 +9,7 @@ updated: 2026-06-16
 >
 > 验证目标是"工作台是否把已有能力组织成用户可高效理解一个阶段的产品级形态，且不发生回归、不越界"，**不是**验证目标项目正确性。
 >
-> 本文 status 为 `active`，是 Phase 8 验证与验收设计的生效文档。**Phase 8 已完成：Batch A/B/C/D/E 全部完成，[`completion review`](../planning/phase-8-completion-review.md) active，允许进入 Phase 9 详细文档编制阶段**。Phase 9/10/11 未开始。
+> 本文 status 为 `active`，是 Phase 8 验证与验收设计的生效文档。**Phase 8 编码已完成：Batch A/B/C/D 已完成，Batch E 中 P8-T10 的自动化回归、checksum 只读验证、边界 rg 检查与代码级桌面验收已完成，但真实 GUI 桌面验收尚未完成，因此 [completion review](../planning/phase-8-completion-review.md) 仍为 draft / pending_desktop_acceptance**。Phase 9/10/11 未开始编码。
 
 ## 1. 验证策略总览
 
@@ -420,8 +420,9 @@ rg -n "OpenAI|Anthropic|api_key|Vivado|synthesis|implementation|bitstream|ReactF
 
 ### 17.5 结论
 
-- Phase 8 Batch E（P8-T10）完成。
-- Phase 8 全部 Batch A/B/C/D/E 完成，允许进入 Phase 9 详细文档编制阶段（尚未开始编码）。
+- Phase 8 Batch E（P8-T10）部分完成：自动化回归、边界 rg、checksum 只读验证、代码级桌面验收均已完成。
+- **真实 GUI 桌面验收尚未完成**，因此 Phase 8 completion review 仍为 draft / pending_desktop_acceptance，不得标记为 active completion。
+- Phase 9 仅可在 Phase 8 completion review 转 active 后进入；当前 Phase 9/10/11 编码均未开始，overview 仍为 `draft`。
 
 ## 12. 变更记录
 
@@ -433,4 +434,4 @@ rg -n "OpenAI|Anthropic|api_key|Vivado|synthesis|implementation|bitstream|ReactF
 | 2026-06-16 | 追加 §15.5 Batch C 交互收口：quality_issue 点击不再自动拉起源码片段，避免异步 source_excerpt 覆盖；源码查看收敛为 ContextPanel 的显式按钮动作；移除未使用的 `onViewSource` prop 链；验证命令与边界 rg 全通过；Batch D/E 与 Phase 9/10/11 未开始。 | Claude |
 | 2026-06-16 | 追加 §16 Batch D 验证记录：新增 workbenchTheme/StateBlocks/WarningsPanel；深色侧栏子组件适配；AppHeader 工作台化；统一 token 并去除紫色 loading；阶段/acceptance 状态色去红绿裁决感；主区空错态统一为 MainStateBlock；footer warnings 降噪；通过 build/tsc/cargo test/cargo check/real_project_validation 与边界 rg；P8-T07/P8-T08/P8-T09 进入审核收口；Batch E 与 Phase 9/10/11 未开始。 | Claude |
 | 2026-06-16 | Batch D 审核收口小修：`StageList` 阶段状态 badge 的 `empty`/`missing`/`unreadable` 统一映射中性灰系（原 `missing`/`unreadable` 误落红系 default 分支），`naming_anomaly` 保持琥珀，default 兜底改灰；`StageDetail` 删除本地 `EmptyState` 实现，4 处空态统一复用 `StateBlocks.EmptyState`（`message`→`title`），视觉保持工作台风格；tsc/build/cargo check/cargo test --lib 全通过；Batch E 与 Phase 9/10/11 未开始。 | Claude |
-| 2026-06-18 | 追加 §17 Batch E 验证记录：执行 `tsc`/`build`/`cargo check`/`cargo test --lib`/`real_project_validation --ignored` 全通过；代码级桌面验收 12 项通过；边界 rg 通过；目标项目 checksum 一致；新增 `docs/planning/phase-8-completion-review.md`；Phase 8 全部完成，允许进入 Phase 9 详细文档编制阶段。 | Claude |
+| 2026-06-18 | 追加 §17 Batch E 验证记录：执行 `tsc`/`build`/`cargo check`/`cargo test --lib`/`real_project_validation --ignored` 全通过；代码级桌面验收 12 项通过；边界 rg 通过；目标项目 checksum 一致；新增 `docs/planning/phase-8-completion-review.md` 草稿；P8-T10 的真实 GUI 桌面验收尚未完成，Phase 8 completion review 暂不激活；Phase 9/10/11 编码未开始。 | Claude |

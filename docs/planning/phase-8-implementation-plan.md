@@ -9,7 +9,7 @@ updated: 2026-06-18
 >
 > Phase 8 是**前端为主**的阶段：把 Phase 1~7 已有能力重组为产品级工作台（**工作台化，不是新增更多卡片**），**不新增语义分析能力，不接真实 LLM，不做跨阶段映射**。
 >
-> 本文档 status 为 `active`，是 Phase 8 编码实施计划的生效文档。**Phase 8 已完成：Batch A/B/C/D/E 全部完成，[`completion review`](phase-8-completion-review.md) active，允许进入 Phase 9 详细文档编制阶段**。Phase 7 已完成（completion review active）。
+> 本文档 status 为 `active`，是 Phase 8 编码实施计划的生效文档。**Phase 8 编码已完成：Batch A/B/C/D 已完成，Batch E 中 P8-T10 的自动化回归、checksum 只读验证、边界 rg 检查与代码级桌面验收已完成，但真实 GUI 桌面验收尚未完成，因此 [`completion review`](phase-8-completion-review.md) 仍为 draft / pending_desktop_acceptance**。Phase 7 已完成（completion review active）。
 
 ## 0. 核心重构方向（先读）
 
@@ -35,7 +35,7 @@ Phase 8 不是普通 UI 改造，而是**信息架构工作台化**。三个关�
 | Phase 8 实施计划 active | ✅ 本文档（active） |
 | **以上 Phase 8 详细文档全部转为 active** | ✅ 已审核通过，允许进入 Phase 8 编码 |
 
-> 纪律：Phase 8 详细文档全部审核转 active 后，方允许进入 Batch A 编码。**Phase 8 已完成：Batch A/B/C/D/E 全部完成，[`completion review`](phase-8-completion-review.md) active，允许进入 Phase 9 详细文档编制阶段**。Phase 9/10/11 均未开始。
+> 纪律：Phase 8 详细文档全部审核转 active 后，方允许进入 Batch A 编码。**Phase 8 编码已完成：Batch A/B/C/D 已完成，Batch E 中 P8-T10 的自动化回归与代码级核验已完成，真实 GUI 桌面验收待完成，[`completion review`](phase-8-completion-review.md) 仍为 draft / pending_desktop_acceptance**。Phase 9 仅可在 Phase 8 completion 完成后进入；Phase 9/10/11 均未开始编码。
 
 ## 2. 任务拆分
 
@@ -271,4 +271,4 @@ Batch E：验收 + completion
 | 2026-06-16 | Batch C 交互收口：`QualityReviewPanel.handleIssueClick` 不再自动调用 `onViewSource`，点击质量记录后 ContextPanel 稳定展示 `quality_issue`，源码查看收敛为 ContextPanel 内“查看源码片段”显式按钮；移除未使用的 `onViewSource` prop 链（QualityReviewPanel/StageDetail QualityTab）；P8-T05/P8-T06 仍处于审核收口状态，Batch D/E 与 Phase 9/10/11 未开始。 | Claude |
 | 2026-06-16 | Batch D 编码完成：新增 `workbenchTheme`（设计 token）/`StateBlocks`（统一空错态）/`WarningsPanel`（warnings 折叠/分类/计数/可展开）；左侧深色导航子组件（StageList/WorkspaceSummary/RecentProjectsPanel）深色适配；AppHeader 工作台化；StageWorkspace/StageOverviewBar/StageFilterBar/StageDetail/MultiViewPanel/QualityReviewPanel 统一 token 并去除紫色 loading（改蓝/青）；阶段/acceptance 状态色去除红绿裁决感（改蓝/琥珀/灰）；主区空错态（initial/opening/loaded/error/stage_error）统一为 `MainStateBlock`；移除未使用的 `ErrorPanel`；P8-T07/P8-T08/P8-T09 进入审核收口；Batch E 与 Phase 9/10/11 未开始。 | Claude |
 | 2026-06-16 | Batch D 审核收口小修：`StageList` badge 的 `empty`/`missing`/`unreadable` 统一中性灰系（修正 `missing`/`unreadable` 误落红系 default），`naming_anomaly` 保持琥珀；`StageDetail` 移除本地 `EmptyState`，4 处空态复用 `StateBlocks.EmptyState`；仅视觉/空态收敛，未动业务状态机；tsc/build/cargo check/cargo test --lib 全通过；Batch E 与 Phase 9/10/11 未开始。 | Claude |
-| 2026-06-18 | Batch E 完成：执行 `tsc`/`build`/`cargo check`/`cargo test --lib`/`real_project_validation --ignored` 全通过；代码级桌面验收 12 项通过；边界 rg 通过；目标项目 checksum 一致；新增 `docs/planning/phase-8-completion-review.md` 并同步 README/docs 索引；P8-T10 完成，Phase 8 全部完成，允许进入 Phase 9 详细文档编制阶段（Phase 9/10/11 编码未开始）。 | Claude |
+| 2026-06-18 | Batch E 部分完成：执行 `tsc`/`build`/`cargo check`/`cargo test --lib`/`real_project_validation --ignored` 全通过；代码级桌面验收 12 项通过；边界 rg 通过；目标项目 checksum 一致；新增 `docs/planning/phase-8-completion-review.md` 草稿并同步 README/docs 索引；P8-T10 的真实 GUI 桌面验收尚未完成，Phase 8 completion review 暂不激活；Phase 9/10/11 编码未开始。 | Claude |
