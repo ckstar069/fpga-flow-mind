@@ -26,14 +26,15 @@ Phase 8 不是普通 UI 改造，而是**信息架构工作台化**。三个关�
 | 条件 | 当前状态 |
 |------|----------|
 | Phase 7 completion review 已完成 | ✅（active） |
-| Phase 8 overview 已编制 | ✅ `phase-8-overview-product-ui-workbench.md`（draft） |
-| Phase 8 需求文档 active | ⏳ `phase-8-product-workbench-requirements.md`（draft，待审核转 active） |
-| Phase 8 架构设计 active | ⏳ `phase-8-workbench-architecture.md`（draft，待审核转 active） |
-| Phase 8 UI 状态/导航设计 active | ⏳ `phase-8-ui-state-and-navigation-design.md`（draft，待审核转 active） |
-| Phase 8 UI/UX 设计 active | ⏳ `phase-8-product-workbench-view.md`（draft，待审核转 active） |
+| Phase 8 overview 已编制 | ✅ `phase-8-overview-product-ui-workbench.md`（draft，overview 不受 active 纪律约束） |
+| Phase 8 需求文档 active | ✅ `phase-8-product-workbench-requirements.md`（active） |
+| Phase 8 架构设计 active | ✅ `phase-8-workbench-architecture.md`（active） |
+| Phase 8 UI 状态/导航设计 active | ✅ `phase-8-ui-state-and-navigation-design.md`（active） |
+| Phase 8 UI/UX 设计 active | ✅ `phase-8-product-workbench-view.md`（active） |
 | Phase 8 验证文档 active | ✅ `phase-8-product-workbench-validation.md`（active） |
 | Phase 8 实施计划 active | ✅ 本文档（active） |
-| **以上 Phase 8 详细文档全部转为 active** | ✅ 已审核通过，允许进入 Phase 8 编码 |
+| **以上 Phase 8 详细文档全部转为 active** | ✅ 已审核通过；Phase 8 编码已完成 |
+| Phase 8 completion review | ⏳ `phase-8-completion-review.md`（draft / pending_desktop_acceptance，真实 GUI 桌面验收待完成） |
 
 > 纪律：Phase 8 详细文档全部审核转 active 后，方允许进入 Batch A 编码。**Phase 8 编码已完成：Batch A/B/C/D 已完成，Batch E 中 P8-T10 的自动化回归与代码级核验已完成，真实 GUI 桌面验收待完成，[`completion review`](phase-8-completion-review.md) 仍为 draft / pending_desktop_acceptance**。Phase 9 仅可在 Phase 8 completion 完成后进入；Phase 9/10/11 均未开始编码。
 

@@ -96,7 +96,7 @@ docs/
 
 ### Post-MVP 路线图 / 后续阶段规划任务
 
-> MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP，不等于产品可用性完成。下列 Post-MVP 文档中，**Phase 7 详细文档已 `active`**；**Phase 7 已全部完成（Batch A/B/C/D，[completion review](planning/phase-7-completion-review.md) active）**；Phase 7 overview 与 Phase 9~11 overview 仍为 `draft`。**Phase 8 详细文档均已 `active`；Phase 8 编码已完成，但真实桌面验收尚未完成，因此 [completion review](planning/phase-8-completion-review.md) 仍为 draft / pending_desktop_acceptance。Phase 9 仅可在 Phase 8 completion 完成后进入；Phase 9~11 overview 仍为 `draft**。
+> MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP，不等于产品可用性完成。下列 Post-MVP 文档中，**Phase 7 详细文档已 `active`**；**Phase 7 已全部完成（Batch A/B/C/D，[completion review](planning/phase-7-completion-review.md) active）**；Phase 7 overview 与 Phase 9~11 overview 仍为 `draft`。**Phase 8 详细文档均已 `active`；Phase 8 编码已完成，但真实桌面验收尚未完成，因此 [completion review](planning/phase-8-completion-review.md) 仍为 draft / pending_desktop_acceptance。Phase 9 仅可在 Phase 8 completion 完成后进入；Phase 9~11 overview 仍为 `draft`**。
 
 1. `docs/planning/post-mvp-roadmap.md`（Post-MVP 总体路线图：Phase 7~11 阶段关系、依赖顺序、进入纪律，draft）
 2. `docs/planning/phase-7-overview-real-project-quality.md`（Phase 7 overview：真实项目质量补强，draft）

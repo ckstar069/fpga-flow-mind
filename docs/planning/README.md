@@ -36,7 +36,7 @@ updated: 2026-06-16
 
 ### Post-MVP 阶段（Phase 7 已完成；**Phase 8 编码已完成**，completion review draft / pending_desktop_acceptance；Phase 9~11 overview 仍为 draft）
 
-> MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP，不等于产品可用性完成。Post-MVP 总体路线图见 [`post-mvp-roadmap.md`](post-mvp-roadmap.md)。**Phase 7 详细文档（requirements/design/ui-ux/testing/implementation-plan）已全部 active，Phase 7 全部完成（Batch A/B/C/D，completion review active）**。Phase 8 详细文档（requirements/design/ui-ux/testing/implementation-plan）**已全部 active**；**Phase 8 编码已完成（Batch A/B/C/D 已完成，Batch E 中 P8-T10 待真实桌面验收，[`completion review`](phase-8-completion-review.md) 仍为 draft / pending_desktop_acceptance）。Phase 9 仅可在 Phase 8 completion 完成后进入；Phase 9~11 overview 仍为 `draft**。
+> MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP，不等于产品可用性完成。Post-MVP 总体路线图见 [`post-mvp-roadmap.md`](post-mvp-roadmap.md)。**Phase 7 详细文档（requirements/design/ui-ux/testing/implementation-plan）已全部 active，Phase 7 全部完成（Batch A/B/C/D，completion review active）**。Phase 8 详细文档（requirements/design/ui-ux/testing/implementation-plan）**已全部 active**；**Phase 8 编码已完成（Batch A/B/C/D 已完成，Batch E 中 P8-T10 待真实桌面验收，[`completion review`](phase-8-completion-review.md) 仍为 draft / pending_desktop_acceptance）。Phase 9 仅可在 Phase 8 completion 完成后进入；Phase 9~11 overview 仍为 `draft`**。
 
 | 阶段 | 名称 | 核心目标 | overview 文档 |
 |------|------|----------|---------------|
@@ -122,4 +122,4 @@ updated: YYYY-MM-DD
 >
 > 当前 active 文档：`phase-6-persistence-and-mvp-requirements.md`、`phase-6-persistence-model.md`、`phase-6-persistence-and-replay-design.md`、`phase-6-session-and-mvp-view.md`、`phase-6-mvp-validation.md`、`phase-6-implementation-plan.md`、`phase-6-completion-review.md`、`mvp-release-notes.md`，以及 Phase 7 详细文档（requirements/design/ui-ux/testing/implementation-plan，均 active）。
 >
-> **Post-MVP 阶段状态**：Phase 7 详细文档（requirements/design/ui-ux/testing/implementation-plan）**已全部审核转 `active`**，**Phase 7 全部完成（Batch A/B/C/D，[`completion review`](phase-7-completion-review.md) active）**。Phase 8 详细文档（requirements/design/ui-ux/testing/implementation-plan）**已全部 active**；**Phase 8 编码已完成（Batch A/B/C/D 已完成，Batch E 中 P8-T10 待真实桌面验收，[`completion review`](phase-8-completion-review.md) 仍为 draft / pending_desktop_acceptance）。Phase 9 仅可在 Phase 8 completion 完成后进入；Phase 9~11 overview 仍为 `draft**。
+> **Post-MVP 阶段状态**：Phase 7 详细文档（requirements/design/ui-ux/testing/implementation-plan）**已全部审核转 `active`**，**Phase 7 全部完成（Batch A/B/C/D，[`completion review`](phase-7-completion-review.md) active）**。Phase 8 详细文档（requirements/design/ui-ux/testing/implementation-plan）**已全部 active**；**Phase 8 编码已完成（Batch A/B/C/D 已完成，Batch E 中 P8-T10 待真实桌面验收，[`completion review`](phase-8-completion-review.md) 仍为 draft / pending_desktop_acceptance）。Phase 9 仅可在 Phase 8 completion 完成后进入；Phase 9~11 overview 仍为 `draft`**。
