@@ -206,9 +206,9 @@ rg -n "OpenAI|Anthropic|api_key|Vivado|synthesis|implementation|bitstream|ReactF
 
 ### 7.2 验证
 
-- 新增 11 个单元/集成测试覆盖噪声过滤、L0/L4 流水线、AXI-Stream I/O、temporal evidence、claim 质量、退化标记。
-- `cargo test --lib` 553 passed；`cargo test --test real_project_validation -- --ignored` 5 passed（含新增端到端测试）。
-- 目标项目 checksum 修复前后一致，未修改目标项目任何文件。
+- 新增 12 个单元/集成测试覆盖噪声过滤、L0/L4 流水线、AXI-Stream I/O、temporal evidence、claim 质量、L0 算法步骤不生成 timing、退化标记。
+- `cargo test --lib` 554 passed；`cargo test --test real_project_validation -- --ignored` 5 passed（含新增端到端测试）。
+- 目标项目 checksum 修复前后一致，未修改目标项目任何文件（聚合指纹 `8851c4ea7…770f`，tracked 文件零修改）。
 - GUI 截图审阅受 CLI 环境限制未完成，截图目录 `docs/screenshots/phase-8-quality-fixes/` 已预留。
 
 ### 7.3 结论
@@ -216,3 +216,21 @@ rg -n "OpenAI|Anthropic|api_key|Vivado|synthesis|implementation|bitstream|ReactF
 - Phase 8 全部编码（含质量阻塞修复）已完成，自动化验证全部通过。
 - 本次质量修复为**确定性启发式**，claim/流水线/摘要基于 symbol/summary 关键词派生；**L0 等 Python 算法阶段只生成 dataflow 算法链，不伪造 timing 图，无硬件时序证据时保持 empty_reason**；Phase 9 仍需接入真实 LLM 以替换 heuristic、提升语义准确性。
 - 真实 GUI 桌面验收仍未完成；待真实桌面环境补录截图后，方可将 completion review 转 active。
+
+### 7.4 合并前最终收口（注释同步 + GUI 启动复验准备）
+
+本轮（合并前）工作：
+
+- **注释同步**：`has_temporal_evidence` 顶部 doc 注释重写为 stage-aware 描述——L0/L1/L2 仅 `cycle/latency/clock/clk/rst/reset/posedge/negedge/always_ff/时钟/时序/复位` 触发，`pipeline/stage/tick/流水/步骤` 不触发；L4/cycle_acc 按周期精确语义触发；RTL clock/reset fallback 不变。纯文档，不改行为。
+- **验证重跑**：`tsc` / `build` / `cargo check --tests`（0 warning）/ `cargo test --lib`（554 passed）/ `real_project_validation --ignored`（5 passed）全部通过。
+- **checksum**：目标项目 `fpga_project_coarse_sync` tracked 文件零修改；`src/` 下 `.py/.v/.sv/.md` 聚合 SHA256 `8851c4ea71e36b11714c2ad0f82f8e999471e95763ecfa66577583b5fd5b770f`。
+- **Tauri app 启动复验**：`npm run tauri dev` 成功——Vite dev server `http://localhost:1420/` 就绪，Rust debug 二进制 `target/debug/fpga-flow-mind` 编译并运行（无 panic）。App 可正常编译并启动。
+
+**交互式 GUI 桌面复验未完成（合并阻塞项）**：
+
+1. CLI 环境无交互式桌面控制，无法驱动打开项目 / 选阶段 / 收集证据 / 生成视图 / 点击节点验证 ContextPanel。
+2. 当前会话模型为纯语言（非多模态），即便截图也无法核验渲染像素。
+
+等价证据：8 项验收中的逻辑层已由 `primary_sample_l0_l4_quality_blockers_fixed` 端到端覆盖（阶段识别 L0~L6/RTL、L0/L4 collect→understanding→views、L0 dataflow 算法链、L0 timing 空+empty_reason、L4 timing 周期精确节点、AXI-Stream I/O、NoisyEvidence）；唯一缺口是渲染像素与点击交互。
+
+**结论**：因交互式 GUI 桌面复验未完成，本审查保持 `status: draft` / P8-T10 `pending_desktop_acceptance`，**本轮未合并 main**。待真实桌面环境（人在桌面 + 可截图）补录 8 项交互截图（含 L0 timing 空+empty_reason、L4 timing 周期精确节点、点击节点 ContextPanel）后，方可转 active、合并 main、进入 Phase 9。

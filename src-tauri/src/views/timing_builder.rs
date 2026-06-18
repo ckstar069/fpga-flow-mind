@@ -6,13 +6,21 @@ use crate::views::models::{
     ViewType,
 };
 
-/// 判断 processing_steps 或 claims/signals 是否含明确时序证据。
+/// 判断 processing_steps / claims / signals 是否含“硬件时序证据”，决定是否生成 timing 图。
 ///
-/// 明确时序依据包括：
-/// - step.description / step.name / claim 中出现 cycle / latency / clock / pipeline /
-///   stage / tick / clk / rst / reset / posedge / negedge 等时序关键词；
-/// - stage_id 或 source_kind 明确属于 RTL / L3_pipeline / L4_cycle_acc；
-/// - evidence 内容显示 RTL clock/reset/always_ff/posedge/negedge。
+/// **stage-aware 门控**（防止把 Python 算法/函数顺序伪造成硬件时序）：
+///
+/// - **L0 / L1 / L2（Python 算法阶段）**：仅当出现明确的硬件时序关键词才触发 timing ——
+///   `cycle / latency / clock / clk / rst / reset / posedge / negedge / always_ff /
+///   时钟 / 时序 / 复位`。
+///   泛化词 `pipeline / stage / tick / 流水 / 步骤` **不得**让 L0/L1/L2 生成 timing
+///   （它们只代表算法处理顺序，不是周期精确的硬件时序）。
+/// - **L4 / cycle_acc（周期精确阶段）**：可按周期精确语义关键词触发 timing ——
+///   `input / correlation / energy / metric / detection / output / _stage_ /
+///   cycle / latency / pipeline / clock / stage / s_* / m_*` 等。
+/// - **RTL**：clock/reset fallback 保持不变（signal_summaries 含 clk/rst 时
+///   保守生成 ClockDomain/ResetDomain 节点，可追溯、不伪造流水关系）。
+/// - 其余阶段（如 L3_pipeline）：硬件时序关键词与泛化流水线词均可触发。
 fn has_temporal_evidence(iu: &ImplementationUnderstanding) -> bool {
     let stage_lower = iu.stage_id.to_lowercase();
     let is_l4_or_cycle_acc = stage_lower.starts_with("l4") || stage_lower.contains("cycle_acc");
