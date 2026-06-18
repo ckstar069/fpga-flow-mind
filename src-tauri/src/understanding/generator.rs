@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::time::Instant;
 
 use crate::evidence::models::EvidenceCollection;
+use crate::quality::issue_builder::is_low_value_python_symbol;
 use crate::understanding::context_builder::ContextBuilder;
 use crate::understanding::models::*;
 use crate::understanding::schema_validator::SchemaValidator;
@@ -139,26 +140,206 @@ fn first_identifier(s: &str) -> Option<String> {
     Some(candidate.to_string())
 }
 
+// ─── Phase 8: 噪声过滤与 L0/L4 标准流水线推导辅助 ─────────────────────
+
+/// Python 业务关键词：用于区分真实算法函数与 import/typing/decorator 噪声。
+const PYTHON_BUSINESS_KEYWORDS: &[&str] = &[
+    "coarse", "sync", "md", "corr", "energy", "metric", "smooth", "peak", "detect", "cfo",
+    "stage", "process", "estimate", "load", "compute", "calculate", "combine", "normalize",
+    "normalized", "delay", "angle", "dual", "sample", "power", "sum", "average", "moving",
+    "threshold", "cluster", "max", "min", "index", "find", "search", "align", "frame", "symbol",
+    "modulate", "demodulate", "filter", "equalize", "fft", "ifft", "transform", "window", "sma",
+];
+
+/// 判断是否为 AXI-Stream 握手信号（s_* 为 slave/input，m_* 为 master/output）。
+fn is_axi_stream_signal(name: &str) -> Option<&'static str> {
+    let lower = name.to_lowercase();
+    if lower.starts_with("s_") {
+        Some("input")
+    } else if lower.starts_with("m_") {
+        Some("output")
+    } else {
+        None
+    }
+}
+
+/// 判断是否为 CamelCase（类名）。
+fn is_camel_case(name: &str) -> bool {
+    let mut chars = name.chars();
+    let Some(first) = chars.next() else { return false };
+    if !first.is_uppercase() {
+        return false;
+    }
+    name.chars().any(|c| c.is_lowercase()) && !name.chars().all(|c| c.is_uppercase() || c == '_')
+}
+
+/// 判断 evidence 是否对应一个 Python 函数定义（summary 首行 `def <symbol>(...`）。
+fn is_python_function_definition(symbol: &str, summary: &str) -> bool {
+    let first = summary.lines().next().unwrap_or("").trim_start();
+    if let Some(rest) = first.strip_prefix("def ") {
+        let name = rest
+            .split(|c: char| c == '(' || c == ':' || c == ' ')
+            .next()
+            .unwrap_or("");
+        name == symbol
+    } else {
+        false
+    }
+}
+
+/// 判断 Python 符号是否为业务函数符号（非低价值、非 dunder、非纯常量）。
+fn is_business_python_symbol(symbol: &str, summary: &str) -> bool {
+    if symbol.is_empty() || is_low_value_python_symbol(symbol, summary) {
+        return false;
+    }
+    // 纯大写常量视为配置信号，不作为处理步骤
+    if symbol
+        .chars()
+        .all(|c| c.is_uppercase() || c == '_' || c.is_ascii_digit())
+    {
+        return false;
+    }
+    let lower = symbol.to_lowercase();
+    // 单下划线前缀函数需要包含业务关键词才被保留（如 `_stage_correlation`）
+    if lower.starts_with('_') {
+        return PYTHON_BUSINESS_KEYWORDS.iter().any(|kw| lower.contains(kw));
+    }
+    true
+}
+
+/// L0 标准粗同步流水线步骤定义（按固定顺序）。
+const L0_PIPELINE_STEPS: &[(&str, &[&str])] = &[
+    ("correlation", &["corr", "correlation", "cumsum", "delay_corr", "p_vec"]),
+    ("energy", &["energy", "power", "e_vec", "power_cs"]),
+    ("metric", &["metric", "mag2", "normalized", "combined"]),
+    ("smoothing", &["smooth", "sma", "smoothed", "moving_average"]),
+    ("peak_detection", &["peak", "detect_peak", "threshold", "cluster"]),
+    ("cfo_estimation", &["cfo", "estimate_cfo", "coarse_cfo", "angle", "dual_delay"]),
+];
+
+/// L4 周期精确流水线步骤定义（按固定顺序）。
+const L4_PIPELINE_STEPS: &[(&str, &[&str])] = &[
+    ("input", &["s_valid", "s_data", "s_last", "s_ready", "input", "slave"]),
+    ("correlation", &["_stage_correlation", "corr", "correlation"]),
+    ("energy", &["_stage_energy", "energy"]),
+    ("metric", &["_stage_metric", "metric", "smoothed"]),
+    ("detection", &["_stage_detection", "detect", "peak"]),
+    ("output", &["m_valid", "m_data", "m_last", "m_ready", "output", "master"]),
+];
+
+/// 从 L0 evidence 推导标准粗同步流水线步骤。
+///
+/// 触发条件：stage_id 为 L0 且 evidence 中出现 coarse/sync 关键词。
+/// 每个步骤绑定所有命中关键词的 evidence_id，保留可追溯性。
+fn derive_l0_pipeline_steps(items: &[EvidenceContextItem]) -> Vec<serde_json::Value> {
+    let has_domain_keyword = items.iter().any(|ctx| {
+        let hay = format!(
+            "{} {}",
+            ctx.symbol.as_deref().unwrap_or(""),
+            ctx.summary
+        )
+        .to_lowercase();
+        hay.contains("coarse") || hay.contains("sync")
+    });
+    if !has_domain_keyword {
+        return Vec::new();
+    }
+
+    let mut steps = Vec::new();
+    let mut order: u32 = 1;
+    for (name, keywords) in L0_PIPELINE_STEPS {
+        let mut refs: Vec<serde_json::Value> = Vec::new();
+        let mut seen_ids: std::collections::HashSet<&str> = std::collections::HashSet::new();
+        for ctx in items {
+            let hay = format!(
+                "{} {}",
+                ctx.symbol.as_deref().unwrap_or(""),
+                ctx.summary
+            )
+            .to_lowercase();
+            if keywords.iter().any(|kw| hay.contains(kw)) && seen_ids.insert(ctx.evidence_id.as_str()) {
+                refs.push(serde_json::json!({"evidence_id": ctx.evidence_id.as_str()}));
+            }
+        }
+        if !refs.is_empty() {
+            steps.push(serde_json::json!({
+                "name": *name,
+                "description": format!("L0 标准粗同步流水线步骤：{}", name),
+                "order": order,
+                "evidence_refs": refs,
+                "confidence": "inferred"
+            }));
+            order += 1;
+        }
+    }
+    steps
+}
+
+/// 从 L4 evidence 推导周期精确流水线步骤。
+///
+/// 触发条件：stage_id 为 L4 且 evidence 中出现 cycle/stage/pipeline 关键词。
+fn derive_l4_pipeline_steps(items: &[EvidenceContextItem]) -> Vec<serde_json::Value> {
+    let has_domain_keyword = items.iter().any(|ctx| {
+        let hay = format!(
+            "{} {}",
+            ctx.symbol.as_deref().unwrap_or(""),
+            ctx.summary
+        )
+        .to_lowercase();
+        hay.contains("cycle") || hay.contains("stage") || hay.contains("pipeline")
+    });
+    if !has_domain_keyword {
+        return Vec::new();
+    }
+
+    let mut steps = Vec::new();
+    let mut order: u32 = 1;
+    for (name, keywords) in L4_PIPELINE_STEPS {
+        let mut refs: Vec<serde_json::Value> = Vec::new();
+        let mut seen_ids: std::collections::HashSet<&str> = std::collections::HashSet::new();
+        for ctx in items {
+            let hay = format!(
+                "{} {}",
+                ctx.symbol.as_deref().unwrap_or(""),
+                ctx.summary
+            )
+            .to_lowercase();
+            if keywords.iter().any(|kw| hay.contains(kw)) && seen_ids.insert(ctx.evidence_id.as_str()) {
+                refs.push(serde_json::json!({"evidence_id": ctx.evidence_id.as_str()}));
+            }
+        }
+        if !refs.is_empty() {
+            steps.push(serde_json::json!({
+                "name": *name,
+                "description": format!("L4 周期精确流水线步骤：{}", name),
+                "order": order,
+                "evidence_refs": refs,
+                "confidence": "inferred"
+            }));
+            order += 1;
+        }
+    }
+    steps
+}
+
+
 /// 从 evidence context items 保守派生 signal/interface/processing_step 摘要。
 ///
 /// 规则（保守、可追溯）：
-/// - **processing_steps**：对 Python 阶段的函数符号 evidence，按 evidence 顺序生成
-///   step（confidence=inferred，绑定 evidence_id）。RTL 阶段不派生 step（避免把
-///   硬件 module 当作算法步骤）。每个 step 仅表示"存在该处理单元"，不臆造调用关系。
-/// - **signal_summaries**：从 RTL evidence 摘要中识别 input/output 端口与时钟/复位
-///   关键字（confidence=inferred，绑定 evidence_id）。Python 阶段识别全大写常量。
-/// - **interface_summaries**：从端口/import 证据中保守识别接口端点。
+/// - **processing_steps**：优先按阶段类型使用标准流水线（L0/L4）；否则仅对 Python
+///   业务函数符号生成 step。跳过 dunder、低价值 import/typing/decorator 符号。
+/// - **signal_summaries**：RTL 识别 input/output/clk/rst；Python 识别全大写常量
+///   与 AXI-Stream 接口信号（s_* / m_*）。
+/// - **interface_summaries**：仅保留 RTL 端口/实例化证据；Python import 证据不再
+///   默认生成 external_dependency（避免噪声）。
 fn derive_conservative_summaries(
-    _stage_id: &str,
+    stage_id: &str,
     items: &[EvidenceContextItem],
 ) -> DerivedSummaries {
     let mut signal_summaries: Vec<serde_json::Value> = Vec::new();
     let mut interface_summaries: Vec<serde_json::Value> = Vec::new();
-    let mut processing_steps: Vec<serde_json::Value> = Vec::new();
     let mut sig_seen: std::collections::HashSet<String> = std::collections::HashSet::new();
     let mut iface_seen: std::collections::HashSet<String> = std::collections::HashSet::new();
-    let mut step_seen: std::collections::HashSet<String> = std::collections::HashSet::new();
-    let mut step_order: u32 = 1;
 
     for ctx in items {
         let ev_id = &ctx.evidence_id;
@@ -166,21 +347,6 @@ fn derive_conservative_summaries(
         let is_rtl = ctx.source_kind == "rtl";
         let is_python = ctx.source_kind == "python_stage";
         let summary_lower = ctx.summary.to_lowercase();
-
-        // ── processing_steps：仅 Python 函数/类符号，按顺序 ──
-        // 跳过 dunder 与 __init__ 这类无算法语义的符号。
-        if is_python && !symbol.is_empty() && !symbol.starts_with('_') {
-            if step_seen.insert(symbol.to_string()) {
-                processing_steps.push(serde_json::json!({
-                    "name": symbol,
-                    "description": format!("保守派生自证据 {} 的处理单元（按 evidence 顺序）", ev_id),
-                    "order": step_order,
-                    "evidence_refs": [{"evidence_id": ev_id}],
-                    "confidence": "inferred"
-                }));
-                step_order += 1;
-            }
-        }
 
         // ── signal_summaries ──
         if is_rtl {
@@ -197,29 +363,41 @@ fn derive_conservative_summaries(
                     }));
                 }
             }
-        } else if is_python && !symbol.is_empty() && symbol.chars().all(|c| c.is_uppercase() || c == '_' || c.is_digit(10)) {
+        } else if is_python && !symbol.is_empty() && !is_low_value_python_symbol(symbol, &ctx.summary) {
             // Python：全大写常量视为配置信号
-            if sig_seen.insert(symbol.to_string()) {
-                signal_summaries.push(serde_json::json!({
-                    "name": symbol,
-                    "description": format!("P1 派生自 Python 常量证据 {} 的配置信号", ev_id),
-                    "direction": None::<String>,
-                    "evidence_refs": [{"evidence_id": ev_id}],
-                    "confidence": "inferred"
-                }));
+            let is_constant = symbol.chars().all(|c| c.is_uppercase() || c == '_' || c.is_digit(10));
+            if is_constant {
+                if sig_seen.insert(symbol.to_string()) {
+                    signal_summaries.push(serde_json::json!({
+                        "name": symbol,
+                        "description": format!("P1 派生自 Python 常量证据 {} 的配置信号", ev_id),
+                        "direction": None::<String>,
+                        "evidence_refs": [{"evidence_id": ev_id}],
+                        "confidence": "inferred"
+                    }));
+                }
+            } else if let Some(direction) = is_axi_stream_signal(symbol) {
+                // AXI-Stream 接口信号（s_* / m_*）
+                if sig_seen.insert(symbol.to_string()) {
+                    signal_summaries.push(serde_json::json!({
+                        "name": symbol,
+                        "description": format!("P1 派生自 Python AXI-Stream 证据 {} 的接口信号", ev_id),
+                        "direction": Some(direction.to_string()),
+                        "evidence_refs": [{"evidence_id": ev_id}],
+                        "confidence": "inferred"
+                    }));
+                }
             }
         }
 
-        // ── interface_summaries：从端口证据和 import 证据派生 ──
+        // ── interface_summaries：仅保留 RTL 端口/实例化证据 ──
         let is_port_evidence = summary_lower.starts_with("input")
             || summary_lower.starts_with("output")
             || summary_lower.starts_with("inout");
-        let is_import_evidence = summary_lower.starts_with("import")
-            || summary_lower.starts_with("from");
         let is_instance_evidence = ctx.summary.contains('(') && ctx.summary.contains(')')
             && !symbol.is_empty() && (symbol.contains("u_") || symbol.contains("inst"));
 
-        if is_port_evidence && !symbol.is_empty() {
+        if is_port_evidence && !symbol.is_empty() && !is_low_value_python_symbol(symbol, &ctx.summary) {
             let iface_name = format!("{}_port", symbol);
             if iface_seen.insert(iface_name.clone()) {
                 let iface_type = if summary_lower.starts_with("input") { "input_port" }
@@ -229,19 +407,6 @@ fn derive_conservative_summaries(
                     "name": iface_name,
                     "description": format!("P1 派生自端口证据 {} 的接口端点", ev_id),
                     "interface_type": iface_type,
-                    "evidence_refs": [{"evidence_id": ev_id}],
-                    "confidence": "inferred"
-                }));
-            }
-        }
-
-        if is_import_evidence && !symbol.is_empty() && summary_lower.contains("import") {
-            let iface_name = format!("dep_{}", symbol);
-            if iface_seen.insert(iface_name.clone()) {
-                interface_summaries.push(serde_json::json!({
-                    "name": iface_name,
-                    "description": format!("P1 派生自依赖证据 {} 的外部接口", ev_id),
-                    "interface_type": "external_dependency",
                     "evidence_refs": [{"evidence_id": ev_id}],
                     "confidence": "inferred"
                 }));
@@ -261,6 +426,40 @@ fn derive_conservative_summaries(
             }
         }
     }
+
+    // ── processing_steps：阶段标准流水线 或 通用业务函数步骤 ──
+    let mut processing_steps: Vec<serde_json::Value> = if stage_id.starts_with("L0") {
+        derive_l0_pipeline_steps(items)
+    } else if stage_id.starts_with("L4") {
+        derive_l4_pipeline_steps(items)
+    } else {
+        let mut steps: Vec<serde_json::Value> = Vec::new();
+        let mut step_seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+        let mut step_order: u32 = 1;
+        for ctx in items {
+            let symbol = ctx.symbol.as_deref().unwrap_or("");
+            if ctx.source_kind != "python_stage" || symbol.is_empty() {
+                continue;
+            }
+            if !is_python_function_definition(symbol, &ctx.summary) {
+                continue;
+            }
+            if !is_business_python_symbol(symbol, &ctx.summary) {
+                continue;
+            }
+            if step_seen.insert(symbol.to_string()) {
+                steps.push(serde_json::json!({
+                    "name": symbol,
+                    "description": format!("保守派生自证据 {} 的处理单元（按 evidence 顺序）", ctx.evidence_id),
+                    "order": step_order,
+                    "evidence_refs": [{"evidence_id": ctx.evidence_id.as_str()}],
+                    "confidence": "inferred"
+                }));
+                step_order += 1;
+            }
+        }
+        steps
+    };
 
     // 控制处理步骤上限
     const MAX_STEPS: usize = 12;
@@ -309,8 +508,19 @@ impl UnderstandingProvider for MockProvider {
         ];
 
         if !input.evidence_context_items.is_empty() {
-            // P1: 为每个 evidence item（不封顶）生成 claim
-            for (i, ctx) in input.evidence_context_items.iter().enumerate() {
+            // P8: 仅对非低价值 evidence 生成 claim，彻底停止“一条 evidence 一条 claim”。
+            const MAX_CLAIMS: usize = 8;
+            let claim_candidates: Vec<&EvidenceContextItem> = input
+                .evidence_context_items
+                .iter()
+                .filter(|ctx| {
+                    let sym = ctx.symbol.as_deref().unwrap_or("");
+                    !is_low_value_python_symbol(sym, &ctx.summary)
+                })
+                .take(MAX_CLAIMS)
+                .collect();
+
+            for (i, ctx) in claim_candidates.iter().enumerate() {
                 let ev_id = &ctx.evidence_id;
                 let claim_id = format!("CL-{}-{:06}", stage_id, i + 1);
                 let desc = if let Some(sym) = &ctx.symbol {
@@ -326,15 +536,23 @@ impl UnderstandingProvider for MockProvider {
                     "evidence_refs": [{"evidence_id": ev_id}],
                     "has_evidence_gap": false
                 }));
+            }
 
-                // P1: 为每个有 symbol 的 evidence 生成模块摘要
+            // P8: module_summaries 仅对模块相关 symbol（class / 顶层业务函数）生成。
+            let mut mod_seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+            for ctx in &input.evidence_context_items {
                 if let Some(sym) = &ctx.symbol {
-                    // 跳过 dunder 和短名（已知的噪声符号）
-                    if !sym.starts_with('_') && sym.len() > 1 {
+                    if is_low_value_python_symbol(sym, &ctx.summary) {
+                        continue;
+                    }
+                    let is_class = is_camel_case(sym) && ctx.summary.lines().next().unwrap_or("").trim_start().starts_with("class ");
+                    let is_business_fn = is_python_function_definition(sym, &ctx.summary)
+                        && is_business_python_symbol(sym, &ctx.summary);
+                    if (is_class || is_business_fn) && mod_seen.insert(sym.clone()) {
                         module_summaries.push(serde_json::json!({
-                            "name": format!("module_{}", sym),
-                            "description": format!("基于证据 {} [{}] 的模块", ev_id, sym),
-                            "evidence_refs": [{"evidence_id": ev_id}],
+                            "name": sym.clone(),
+                            "description": format!("基于证据 {} [{}] 的模块", ctx.evidence_id, sym),
+                            "evidence_refs": [{"evidence_id": ctx.evidence_id.as_str()}],
                             "confidence": "supported"
                         }));
                     }
@@ -1151,11 +1369,11 @@ mod tests {
     #[test]
     fn gen_12_python_symbols_derive_processing_steps() {
         let items = vec![
-            make_item_with_kind("EV-L0-000001", Some("load_samples"), "def load_samples():", SourceKind::PythonStage, Language::Python),
-            make_item_with_kind("EV-L0-000002", Some("correlate"), "def correlate(rx):", SourceKind::PythonStage, Language::Python),
-            make_item_with_kind("EV-L0-000003", Some("detect_peak"), "def detect_peak(corr):", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L1-000001", Some("load_samples"), "def load_samples():", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L1-000002", Some("correlate"), "def correlate(rx):", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L1-000003", Some("detect_peak"), "def detect_peak(corr):", SourceKind::PythonStage, Language::Python),
         ];
-        let collection = make_collection("L0", items);
+        let collection = make_collection("L1", items);
         let generator = UnderstandingGenerator::new(Box::new(MockProvider));
         let iu = generator.generate(&collection).unwrap();
 
@@ -1181,11 +1399,11 @@ mod tests {
     #[test]
     fn gen_13_dunder_symbols_not_derived() {
         let items = vec![
-            make_item_with_kind("EV-L0-000001", Some("__init__"), "def __init__(self):", SourceKind::PythonStage, Language::Python),
-            make_item_with_kind("EV-L0-000002", Some("_private"), "def _private():", SourceKind::PythonStage, Language::Python),
-            make_item_with_kind("EV-L0-000003", Some("public_fn"), "def public_fn():", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L1-000001", Some("__init__"), "def __init__(self):", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L1-000002", Some("_private"), "def _private():", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L1-000003", Some("public_fn"), "def public_fn():", SourceKind::PythonStage, Language::Python),
         ];
-        let collection = make_collection("L0", items);
+        let collection = make_collection("L1", items);
         let iu = UnderstandingGenerator::new(Box::new(MockProvider)).generate(&collection).unwrap();
 
         assert_eq!(iu.processing_steps.len(), 1, "仅 public_fn 应派生 step");
@@ -1251,6 +1469,86 @@ mod tests {
                 assert!(known.contains(&r.evidence_id), "signal {} 引用未知 evidence_id: {}", sig.name, r.evidence_id);
             }
         }
+    }
+
+    /// gen_17: 低价值 Python 噪声符号不生成 claim / module / step
+    #[test]
+    fn gen_17_noise_symbols_filtered() {
+        let items = vec![
+            make_item_with_kind("EV-L0-000001", Some("annotations"), "from __future__ import annotations", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L0-000002", Some("dataclass"), "@dataclass", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L0-000003", Some("Optional"), "def process(self) -> Optional[dict]", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L0-000004", Some("np"), "import numpy as np", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L0-000005", Some("PARAMS"), "from config.parameters import PARAMS", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L0-000006", Some("config"), "from coarse_sync_config import CoarseSyncConfig", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L0-000007", Some("data_width"), "from config.parameters import data_width", SourceKind::PythonStage, Language::Python),
+            // 保留一条非低价值 evidence，确保 claim 不为空
+            make_item_with_kind("EV-L0-000008", Some("coarse_sync"), "def coarse_sync(rx_signal):", SourceKind::PythonStage, Language::Python),
+        ];
+        let collection = make_collection("L0", items);
+        let iu = UnderstandingGenerator::new(Box::new(MockProvider)).generate(&collection).unwrap();
+
+        let noise_names = ["annotations", "dataclass", "Optional", "np", "PARAMS", "config", "data_width"];
+        for name in &noise_names {
+            assert!(
+                !iu.claims.iter().any(|c| c.description.contains(name)),
+                "噪声符号 {} 不应出现在 claim 中", name
+            );
+            assert!(
+                !iu.module_summaries.iter().any(|m| m.name.contains(name) || m.name == *name),
+                "噪声符号 {} 不应出现在 module_summaries 中", name
+            );
+            assert!(
+                !iu.processing_steps.iter().any(|s| s.name.contains(name) || s.name == *name),
+                "噪声符号 {} 不应出现在 processing_steps 中", name
+            );
+        }
+        assert!(!iu.claims.is_empty(), "非低价值 evidence 应仍生成 claim");
+    }
+
+    /// gen_18: L0 标准粗同步流水线推导
+    #[test]
+    fn gen_18_l0_canonical_pipeline() {
+        let items = vec![
+            make_item_with_kind("EV-L0-000001", Some("md_coarse"), "def md_coarse(rx_signal):\n    p_vec = ...\n    power_cs = ...\n    combined = ...\n    sma_inplace(combined, smoothing_win)\n    peak_idx = find_first_cluster_peak(...)\n    coarse_cfo = _estimate_dual_delay_cfo(...)", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L0-000002", Some("_estimate_dual_delay_cfo"), "def _estimate_dual_delay_cfo(rx, ...):", SourceKind::PythonStage, Language::Python),
+        ];
+        let collection = make_collection("L0", items);
+        let iu = UnderstandingGenerator::new(Box::new(MockProvider)).generate(&collection).unwrap();
+
+        let step_names: Vec<&str> = iu.processing_steps.iter().map(|s| s.name.as_str()).collect();
+        assert_eq!(
+            step_names,
+            vec!["correlation", "energy", "metric", "smoothing", "peak_detection", "cfo_estimation"],
+            "L0 应生成 6 个标准粗同步步骤，实际: {:?}", step_names
+        );
+        for step in &iu.processing_steps {
+            assert!(!step.evidence_refs.is_empty(), "步骤 {} 必须绑定 evidence", step.name);
+        }
+    }
+
+    /// gen_19: L4 周期精确流水线推导
+    #[test]
+    fn gen_19_l4_cycle_accurate_pipeline() {
+        let items = vec![
+            make_item_with_kind("EV-L4-000001", Some("CoarseSyncCycleAcc"), "class CoarseSyncCycleAcc:\n    def step(self, s_valid=False, s_data=0, s_last=False):\n        self._stage_correlation()\n        self._stage_energy()\n        self._stage_metric()\n        self._stage_detection()\n        return {'m_valid': self.m_valid}", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L4-000002", Some("PipelineTiming"), "class PipelineTiming:\n    self.stages = [{'name': 'input'}, {'name': 'correlation'}]", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L4-000003", Some("s_valid"), "self.s_valid = False", SourceKind::PythonStage, Language::Python),
+            make_item_with_kind("EV-L4-000004", Some("m_valid"), "self.m_valid = False", SourceKind::PythonStage, Language::Python),
+        ];
+        let collection = make_collection("L4", items);
+        let iu = UnderstandingGenerator::new(Box::new(MockProvider)).generate(&collection).unwrap();
+
+        let step_names: Vec<&str> = iu.processing_steps.iter().map(|s| s.name.as_str()).collect();
+        let expected = vec!["input", "correlation", "energy", "metric", "detection", "output"];
+        assert_eq!(
+            step_names, expected,
+            "L4 应生成 6 个周期精确步骤，实际: {:?}", step_names
+        );
+
+        let signal_names: Vec<&str> = iu.signal_summaries.iter().map(|s| s.name.as_str()).collect();
+        assert!(signal_names.contains(&"s_valid"), "应识别 s_valid 为 AXI-Stream 输入信号");
+        assert!(signal_names.contains(&"m_valid"), "应识别 m_valid 为 AXI-Stream 输出信号");
     }
 
     // ─── P0-3 真实项目只读验证 harness（#[ignore]，手动 --ignored 触发） ────
