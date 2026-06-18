@@ -87,7 +87,9 @@ Phase 1 技术设计由以下文档组成，按阅读顺序排列：
 | [`phase-7-real-project-evaluation-model.md`](phase-7-real-project-evaluation-model.md) | `active` | Phase 7 真实项目质量评估数据模型：RealProjectSample/StageEvaluationTarget/4 类 QualityReport/QualityIssue(+Kind+Severity)/QualityRunSummary/QualityAcceptanceStatus。强调评估产物非审计结论、可追溯、评分仅内部门槛 | Phase 7 编码前必读（active；Phase 7 全部完成） |
 | [`phase-7-evidence-understanding-quality-design.md`](phase-7-evidence-understanding-quality-design.md) | `active` | Phase 7 evidence/understanding 质量评估与补强设计：复用 Phase 1~6 能力、5 维度评估探针、10 类 issue、检查方式分层、补强 backlog 与允许/禁止边界 | Phase 7 后端编码前必读（active；Phase 7 全部完成） |
 | [`phase-8-workbench-architecture.md`](phase-8-workbench-architecture.md) | `active` | Phase 8 工作台架构：三段式骨架、组件树分解、焦点路由模型、状态分层、与 Phase 1~7 产物只读对接、展示性 command 边界、依赖/图形库论证 | Phase 8 前端编码前必读（active；当前仅允许进入 Batch A） |
-| [`phase-8-ui-state-and-navigation-design.md`](phase-8-ui-state-and-navigation-design.md) | `active` | Phase 8 UI 状态与导航：焦点状态机、左侧导航与阶段状态标记、阶段 Tab、加载/错误/空转换、PersistedUiState 展示性扩展、guard 衔接 | Phase 8 前端编码前必读（active；当前仅允许进入 Batch A） |
+| [`phase-8-ui-state-and-navigation-design.md`](phase-8-ui-state-and-navigation-design.md) | `active` | Phase 8 UI 状态与导航：焦点状态机、左侧导航与阶段状态标记、阶段 Tab、加载/错误/空转换、PersistedUiState 展示性扩展、guard 衔接 | Phase 8 前端编码前必读（active；Phase 8 已完成） |
+| [`phase-9-llm-provider-architecture.md`](phase-9-llm-provider-architecture.md) | `draft` | Phase 9 LLM Provider 架构：Provider 抽象（Mock/Real/Config/Capability/Error）、调用链、配置存储边界、网络开关、timeout/retry/限流、context 构造、response validation、审计脱敏、fallback | Phase 9 后端编码前必读（**draft；Phase 9 编码尚未开始，未接入真实 LLM**） |
+| [`phase-9-grounding-and-validation-design.md`](phase-9-grounding-and-validation-design.md) | `draft` | Phase 9 grounding 与校验设计：grounding pipeline、citation 模型、hallucination guard、敏感数据防护、prompt 注入防护、confidence 语义、understanding/Q&A 差异、failure modes | Phase 9 后端编码前必读（**draft；Phase 9 编码尚未开始，未接入真实 LLM**） |
 
 > Phase 1 编码依据文档已收口。Phase 1 的 4 份设计文档与 `mvp-functional-contract.md` 共同构成 Phase 1 编码的权威依据。
 > Phase 2 编码依据文档已收口（status=active）：`phase-2-evidence-model.md` + `phase-2-evidence-collector-design.md` + `phase-2-evidence-requirements.md`。
