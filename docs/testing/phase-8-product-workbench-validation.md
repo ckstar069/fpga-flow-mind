@@ -498,26 +498,29 @@ rg -n "OpenAI|Anthropic|api_key|Vivado|synthesis|implementation|bitstream|ReactF
 
 结构限制：当前 claim 与流水线推导均为确定性启发式，仅基于 symbol/summary 关键词匹配；未能解析函数体语义，Phase 9 需接入真实 LLM 以生成更准确的模块/接口/步骤摘要。
 
-### 18.5 GUI 审阅
+### 18.5 GUI 审阅（真实 GUI 桌面验收已完成）
 
-- **合并前最终收口（本轮）**：重新执行 `npm run tauri dev`，前端 Vite dev server 在 `http://localhost:1420/` 就绪，Rust 后端 debug 二进制 `target/debug/fpga-flow-mind` 编译并运行（PID 44058），运行期无 panic/error。**App 可正常编译并启动**。
-- **交互式 GUI 桌面复验仍无法在本环境完成**（合并阻塞项）：
-  1. CLI 环境无交互式桌面控制——无法驱动鼠标/键盘打开项目、选 L0/L4、点"收集证据/生成视图"、点击图节点验证 ContextPanel 联动；
-  2. 当前会话模型 `glm-5.2` 为纯语言（非多模态），即便 `screencapture` 截图也无法经 Read 核验；Vision MCP 仅接受远程 URL，不接受本地截图路径。
-- 等价证据：上述 8 项中的逻辑层（阶段识别 L0~L6/RTL、L0/L4 collect→understanding→views、L0 dataflow 算法链、L0 timing 空、L4 timing 周期精确节点、AXI-Stream I/O）已由 `primary_sample_l0_l4_quality_blockers_fixed` 端到端集成测试覆盖并通过；唯一无法自动化的是渲染像素与点击交互（第 7 项 ContextPanel）。
-- 截图目录 `docs/screenshots/phase-8-quality-fixes/` 已预留，待真实桌面环境（人在桌面 + 可截图）补充以下截图：
-  - L0 Structure/Dataflow（无噪声节点，dataflow 为标准粗同步算法处理链）。
-  - L0 Timing（应为空 + 明确 empty_reason，不得出现伪流水 timing）。
-  - L4 Structure/Dataflow/Timing（周期精确流水线，timing 非空，dataflow 含 `s_*` / `m_*` I/O）。
-  - 点击 L0/L4 图节点后 ContextPanel 追溯信息。
-  - QualityReport（`NoisyEvidence` 负向记录）。
+真实 GUI 桌面验收已于真实项目 `/Users/ckstar/Repo/znxt_ofdm/fpga_project_coarse_sync` 完成（Tauri 应用，人在桌面逐项操作并截图）。验收内容与结果：
+
+1. **阶段识别**：左侧"阶段列表"识别 L0、L1、L2、L3、L4、L5、L6、RTL 共 8 个。
+2. **L0 evidence/understanding/views**：依次"收集证据 → 生成理解 → 生成视图"，徽标 `证据 244 · 声明 8 · 视图 3`。
+3. **L0 dataflow 算法链**：节点 `correlation → energy → metric → smoothing → peak_detection → cfo_estimation`，无噪声节点。
+4. **L0 timing 空 + empty_reason**：时序流水 `(空)`，显示 "无 cycle/latency/clock/posedge 等可追溯硬件时序证据，未生成 timing 图（当前 processing_steps 为算法/函数顺序，非硬件时序）"，未伪造硬件 timing。
+5. **L4 evidence/understanding/views**：依次执行，徽标 `证据 185 · 声明 8 · 视图 3`。
+6. **L4 timing 周期精确流水**：节点 `input → correlation → energy → metric → detection → output`（+ `reset_7` 复位域）。
+7. **点击节点 → ContextPanel 追溯**：L4 点击 `energy` 节点，右侧显示 "L4 周期精确流水线步骤：energy" + "追溯引用 13 条"。
+8. **Quality report 诚实暴露**：`noisy_evidence: 7`、`traceability_gap: 37` 等负向记录；`View·timing·L4` / `View·dataflow·L4` 追溯可解析率 100%。
+
+截图证据（位于 `docs/screenshots/phase-8-quality-fixes/`）：`01-stage-list.png`、`02-l0-collected.png`、`03-l0-dataflow.png`、`04-l0-timing-empty.png`、`05-l4-collected.png`、`06-l4-timing-pipeline.png`、`07-l4-dataflow-axi.png`、`08-context-panel.png`、`09-quality-report.png`。
+
+> 截图文字核验说明：本次会话为纯语言模型（非多模态），无法直接看图，故对截图做 OCR 文字提取做客观交叉核验（empty_reason 文案、节点标签、阶段列表文字均逐字命中预期）；真实桌面交互与最终视觉判断由人在桌面完成。
 
 ### 18.6 结论
 
 - Phase 8 真实项目 L0/L4 质量阻塞修复已完成，所有自动化验证（构建、类型、单元测试、集成测试、边界 rg、checksum）通过。
 - 本次修复为**确定性启发式**：claim/流水线/摘要均基于 symbol/summary 关键词与阶段规则派生，未接入真实 LLM；Phase 9 仍需用 LLM 替换 heuristic 以提升语义准确性。
-- 合并前最终收口：同步 `has_temporal_evidence` 注释（stage-aware：L0/L1/L2 仅硬件时序关键词触发，L4/cycle_acc 周期精确语义，RTL fallback 不变）；重跑 `tsc`/`build`/`cargo check --tests`/`cargo test --lib`（554 passed）/`real_project_validation --ignored`（5 passed）全通过；Tauri app 可正常编译并启动（debug 二进制运行无 panic）；目标项目 `fpga_project_coarse_sync` checksum 一致（聚合指纹 `8851c4ea7…770f`，tracked 文件零修改）。
-- **交互式 GUI 桌面复验未完成（合并阻塞）**：CLI 无桌面交互控制 + 当前模型非多模态无法核验截图。故 `docs/planning/phase-8-completion-review.md` 保持 `draft / pending_desktop_acceptance`，**未合并 main**；待真实桌面环境补录 8 项交互截图（含 L0 timing 空 + empty_reason、L4 timing 周期精确节点、点击节点 ContextPanel）后方可激活。
+- **真实 GUI 桌面验收已完成**（§18.5，9 张截图证据）；`docs/planning/phase-8-completion-review.md` 已由 `draft` 激活为 `active`，P8-T10 完成。
+- **Phase 8 completion 通过**：允许进入 Phase 9 详细文档编制；Phase 9 编码尚未开始；Phase 9~11 overview 仍为 `draft`。
 - 本次修复未修改目标项目、未接入真实 LLM、未引入禁用库，安全边界保持。
 
 ## 12. 变更记录
@@ -532,3 +535,4 @@ rg -n "OpenAI|Anthropic|api_key|Vivado|synthesis|implementation|bitstream|ReactF
 | 2026-06-16 | Batch D 审核收口小修：`StageList` 阶段状态 badge 的 `empty`/`missing`/`unreadable` 统一映射中性灰系（原 `missing`/`unreadable` 误落红系 default 分支），`naming_anomaly` 保持琥珀，default 兜底改灰；`StageDetail` 删除本地 `EmptyState` 实现，4 处空态统一复用 `StateBlocks.EmptyState`（`message`→`title`），视觉保持工作台风格；tsc/build/cargo check/cargo test --lib 全通过；Batch E 与 Phase 9/10/11 未开始。 | Claude |
 | 2026-06-18 | 追加 §17 Batch E 验证记录：执行 `tsc`/`build`/`cargo check`/`cargo test --lib`/`real_project_validation --ignored` 全通过；代码级桌面验收 12 项通过；边界 rg 通过；目标项目 checksum 一致；新增 `docs/planning/phase-8-completion-review.md` 草稿；P8-T10 的真实 GUI 桌面验收尚未完成，Phase 8 completion review 暂不激活；Phase 9/10/11 编码未开始。 | Claude |
 | 2026-06-18 | 合并前最终收口：同步 `has_temporal_evidence` 注释为 stage-aware 描述（不改行为）；`cargo test --lib` 升至 554 passed；Tauri app 复验可正常编译启动（debug 二进制运行无 panic）；记录交互式 GUI 桌面复验阻塞项（CLI 无桌面交互 + 模型非多模态）与 checksum 指纹；completion review 保持 draft / pending_desktop_acceptance，未合并 main，Phase 9 未进入。 | Claude |
+| 2026-06-18 | Phase 8 completion 激活：真实 GUI 桌面验收完成（§18.5，9 张截图证据，OCR 文字交叉核验通过）；`phase-8-completion-review.md` draft→active，P8-T10 完成；同步 README/docs/planning-README/impl-plan 状态为 Phase 8 完成；允许进入 Phase 9 详细文档编制，Phase 9 编码未开始。 | Claude |

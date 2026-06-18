@@ -9,7 +9,7 @@ updated: 2026-06-18
 >
 > Phase 8 是**前端为主**的阶段：把 Phase 1~7 已有能力重组为产品级工作台（**工作台化，不是新增更多卡片**），**不新增语义分析能力，不接真实 LLM，不做跨阶段映射**。
 >
-> 本文档 status 为 `active`，是 Phase 8 编码实施计划的生效文档。**Phase 8 编码已完成：Batch A/B/C/D 已完成，Batch E 中 P8-T10 的自动化回归、checksum 只读验证、边界 rg 检查与代码级桌面验收已完成，但真实 GUI 桌面验收尚未完成，因此 [`completion review`](phase-8-completion-review.md) 仍为 draft / pending_desktop_acceptance**。Phase 7 已完成（completion review active）。
+> 本文档 status 为 `active`，是 Phase 8 编码实施计划的生效文档。**Phase 8 已完成：Batch A/B/C/D/E 全部完成，P8-T10 自动化回归、checksum 只读验证、边界 rg 检查、代码级桌面验收与真实 GUI 桌面验收均已完成，[`completion review`](phase-8-completion-review.md) active**。Phase 7 已完成（completion review active）。
 
 ## 0. 核心重构方向（先读）
 
@@ -34,9 +34,9 @@ Phase 8 不是普通 UI 改造，而是**信息架构工作台化**。三个关�
 | Phase 8 验证文档 active | ✅ `phase-8-product-workbench-validation.md`（active） |
 | Phase 8 实施计划 active | ✅ 本文档（active） |
 | **以上 Phase 8 详细文档全部转为 active** | ✅ 已审核通过；Phase 8 编码已完成 |
-| Phase 8 completion review | ⏳ `phase-8-completion-review.md`（draft / pending_desktop_acceptance，真实 GUI 桌面验收待完成） |
+| Phase 8 completion review | ✅ `phase-8-completion-review.md`（active，真实 GUI 桌面验收已完成） |
 
-> 纪律：Phase 8 详细文档全部审核转 active 后，方允许进入 Batch A 编码。**Phase 8 编码已完成：Batch A/B/C/D 已完成，Batch E 中 P8-T10 的自动化回归与代码级核验已完成，真实 GUI 桌面验收待完成，[`completion review`](phase-8-completion-review.md) 仍为 draft / pending_desktop_acceptance**。Phase 9 仅可在 Phase 8 completion 完成后进入；Phase 9/10/11 均未开始编码。
+> 纪律：Phase 8 详细文档全部审核转 active 后，方允许进入 Batch A 编码。**Phase 8 已完成：Batch A/B/C/D/E 全部完成，P8-T10 自动化回归、代码级核验与真实 GUI 桌面验收均已完成，[`completion review`](phase-8-completion-review.md) active**。允许进入 Phase 9 详细文档编制；Phase 9 编码尚未开始；Phase 9/10/11 均未开始编码。
 
 ## 2. 任务拆分
 
