@@ -242,6 +242,29 @@ fn primary_sample_l0_l4_quality_blockers_fixed() {
         );
     }
 
+    // L0 为 Python 算法阶段：dataflow 可生成算法处理链，但 timing 在无硬件时序证据时必须为空
+    let l0_timing = l0_views.iter().find(|v| v.view_type == ViewType::Timing).unwrap();
+    assert!(
+        l0_timing.nodes.is_empty(),
+        "L0 timing view 必须为空（无 cycle/clock/posedge 等硬件时序证据），实际节点: {:?}",
+        l0_timing.nodes.iter().map(|n| &n.label).collect::<Vec<_>>()
+    );
+    let l0_timing_reason = l0_timing
+        .meta
+        .empty_reason
+        .as_deref()
+        .expect("L0 timing empty_reason 必须非空");
+    assert!(
+        l0_timing_reason.contains("cycle") || l0_timing_reason.contains("clock") || l0_timing_reason.contains("时序"),
+        "L0 timing empty_reason 应说明缺少硬件时序证据: {}",
+        l0_timing_reason
+    );
+    assert!(
+        l0_timing_reason.contains("算法/函数顺序"),
+        "L0 timing empty_reason 应说明 processing_steps 为算法/函数顺序: {}",
+        l0_timing_reason
+    );
+
     // ── L4: 周期精确流水线 + AXI-Stream I/O ──
     let l4_step_names: Vec<&str> = l4_iu.processing_steps.iter().map(|s| s.name.as_str()).collect();
     let l4_expected = ["input", "correlation", "energy", "metric", "detection", "output"];

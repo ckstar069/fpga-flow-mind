@@ -14,18 +14,31 @@ use crate::views::models::{
 /// - stage_id 或 source_kind 明确属于 RTL / L3_pipeline / L4_cycle_acc；
 /// - evidence 内容显示 RTL clock/reset/always_ff/posedge/negedge。
 fn has_temporal_evidence(iu: &ImplementationUnderstanding) -> bool {
-    let temporal_keywords = [
-        "cycle", "latency", "clock", "pipeline", "stage", "tick",
-        "clk", "rst", "reset", "posedge", "negedge", "always_ff",
-        "always@", "always @", "时钟", "流水", "时序", "复位",
-        // Phase 8: L4 cycle-accurate 相关关键词
-        "_stage_", "cycle_count", "cycle_acc", "cycle-accurate", "pipelinetiming",
+    let stage_lower = iu.stage_id.to_lowercase();
+    let is_l4_or_cycle_acc = stage_lower.starts_with("l4") || stage_lower.contains("cycle_acc");
+    // L0/L1/L2 为 Python 算法阶段，仅允许明确的硬件时序关键词触发 timing；
+    // 泛化的 "pipeline/stage/流水/步骤" 不应把算法/函数顺序伪造成硬件时序。
+    let is_python_algo_stage = stage_lower.starts_with("l0")
+        || stage_lower.starts_with("l1")
+        || stage_lower.starts_with("l2");
+
+    let hardware_temporal_keywords = [
+        "cycle", "latency", "clock", "clk", "rst", "reset",
+        "posedge", "negedge", "always_ff", "always@", "always @",
+        "时钟", "时序", "复位",
+    ];
+    let generic_pipeline_keywords = [
+        "pipeline", "stage", "tick", "流水", "步骤",
     ];
 
     // 1. 检查 processing_steps 的 name / description
     for step in &iu.processing_steps {
         let text = format!("{} {}", step.name, step.description).to_lowercase();
-        if temporal_keywords.iter().any(|kw| text.contains(kw)) {
+        if hardware_temporal_keywords.iter().any(|kw| text.contains(kw)) {
+            return true;
+        }
+        // 非 Python 算法阶段（L3+ pipeline / RTL / L4）可接受泛化流水线词
+        if !is_python_algo_stage && generic_pipeline_keywords.iter().any(|kw| text.contains(kw)) {
             return true;
         }
     }
@@ -33,7 +46,10 @@ fn has_temporal_evidence(iu: &ImplementationUnderstanding) -> bool {
     // 2. 检查 claims 的 description（clock/reset 相关声明）
     for claim in &iu.claims {
         let desc_lower = claim.description.to_lowercase();
-        if temporal_keywords.iter().any(|kw| desc_lower.contains(kw)) {
+        if hardware_temporal_keywords.iter().any(|kw| desc_lower.contains(kw)) {
+            return true;
+        }
+        if !is_python_algo_stage && generic_pipeline_keywords.iter().any(|kw| desc_lower.contains(kw)) {
             return true;
         }
     }
@@ -49,10 +65,7 @@ fn has_temporal_evidence(iu: &ImplementationUnderstanding) -> bool {
     }
 
     // 4. L4 / cycle_acc 语义门控：阶段明确为周期精确时，
-    //    只有 processing_steps 的 name/description 命中周期精确语义关键词才视为时序证据。
-    //    不再“有 processing_steps 就生成 timing”，避免普通函数顺序被伪造成硬件时序。
-    let stage_lower = iu.stage_id.to_lowercase();
-    let is_l4_or_cycle_acc = stage_lower.starts_with("l4") || stage_lower.contains("cycle_acc");
+    //    processing_steps 的 name/description 命中周期精确语义关键词才视为时序证据。
     if is_l4_or_cycle_acc {
         let l4_semantic_keywords = [
             "input", "correlation", "energy", "metric", "detection", "output",
@@ -265,7 +278,7 @@ pub fn build_timing_view(iu: &ImplementationUnderstanding) -> ViewGraph {
         if !iu.processing_steps.is_empty() && !has_temporal {
             // 有 processing_steps 但无时序依据 → 明确说明这是 Python 函数顺序，非硬件时序
             Some(
-                "无 cycle/latency/clock/pipeline 等可追溯时序证据，未生成 timing 图（当前 processing_steps 为算法/函数顺序，非硬件时序）"
+                "无 cycle/latency/clock/posedge 等可追溯硬件时序证据，未生成 timing 图（当前 processing_steps 为算法/函数顺序，非硬件时序）"
                     .to_string(),
             )
         } else if iu.processing_steps.is_empty() && clock_node_ids.is_empty() && reset_node_ids.is_empty() {
@@ -476,8 +489,8 @@ mod tests {
     fn tm_03_sequential_edges_correct() {
         let iu = make_iu(
             vec![
-                make_step("s1", "pipeline 阶段 1", 1),
-                make_step("s2", "pipeline 阶段 2", 2),
+                make_step("s1", "pipeline 阶段 1，每个 clock cycle 推进", 1),
+                make_step("s2", "pipeline 阶段 2，每个 clock cycle 推进", 2),
             ],
             vec![],
         );
@@ -629,9 +642,9 @@ mod tests {
     fn tm_09_stage_edges_carry_trace_refs() {
         let iu = make_iu_full(
             vec![
-                make_step_with_ev("fetch", "取指 pipeline stage", 1, "EV-1"),
-                make_step_with_ev("decode", "译码 pipeline stage", 2, "EV-2"),
-                make_step_with_ev("execute", "执行 pipeline stage", 3, "EV-3"),
+                make_step_with_ev("fetch", "取指 pipeline stage，每个 clock cycle", 1, "EV-1"),
+                make_step_with_ev("decode", "译码 pipeline stage，每个 clock cycle", 2, "EV-2"),
+                make_step_with_ev("execute", "执行 pipeline stage，每个 clock cycle", 3, "EV-3"),
             ],
             vec![],
             vec![],
@@ -787,5 +800,37 @@ mod tests {
             "应生成 PipelineStage 节点"
         );
         assert!(graph.meta.empty_reason.is_none(), "非空 timing 图不应有 empty_reason");
+    }
+
+    /// tm_14: L0 Python 算法步骤（无硬件时序关键词）不得生成 timing 图
+    #[test]
+    fn tm_14_l0_algorithm_steps_no_timing() {
+        let iu = make_iu_full(
+            vec![
+                make_step_with_ev("correlation", "L0 标准粗同步算法处理步骤：correlation", 1, "EV-L0-000001"),
+                make_step_with_ev("energy", "L0 标准粗同步算法处理步骤：energy", 2, "EV-L0-000002"),
+                make_step_with_ev("metric", "L0 标准粗同步算法处理步骤：metric", 3, "EV-L0-000003"),
+            ],
+            vec![],
+            vec![],
+        );
+        let graph = build_timing_view(&iu);
+
+        assert!(
+            graph.nodes.is_empty(),
+            "L0 Python 算法步骤无硬件时序关键词时 timing 必须为空，实际节点: {:?}",
+            graph.nodes.iter().map(|n| &n.label).collect::<Vec<_>>()
+        );
+        assert!(graph.edges.is_empty(), "空图不应有边");
+
+        let reason = graph.meta.empty_reason.as_deref().expect("empty_reason 必须非空");
+        assert!(
+            reason.contains("cycle") || reason.contains("clock") || reason.contains("时序"),
+            "empty_reason 应说明缺少硬件时序证据: {}", reason
+        );
+        assert!(
+            reason.contains("算法/函数顺序"),
+            "empty_reason 应说明 processing_steps 为算法/函数顺序: {}", reason
+        );
     }
 }

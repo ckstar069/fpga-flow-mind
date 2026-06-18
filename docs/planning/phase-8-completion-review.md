@@ -199,8 +199,8 @@ rg -n "OpenAI|Anthropic|api_key|Vivado|synthesis|implementation|bitstream|ReactF
 - 噪声符号保留为 evidence，但不再被提升为 claim / module / processing step。
 - `MockProvider` 停止“一条 evidence 一条 claim”，改为按证据质量打分选择 claim 候选：排除 import/typing/decorator/dunder/config/type-alias；优先 class 定义、业务函数、AXI-Stream 接口、端口声明、命中 L0/L4 标准流水线关键词的证据。
 - claim 描述与 category 根据证据类型语义化（“识别到模块/类 …”、“识别到处理步骤 …”、“识别到 AXI-Stream 信号 …” 等），不再输出“基于证据 X 的声明 N”模板。
-- L0 dataflow 反映真实粗同步流水线：correlation → energy → metric → smoothing → peak detection → CFO。
-- L4 timing/dataflow 反映周期精确流水线：input → correlation → energy → metric → detection → output，并识别 AXI-Stream `s_*` / `m_*` I/O；`has_temporal_evidence` 对 L4/cycle_acc 增加语义门控，避免普通函数顺序被伪造成硬件时序。
+- L0 dataflow 反映真实粗同步算法处理链：correlation → energy → metric → smoothing → peak detection → CFO；**L0 timing 在无 cycle/clock/posedge 等硬件时序证据时保持 empty_reason，不伪造成硬件时序图**。
+- L4 timing/dataflow 反映周期精确流水线：input → correlation → energy → metric → detection → output，并识别 AXI-Stream `s_*` / `m_*` I/O；`has_temporal_evidence` 改为 stage-aware：L0/L1/L2 仅允许硬件时序关键词，L4/cycle_acc 保留周期精确语义门控，RTL clock/reset fallback 不变。
 - `QualityReport` 诚实暴露退化：`NoisyEvidence` 负向记录。
 - **结构限制**：当前 claim/流水线/摘要均为 keyword/symbol 启发式，未解析函数体语义；Phase 9 仍需接入真实 LLM 替代 heuristic。
 
@@ -214,5 +214,5 @@ rg -n "OpenAI|Anthropic|api_key|Vivado|synthesis|implementation|bitstream|ReactF
 ### 7.3 结论
 
 - Phase 8 全部编码（含质量阻塞修复）已完成，自动化验证全部通过。
-- 本次质量修复为**确定性启发式**，claim/流水线/摘要基于 symbol/summary 关键词派生；Phase 9 仍需接入真实 LLM 以替换 heuristic、提升语义准确性。
+- 本次质量修复为**确定性启发式**，claim/流水线/摘要基于 symbol/summary 关键词派生；**L0 等 Python 算法阶段只生成 dataflow 算法链，不伪造 timing 图，无硬件时序证据时保持 empty_reason**；Phase 9 仍需接入真实 LLM 以替换 heuristic、提升语义准确性。
 - 真实 GUI 桌面验收仍未完成；待真实桌面环境补录截图后，方可将 completion review 转 active。

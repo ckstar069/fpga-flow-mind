@@ -446,8 +446,9 @@ rg -n "OpenAI|Anthropic|api_key|Vivado|synthesis|implementation|bitstream|ReactF
   - `module_summaries` 描述同步改为“模块/类 …”或“处理步骤 …”。
 - `src-tauri/src/views/dataflow_builder.rs`：扩展 `is_input_name` / `is_output_name`，识别 AXI-Stream `s_*` / `m_*` 接口。
 - `src-tauri/src/views/timing_builder.rs`：
-  - 扩展 `has_temporal_evidence` 关键词；
-  - L4 / `cycle_acc` 语义门控收紧：仅当 processing_steps 的 name/description 命中周期精确语义关键词（input/correlation/energy/metric/detection/output/_stage_/cycle/latency/pipeline/clock/stage/s_*/m_*）时才生成 timing view，避免普通函数顺序被伪造成硬件时序。
+  - `has_temporal_evidence` 改为 stage-aware：L0/L1/L2 等 Python 算法阶段仅允许 `cycle/latency/clock/clk/rst/reset/posedge/negedge/always_ff` 等硬件时序关键词触发 timing；泛化的 `pipeline/stage/流水/步骤` 不再触发。
+  - L4 / `cycle_acc` 保留 input/correlation/energy/metric/detection/output/_stage_/s_*/m_* 等周期精确语义门控。
+  - RTL clock/reset fallback 保持不变。
 - `src-tauri/src/quality/view_evaluator.rs`：新增视图噪声节点占比检测，>30% 时发出 `LowSemanticDiversity`。
 - `src-tauri/src/quality/reporter.rs`：view 评估后检查退化源/高噪声率，补充 `LowSemanticDiversity` 负向记录。
 - `src-tauri/tests/real_project_validation.rs`：新增端到端 `primary_sample_l0_l4_quality_blockers_fixed`，并强化断言（精确 L4 timing 标签、dataflow/timing 噪声节点清零）。
@@ -465,6 +466,7 @@ rg -n "OpenAI|Anthropic|api_key|Vivado|synthesis|implementation|bitstream|ReactF
 | `src/views/dataflow_builder.rs` | `df_16_axi_stream_io_recognized` | `s_*` / `m_*` 识别为 InputSource / OutputTarget |
 | `src/views/timing_builder.rs` | `tm_12_rtl_always_ff_timing_non_empty` | RTL `always_ff` 证据生成非空 timing 图 |
 | `src/views/timing_builder.rs` | `tm_13_l4_stage_steps_have_temporal_evidence` | L4 `_stage_*` 触发非空 timing 图 |
+| `src/views/timing_builder.rs` | `tm_14_l0_algorithm_steps_no_timing` | L0 算法步骤无硬件时序关键词时 timing 为空 |
 | `src/quality/view_evaluator.rs` | `noise_dominant_view_emits_low_semantic_diversity` | 噪声节点占比 >30% 触发 LowSemanticDiversity |
 | `src/quality/reporter.rs` | `high_noise_empty_view_emits_low_semantic_diversity` | 高噪声 evidence + 空视图触发退化标记 |
 | `tests/real_project_validation.rs` | `primary_sample_l0_l4_quality_blockers_fixed` | 端到端 L0/L4 质量阻塞修复验证 |
@@ -487,6 +489,7 @@ rg -n "OpenAI|Anthropic|api_key|Vivado|synthesis|implementation|bitstream|ReactF
 
 - L0 `processing_steps` 包含 `correlation` / `energy` / `metric` / `smoothing` / `peak_detection` / `cfo_estimation`。
 - L0 dataflow 节点不含 `annotations` / `dataclass` / `Optional` / `np` / `PARAMS` / `config` / `data_width` 噪声标签，并含上述标准步骤节点。
+- **L0 为 Python 算法阶段，无 cycle/clock/posedge 等硬件时序证据时 timing view 必须为空，且 `empty_reason` 明确说明当前 processing_steps 为算法/函数顺序、非硬件时序。**
 - L4 `processing_steps` 包含 `input` / `correlation` / `energy` / `metric` / `detection` / `output`。
 - L4 timing view 非空，且其 `PipelineStage` 节点标签**精确按顺序**覆盖 `input` → `correlation` → `energy` → `metric` → `detection` → `output`。
 - L4 dataflow 含 `s_*` 输入节点与 `m_*` 输出节点；L4 dataflow / timing 均不含上述 import/typing/decorator 噪声标签。

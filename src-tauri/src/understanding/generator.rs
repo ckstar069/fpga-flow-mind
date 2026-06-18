@@ -264,7 +264,7 @@ fn derive_l0_pipeline_steps(items: &[EvidenceContextItem]) -> Vec<serde_json::Va
         if !refs.is_empty() {
             steps.push(serde_json::json!({
                 "name": *name,
-                "description": format!("L0 标准粗同步流水线步骤：{}", name),
+                "description": format!("L0 标准粗同步算法处理步骤：{}", name),
                 "order": order,
                 "evidence_refs": refs,
                 "confidence": "inferred"
