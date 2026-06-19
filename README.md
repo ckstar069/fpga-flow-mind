@@ -61,7 +61,7 @@ MVP 是**技术闭环** MVP，不等于产品可用性完成。后续围绕真�
 
 - 总体路线图：[`docs/planning/post-mvp-roadmap.md`](docs/planning/post-mvp-roadmap.md)
 
-**当前状态**：MVP / Phase 0–6 已完成并 tag `v0.1.0-mvp`。Phase 7 已完成，[`completion review`](docs/planning/phase-7-completion-review.md) active。**Phase 8 已完成**，真实 GUI 桌面验收通过，[`completion review`](docs/planning/phase-8-completion-review.md) active。**Phase 9 详细文档已审核通过并转 `active`；Phase 9 Batch A 编码已完成并审核收口；Phase 9 Batch B 编码已完成并完成审核收口（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架）；Phase 9 Batch C 编码已完成并进入审核收口（`GroundingValidator` + citation enforcement + prompt injection / 敏感数据 / 裁决用语过滤，42 个单元测试通过），未接入真实 LLM，未发起真实网络调用；Batch D/E 尚未开始。Phase 10/11 尚未开始**。Phase 9~11 overview 仍为 `draft`。
+**当前状态**：MVP / Phase 0–6 已完成并 tag `v0.1.0-mvp`。Phase 7 已完成，[`completion review`](docs/planning/phase-7-completion-review.md) active。**Phase 8 已完成**，真实 GUI 桌面验收通过，[`completion review`](docs/planning/phase-8-completion-review.md) active。**Phase 9 详细文档已审核通过并转 `active`；Phase 9 Batch A 编码已完成并审核收口；Phase 9 Batch B 编码已完成并完成审核收口（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架）；Phase 9 Batch C 编码已完成并完成审核收口修复（`GroundingValidator` + citation enforcement + prompt injection / 敏感数据 / 裁决用语过滤，51 个单元测试通过）；Phase 9 Batch D 编码已完成并进入审核收口（provider 状态/配置入口/grounding 状态安全接入工作台 UI，7 个后端 command 测试 + 前端 type/build 通过），未接入真实 LLM，未发起真实网络调用；Batch E 尚未开始。Phase 10/11 尚未开始**。Phase 9~11 overview 仍为 `draft`。
 
 ## 本地运行
 

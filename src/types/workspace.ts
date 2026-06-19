@@ -35,7 +35,10 @@ export type ErrorCode =
   | 'session_not_found'
   | 'storage_version_incompatible'
   | 'session_delete_failed'
-  | 'invalid_session_id';
+  | 'invalid_session_id'
+  | 'llm_provider_not_configured'
+  | 'llm_network_disabled'
+  | 'llm_invalid_config';
 
 export interface WorkspaceProfile {
   workspace_name: string;
@@ -768,4 +771,58 @@ export interface QualityReport {
   issues: QualityIssue[];
   summary: QualityRunSummary;
   acceptance: QualityAcceptanceStatus;
+}
+
+export type ProviderStatus = 'mock' | 'real' | 'degraded' | 'unknown';
+
+export type ProviderKind = 'mock' | 'fake' | 'openai' | 'anthropic';
+
+export type NetworkMode = 'disabled' | 'proxy' | 'allow';
+
+export type DegradedReason =
+  | 'network_disabled'
+  | 'not_configured'
+  | 'provider_error'
+  | 'cancelled'
+  | 'grounding_failed'
+  | 'unknown';
+
+export interface ProviderCapabilities {
+  understanding: boolean;
+  qa: boolean;
+  structured_output: boolean;
+  max_context_tokens: number;
+}
+
+export interface ProviderStatusResponse {
+  status: ProviderStatus;
+  kind: ProviderKind;
+  model: string;
+  network_mode: NetworkMode;
+  can_chat: boolean;
+  degraded_reason?: DegradedReason;
+  capabilities: ProviderCapabilities;
+}
+
+export interface ProviderValidationResult {
+  valid: boolean;
+  network_enabled: boolean;
+  issues: string[];
+}
+
+export interface ProviderTestConnectionResult {
+  success: boolean;
+  code: string;
+  message: string;
+}
+
+export interface ProviderConfigInput {
+  kind: ProviderKind;
+  model: string;
+  base_url?: string;
+  timeout_ms: number;
+  retry_limit: number;
+  rate_limit_per_min: number;
+  network_mode: NetworkMode;
+  enabled: boolean;
 }

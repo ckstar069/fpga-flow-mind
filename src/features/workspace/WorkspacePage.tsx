@@ -17,6 +17,8 @@ import type {
   SessionSummary,
   PersistedUiState,
   QualityReport,
+  ProviderStatusResponse,
+  ProviderConfigInput,
 } from '../../types/workspace';
 import {
   openWorkspace,
@@ -33,6 +35,7 @@ import {
   listSessions,
   deleteSession,
   getLastSession,
+  getProviderStatus,
   CommandError,
 } from '../../lib/tauriCommands';
 import type { CommandError as CommandErrorType } from '../../types/workspace';
@@ -48,6 +51,8 @@ import AppHeader from './components/AppHeader';
 import LeftNav from './components/LeftNav';
 import StageWorkspace from './components/StageWorkspace';
 import WarningsPanel from './components/WarningsPanel';
+import ProviderStatusBar from './components/ProviderStatusBar';
+import ProviderConfigPanel from './components/ProviderConfigPanel';
 import type { ContextSelection } from './components/contextPanelTypes';
 import { SURFACE, NAV, ACCENT, FONT } from './components/workbenchTheme';
 
@@ -109,7 +114,37 @@ export default function WorkspacePage() {
   const [qualityLoading, setQualityLoading] = useState(false);
   const [qualityError, setQualityError] = useState<UiError | null>(null);
 
-  // Phase 8 Batch C 右侧 ContextPanel 前端局部选中态（不持久化）
+  const [providerStatus, setProviderStatus] = useState<ProviderStatusResponse | null>(null);
+  const [providerStatusLoading, setProviderStatusLoading] = useState(false);
+  const [providerStatusError, setProviderStatusError] = useState<string | null>(null);
+  const [providerConfigOpen, setProviderConfigOpen] = useState(false);
+  const [providerConfig] = useState<ProviderConfigInput>({
+    kind: 'mock',
+    model: 'mock',
+    timeout_ms: 60000,
+    retry_limit: 2,
+    rate_limit_per_min: 60,
+    network_mode: 'disabled',
+    enabled: false,
+  });
+
+  const loadProviderStatus = useCallback(async () => {
+    setProviderStatusLoading(true);
+    setProviderStatusError(null);
+    try {
+      const status = await getProviderStatus(providerConfig);
+      setProviderStatus(status);
+    } catch (err) {
+      setProviderStatusError(err instanceof CommandError ? err.message : String(err));
+    } finally {
+      setProviderStatusLoading(false);
+    }
+  }, [providerConfig]);
+
+  useEffect(() => {
+    loadProviderStatus();
+  }, [loadProviderStatus]);
+
   const [contextSelection, setContextSelection] = useState<ContextSelection | null>(null);
 
   // Phase 6 跨阶段累积映射（用于构造 SessionState）
@@ -1257,6 +1292,7 @@ export default function WorkspacePage() {
           qaLoading={groundedAnswerLoading}
           qualityReport={qualityReport}
           qualityLoading={qualityLoading}
+          providerStatus={providerStatus}
           contextSelection={contextSelection}
           onContextSelectionChange={setContextSelection}
           onViewSource={handleViewSource}
@@ -1310,6 +1346,7 @@ export default function WorkspacePage() {
               onGenerateQualityReport={handleGenerateQualityReport}
               evidenceFilter={evidenceFilter}
               qualityFilter={qualityFilter}
+              providerStatus={providerStatus}
             />
           )}
         />
@@ -1346,7 +1383,24 @@ export default function WorkspacePage() {
   );
 
   // P8-T08：warnings 降噪，改为折叠/分类/计数/可展开的紧凑 footer（空时不渲染）
-  const footer = <WarningsPanel warnings={currentWarnings} />;
+  const footer = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <WarningsPanel warnings={currentWarnings} />
+      <ProviderStatusBar
+        status={providerStatus}
+        loading={providerStatusLoading}
+        error={providerStatusError}
+        onConfigureClick={() => setProviderConfigOpen(true)}
+      />
+      <ProviderConfigPanel
+        isOpen={providerConfigOpen}
+        onClose={() => setProviderConfigOpen(false)}
+        onStatusChange={(status) => {
+          setProviderStatus(status);
+        }}
+      />
+    </div>
+  );
 
   return (
     <AppShell

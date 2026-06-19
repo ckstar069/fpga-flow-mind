@@ -20,6 +20,9 @@ use commands::get_source_excerpt::get_source_excerpt;
 use commands::list_sessions::list_sessions;
 use commands::load_session::load_session;
 use commands::open_workspace::open_workspace;
+use commands::provider_status::{
+    get_provider_status, test_provider_connection, validate_provider_config,
+};
 use commands::resolve_trace_target::resolve_trace_target;
 use commands::save_session::save_session;
 use commands::select_stage::select_stage;
@@ -42,7 +45,10 @@ pub fn run() {
             load_session,
             list_sessions,
             delete_session,
-            get_last_session
+            get_last_session,
+            get_provider_status,
+            validate_provider_config,
+            test_provider_connection
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

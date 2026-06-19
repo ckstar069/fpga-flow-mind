@@ -6,6 +6,7 @@ import type {
   QaHistory,
   QualityReport,
   StageStatus,
+  ProviderStatusResponse,
 } from '../../../types/workspace';
 import { SURFACE, ACCENT, FONT } from './workbenchTheme';
 
@@ -23,6 +24,7 @@ interface StageOverviewBarProps {
   qaLoading?: boolean;
   qualityReport?: QualityReport | null;
   qualityLoading?: boolean;
+  providerStatus?: ProviderStatusResponse | null;
 }
 
 const STATUS_LABEL: Record<StageStatus, string> = {
@@ -57,6 +59,7 @@ export default function StageOverviewBar({
   qaLoading,
   qualityReport,
   qualityLoading,
+  providerStatus,
 }: StageOverviewBarProps) {
   const evidenceCount = evidence?.evidence_items.length ?? 0;
   const claimCount = understanding?.claims.length ?? 0;
@@ -64,6 +67,16 @@ export default function StageOverviewBar({
   const qaCount = qaHistory?.entries.length ?? 0;
   const qualityIssueCount = qualityReport?.issues.length ?? 0;
   const fileCount = context.files.length;
+
+  const providerLabel = providerStatus
+    ? providerStatus.status === 'mock'
+      ? 'Mock'
+      : providerStatus.status === 'real'
+        ? '真实 LLM'
+        : providerStatus.status === 'degraded'
+          ? '降级'
+          : '未知'
+    : '-';
 
   const metrics: Array<{ label: string; value: number | string; loading?: boolean; accent?: boolean }> = [
     { label: '阶段', value: stageId, accent: true },
@@ -74,6 +87,7 @@ export default function StageOverviewBar({
     { label: '视图', value: viewCount, loading: viewsLoading },
     { label: 'Q&A', value: qaCount, loading: qaLoading },
     { label: '质量记录', value: qualityIssueCount, loading: qualityLoading },
+    { label: 'Provider', value: providerLabel },
   ];
 
   return (

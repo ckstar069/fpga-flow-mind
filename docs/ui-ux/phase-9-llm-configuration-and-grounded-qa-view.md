@@ -5,7 +5,7 @@ status: active
 updated: 2026-06-18
 ---
 
-> 本文档是 Phase 9 的 **UI/UX 设计**（Provider 配置入口 + Grounded Q&A / understanding 体验增强）。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成并审核收口**；**Phase 9 Batch B 编码已完成并完成审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架），**未接入真实 LLM**，**未发起真实网络调用**；Batch C/D/E 尚未开始。Phase 10/11 尚未开始。
+> 本文档是 Phase 9 的 **UI/UX 设计**（Provider 配置入口 + Grounded Q&A / understanding 体验增强）。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成并审核收口**；**Phase 9 Batch B 编码已完成并完成审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架），**未接入真实 LLM**，**未发起真实网络调用**；**Phase 9 Batch C 编码已完成并完成审核收口修复**（`GroundingValidator` + citation enforcement，51 个单元测试通过）；**Phase 9 Batch D 编码已完成并进入审核收口**（provider 状态条、配置面板、Understanding/Q&A provider badge、grounding/degraded/unknown 状态展示接入工作台 UI），**未接入真实 LLM**，**未发起真实网络调用**；Batch E 尚未开始。Phase 10/11 尚未开始。
 >
 > 设计基线：延续 Phase 8 工作台（三段式骨架、Artifact tabs、卡片化、蓝色强调、confidence 视觉语义），**不回退成长页面堆叠**，不膨胀为复杂设置页。
 
@@ -94,7 +94,18 @@ updated: 2026-06-18
 - 测试连接为显式动作，不自动发起；默认 disabled。
 - 不引入 cloud-first 依赖；外部调用经 Rust Provider 抽象。
 
-## 11. 关联文档
+## 11. 实现状态
+
+- **Batch D 已完成**：前端新增组件与接入点如下：
+  - `ProviderStatusBar`：工作台 footer 状态条，展示当前 provider（mock/real/degraded/disabled/unknown）、model、network mode、degraded reason。
+  - `ProviderConfigPanel`：抽屉式配置面板，含 enable toggle、provider 类别选择、model、base_url、api_key 密码输入、校验结果与占位 test connection；api_key 仅保存在组件局部 state，提交后清空输入框，不写入 localStorage/sessionStorage/app persistence。
+  - `StageOverviewBar`：显示当前阶段 provider 标签。
+  - `UnderstandingPanel` / `GroundedQAPanel`：在产物顶部显示 provider badge 与 degraded/unknown 提示。
+  - 前端类型：`ProviderStatusResponse`、`ProviderValidationResult`、`ProviderTestConnectionResult`、`ProviderConfigInput` 等。
+  - 状态管理：`WorkspacePage` 加载 `getProviderStatus`，透传至 `StageWorkspace` → `StageOverviewBar` / `StageDetail` → 各面板。
+- 默认状态：`kind=mock`、`enabled=false`、`network_mode=disabled`，真实 LLM 不启用，真实网络调用不自动发起。
+
+## 12. 关联文档
 
 - [`../requirements/phase-9-real-llm-grounding-requirements.md`](../requirements/phase-9-real-llm-grounding-requirements.md) — 需求（draft）
 - [`../design/phase-9-llm-provider-architecture.md`](../design/phase-9-llm-provider-architecture.md) — Provider 架构（draft）

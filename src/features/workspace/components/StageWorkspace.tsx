@@ -8,6 +8,7 @@ import type {
   ViewGraph,
   QaHistory,
   QualityReport,
+  ProviderStatusResponse,
 } from '../../../types/workspace';
 import StageOverviewBar from './StageOverviewBar';
 import StageFilterBar, { type EvidenceFilter, type QualityFilter } from './StageFilterBar';
@@ -52,6 +53,7 @@ interface StageWorkspaceProps {
   qaLoading?: boolean;
   qualityReport?: QualityReport | null;
   qualityLoading?: boolean;
+  providerStatus?: ProviderStatusResponse | null;
   contextSelection?: ContextSelection | null;
   onContextSelectionChange?: (selection: ContextSelection | null) => void;
   onViewSource?: (location: {
@@ -87,6 +89,7 @@ export default function StageWorkspace({
   qaLoading,
   qualityReport,
   qualityLoading,
+  providerStatus,
   contextSelection,
   onContextSelectionChange,
   onViewSource,
@@ -173,6 +176,7 @@ export default function StageWorkspace({
           qaLoading={qaLoading}
           qualityReport={qualityReport}
           qualityLoading={qualityLoading}
+          providerStatus={providerStatus}
         />
       </div>
 

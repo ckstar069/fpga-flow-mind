@@ -6,9 +6,10 @@ import type {
   InterfaceSummary,
   ProcessingStepSummary,
   EvidenceRef,
+  ProviderStatusResponse,
 } from '../../../types/workspace';
 
-// ─── 样式常量 ─────────────────────────────────────────────────────────
+import { ACCENT, FONT } from './workbenchTheme';
 
 const CONFIDENCE_COLOR: Record<string, string> = {
   confirmed: '#2e7d32',
@@ -109,9 +110,50 @@ function EmptyState({ label }: { label: string }) {
 
 interface UnderstandingPanelProps {
   understanding: ImplementationUnderstanding;
+  providerStatus?: ProviderStatusResponse | null;
 }
 
-export default function UnderstandingPanel({ understanding }: UnderstandingPanelProps) {
+function ProviderBadge({ status }: { status?: ProviderStatusResponse | null }) {
+  if (!status) return null;
+  const color =
+    status.status === 'real'
+      ? ACCENT.blue
+      : status.status === 'degraded'
+        ? ACCENT.amber
+        : ACCENT.slate;
+  const bg =
+    status.status === 'real'
+      ? ACCENT.blueSoft
+      : status.status === 'degraded'
+        ? ACCENT.amberSoft
+        : ACCENT.slateSoft;
+  const label =
+    status.status === 'mock'
+      ? 'Mock'
+      : status.status === 'real'
+        ? '真实 LLM'
+        : status.status === 'degraded'
+          ? '降级'
+          : '未知';
+  return (
+    <span
+      style={{
+        padding: '4px 10px',
+        background: bg,
+        color,
+        borderRadius: 4,
+        fontSize: FONT.caption,
+        fontWeight: 600,
+        border: `1px solid ${color}`,
+      }}
+      title={`${status.kind} / ${status.model}`}
+    >
+      {label}
+    </span>
+  );
+}
+
+export default function UnderstandingPanel({ understanding, providerStatus }: UnderstandingPanelProps) {
   const { summary, claims, module_summaries, signal_summaries, interface_summaries, processing_steps, unknowns, evidence_gaps, generation_meta, stats } = understanding;
 
   return (
@@ -122,6 +164,7 @@ export default function UnderstandingPanel({ understanding }: UnderstandingPanel
           <MetaChip label="阶段" value={understanding.stage_id} />
           <MetaChip label="版本" value={understanding.version} />
           <MetaChip label="Provider" value={generation_meta.provider} />
+          <ProviderBadge status={providerStatus} />
           {generation_meta.is_degraded && (
             <span
               style={{

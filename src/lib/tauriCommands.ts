@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { CommandResult, WorkspaceProfile, StageContext, EvidenceCollection, ImplementationUnderstanding, ViewGraph, SelectedTraceTarget, TraceRefResolved, SourceLocation, SourceExcerpt, GroundedQuestion, GroundedAnswer, SessionState, SaveSessionResult, LoadSessionResult, SessionSummary, QualityReport } from '../types/workspace';
+import type { CommandResult, WorkspaceProfile, StageContext, EvidenceCollection, ImplementationUnderstanding, ViewGraph, SelectedTraceTarget, TraceRefResolved, SourceLocation, SourceExcerpt, GroundedQuestion, GroundedAnswer, SessionState, SaveSessionResult, LoadSessionResult, SessionSummary, QualityReport, ProviderStatusResponse, ProviderValidationResult, ProviderTestConnectionResult, ProviderConfigInput } from '../types/workspace';
 
 export class CommandError extends Error {
   error_code: string;
@@ -147,6 +147,21 @@ export async function generateQualityReport(
 export async function getLastSession(): Promise<SessionSummary | null> {
   const result = await invoke<CommandResult<SessionSummary | null>>('get_last_session', {});
   return handleNullableResult(result);
+}
+
+export async function getProviderStatus(config: ProviderConfigInput & { api_key?: string }): Promise<ProviderStatusResponse> {
+  const result = await invoke<CommandResult<ProviderStatusResponse>>('get_provider_status', { config });
+  return handleResult(result);
+}
+
+export async function validateProviderConfig(config: ProviderConfigInput & { api_key?: string }): Promise<ProviderValidationResult> {
+  const result = await invoke<CommandResult<ProviderValidationResult>>('validate_provider_config', { config });
+  return handleResult(result);
+}
+
+export async function testProviderConnection(config: ProviderConfigInput & { api_key?: string }): Promise<ProviderTestConnectionResult> {
+  const result = await invoke<CommandResult<ProviderTestConnectionResult>>('test_provider_connection', { config });
+  return handleResult(result);
 }
 
 function handleResult<T>(result: CommandResult<T>): T {

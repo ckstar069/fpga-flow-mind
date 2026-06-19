@@ -3,8 +3,10 @@ import type {
   GroundedAnswer,
   GroundedAnswerCitation,
   GroundedAnswerClaim,
+  ProviderStatusResponse,
 } from '../../../types/workspace';
 import type { UiError } from '../workspaceUiTypes';
+import { ACCENT } from './workbenchTheme';
 
 interface GroundedQAPanelProps {
   canAsk: boolean;
@@ -12,6 +14,7 @@ interface GroundedQAPanelProps {
   answer?: GroundedAnswer | null;
   loading?: boolean;
   error?: UiError | null;
+  providerStatus?: ProviderStatusResponse | null;
   onAsk: (question: string) => void;
   onCitationClick?: (citation: GroundedAnswerCitation) => void;
 }
@@ -22,6 +25,7 @@ export default function GroundedQAPanel({
   answer,
   loading,
   error,
+  providerStatus,
   onAsk,
   onCitationClick,
 }: GroundedQAPanelProps) {
@@ -135,6 +139,7 @@ export default function GroundedQAPanel({
                 mock
               </span>
             )}
+            <ProviderBadge status={providerStatus} />
           </div>
 
           <div style={{ fontSize: 14, lineHeight: 1.6, marginBottom: 12, color: '#333' }}>
@@ -291,6 +296,46 @@ function CitationItem({
       </div>
       <div style={{ color: '#555', marginLeft: 26 }}>{citation.excerpt_summary}</div>
     </div>
+  );
+}
+
+function ProviderBadge({ status }: { status?: ProviderStatusResponse | null }) {
+  if (!status) return null;
+  const color =
+    status.status === 'real'
+      ? ACCENT.blue
+      : status.status === 'degraded'
+        ? ACCENT.amber
+        : ACCENT.slate;
+  const bg =
+    status.status === 'real'
+      ? ACCENT.blueSoft
+      : status.status === 'degraded'
+        ? ACCENT.amberSoft
+        : ACCENT.slateSoft;
+  const label =
+    status.status === 'mock'
+      ? 'Mock'
+      : status.status === 'real'
+        ? '真实 LLM'
+        : status.status === 'degraded'
+          ? '降级'
+          : '未知';
+  return (
+    <span
+      style={{
+        padding: '2px 6px',
+        background: bg,
+        color,
+        borderRadius: 3,
+        fontSize: 11,
+        fontWeight: 600,
+        border: `1px solid ${color}`,
+      }}
+      title={`${status.kind} / ${status.model}`}
+    >
+      {label}
+    </span>
   );
 }
 

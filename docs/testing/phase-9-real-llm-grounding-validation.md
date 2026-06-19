@@ -5,7 +5,7 @@ status: active
 updated: 2026-06-19
 ---
 
-> 本文档是 Phase 9 的 **验证与验收设计**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成并审核收口**；**Phase 9 Batch B 编码已完成并完成审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架）；**Phase 9 Batch C 编码已完成并完成审核收口修复**（`GroundingValidator` + citation enforcement + prompt injection / 敏感数据 / 裁决用语过滤；stage mismatch 校验与 prompt injection-as-data 修复，51 个单元测试通过），**未接入真实 LLM**，**未发起真实网络调用**；Batch D/E 尚未开始。Phase 10/11 尚未开始。Batch B 已完成 Transport / RequestBuilder / ResponseParser / RealLlmProvider 骨架测试、rg 边界检查、缺失测试补齐、smoke test 安全收口，默认路径不发真实网络请求。Batch C 已完成 grounding validator 51 个单元测试、stage mismatch 与 prompt injection-as-data 修复测试、rg 边界检查通过。
+> 本文档是 Phase 9 的 **验证与验收设计**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成并审核收口**；**Phase 9 Batch B 编码已完成并完成审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架）；**Phase 9 Batch C 编码已完成并完成审核收口修复**（`GroundingValidator` + citation enforcement + prompt injection / 敏感数据 / 裁决用语过滤；stage mismatch 校验与 prompt injection-as-data 修复，51 个单元测试通过）；**Phase 9 Batch D 编码已完成并进入审核收口**（provider 状态/配置入口/grounding 状态安全接入工作台 UI，7 个后端 command 测试 + 前端 type/build 通过），**未接入真实 LLM**，**未发起真实网络调用**；Batch E 尚未开始。Phase 10/11 尚未开始。Batch B 已完成 Transport / RequestBuilder / ResponseParser / RealLlmProvider 骨架测试、rg 边界检查、缺失测试补齐、smoke test 安全收口，默认路径不发真实网络请求。Batch C 已完成 grounding validator 51 个单元测试、stage mismatch 与 prompt injection-as-data 修复测试、rg 边界检查通过。Batch D 已完成 provider_status command 7 个测试、前端 type/build、rg 边界检查通过。
 >
 > 2026-06-19 卫生小修：单元测试中所有视觉上类似真实 API key 的占位字符串已替换为明显伪造值，相关 redaction/display 断言已同步更新，全部测试通过。
 >
@@ -231,7 +231,39 @@ Batch B（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvide
 - `npx tsc --noEmit`：通过
 - `npm run build`：通过
 
-## 14. 关联文档
+## 14. Batch D 测试记录
+
+### Provider 状态 command 单元测试
+
+- `provider_status_default_mock_disabled_no_network`：默认配置返回 mock、disabled、network_disabled。
+- `validate_provider_config_redacts_api_key`：校验响应中的 `api_key` 被脱敏为掩码，不泄露明文。
+- `test_connection_without_network_returns_network_disabled`：默认网络禁用时 test connection 返回 network_disabled，不发起真实请求。
+- `command_response_does_not_include_api_key`：command 响应 JSON 不含 `api_key` 字段。
+- `command_does_not_read_env_key`：默认路径不读取 `FPGA_FLOW_LLM_API_KEY` 环境变量。
+- `real_provider_status_requires_explicit_enabled_and_network_allow`：只有同时 `enabled=true` 且 `network_mode=Allow` 时才可能返回 real 状态。
+- `grounding_status_maps_unvalidated_to_degraded_or_unknown`：unvalidated answer 映射为 degraded/unknown 状态展示。
+
+### 前端展示/行为检查
+
+- `ProviderStatusBar`：mock/disabled 状态默认显示；degraded 状态显示琥珀提示与 reason。
+- `ProviderConfigPanel`：api_key 为 password 输入；未启用时不显示真实 key；提交后清空输入框；不写入 localStorage/sessionStorage。
+- `StageOverviewBar`：显示 provider 标签（mock/real/degraded/disabled/unknown）。
+- `UnderstandingPanel` / `GroundedQAPanel`：产物顶部显示 provider badge；degraded 时显示降级原因；unknown/evidence_gap 可见。
+- 默认打开工作区不触发 provider 真实网络调用；test connection 为显式动作且当前为占位。
+- 配置面板文案不出现 PASS/HOLD/正确/错误/审计结论。
+
+### 结果
+
+- `cargo test --lib commands::provider_status`：7 passed
+- `cargo test --lib llm::`：122 passed / 1 ignored
+- `cargo test --lib`：682 passed / 2 ignored
+- `cargo check --tests`：0 warning
+- `npx tsc --noEmit`：通过
+- `npm run build`：通过
+- `cargo test --lib real_smoke_requires_env_and_allow -- --ignored`：1 passed（env 未设置，安全跳过）
+- rg 边界检查：通过（产品代码无新增默认联网、无 api_key 持久化、无目标项目写入、无用户可见裁决文案）
+
+## 15. 关联文档
 
 - [`../requirements/phase-9-real-llm-grounding-requirements.md`](../requirements/phase-9-real-llm-grounding-requirements.md) — 需求（active）
 - [`../design/phase-9-llm-provider-architecture.md`](../design/phase-9-llm-provider-architecture.md) — Provider 架构（active）
@@ -246,3 +278,4 @@ Batch B（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvide
 | 2026-06-19 | Batch B 审核收口：补齐 `real_provider_requires_enabled_true/network_allow/api_key`、`errors_do_not_include_authorization_or_key`、`timeout_mapping`、`rate_limit_mapping`、`retry_limit_is_bounded`、`no_citation_response_is_unvalidated` 等测试；新增 `LlmError::RateLimited` 并将 HTTP 429 映射至此；`RequestBuilder` 增加 `network_mode != Allow` 拒绝路径；`ProviderConfig::validate()` 限制 `retry_limit ≤ 10` 与 `timeout_ms > 0`；smoke test 同时检查 `FPGA_FLOW_LLM_SMOKE` 与 `FPGA_FLOW_LLM_API_KEY`，缺一安全跳过；rg 边界检查通过。 | Claude |
 | 2026-06-19 | Batch C 编码完成：实现 `src-tauri/src/llm/grounding_validator.rs`，提供 `GroundingValidator` + `AllowedEvidence` + `ValidationContext` + `ValidatedResponse`/`GroundingResult`；完成 citation evidence_id/source_path/line_range 校验、prompt injection / 敏感数据 / 裁决用语内容安全过滤、unknown 占位回答无 citation 放行、失败统一降级为 `DegradedReason::GroundingFailed`；新增 42 个单元测试；`cargo test --lib` 666 passed/2 ignored，`cargo check --tests` 0 warning，`npx tsc --noEmit` 与 `npm run build` 通过；rg 边界检查通过；未接入真实 LLM，未发起真实网络调用；Batch C 进入审核收口，Batch D/E 尚未开始。 | Claude |
 | 2026-06-19 | Batch C 审核收口修复：新增 `CitationCheckResult::StageMismatch` 与 `parse_stage_from_evidence_id`，修复 `ValidationContext.stage_id` 未用于 citation stage 校验的问题；修复 `check_content_safety` 将 citation excerpt 原文拼接进安全扫描导致 prompt injection-as-data 误判的问题，改为仅扫描 `response.content`；新增 9 个单元测试覆盖 stage mismatch 4 例与 excerpt-as-data 5 例；grounding_validator 模块 51 个测试通过；`cargo test --lib llm::` 121 passed/1 ignored、`cargo test --lib` 675 passed/2 ignored、`cargo check --tests` 0 warning、`npx tsc --noEmit` 与 `npm run build` 通过；rg 边界检查通过；未接入真实 LLM，未发起真实网络调用；Batch C 审核收口修复完成，Batch D/E 尚未开始。 | Claude |
+| 2026-06-19 | Batch D 编码完成：新增 `src-tauri/src/llm/status.rs` provider 状态响应类型与 `src-tauri/src/commands/provider_status.rs` 3 个 command + 7 个单元测试；前端新增 `ProviderStatusBar`、`ProviderConfigPanel`、Understanding/Q&A provider badge、`StageOverviewBar` provider 标签；api_key 不持久化、不泄露；test connection 为安全占位，不发起真实网络；`cargo test --lib commands::provider_status` 7 passed、`cargo test --lib llm::` 122 passed/1 ignored、`cargo test --lib` 682 passed/2 ignored、`cargo check --tests` 0 warning、`npx tsc --noEmit` 与 `npm run build` 通过；rg 边界检查通过；未接入真实 LLM，未发起真实网络调用；Batch D 进入审核收口，Batch E 尚未开始。 | Claude |

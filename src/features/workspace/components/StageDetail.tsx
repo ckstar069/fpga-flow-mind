@@ -11,6 +11,7 @@ import type {
   GroundedAnswer,
   GroundedAnswerCitation,
   QualityReport,
+  ProviderStatusResponse,
 } from '../../../types/workspace';
 import type { UiError } from '../workspaceUiTypes';
 import { formatBytes } from '../workspaceUiUtils';
@@ -84,6 +85,7 @@ interface StageDetailProps {
   onGenerateQualityReport?: () => void;
   evidenceFilter?: EvidenceFilter;
   qualityFilter?: QualityFilter;
+  providerStatus?: ProviderStatusResponse | null;
 }
 
 export default function StageDetail({
@@ -130,6 +132,7 @@ export default function StageDetail({
   onGenerateQualityReport,
   evidenceFilter,
   qualityFilter,
+  providerStatus,
 }: StageDetailProps) {
   const canCollect =
     !context.error_code && context.files.length > 0 && !!onCollectEvidence;
@@ -177,6 +180,7 @@ export default function StageDetail({
           understandingError={understandingError}
           onGenerateUnderstanding={onGenerateUnderstanding}
           viewsLoading={viewsLoading}
+          providerStatus={providerStatus}
         />
       );
     case 'views':
@@ -221,6 +225,7 @@ export default function StageDetail({
           groundedAnswerError={groundedAnswerError}
           onAskGroundedQuestion={onAskGroundedQuestion}
           onGroundedCitationClick={onGroundedCitationClick}
+          providerStatus={providerStatus}
         />
       );
     case 'quality':
@@ -525,6 +530,7 @@ function UnderstandingTab({
   understandingError,
   onGenerateUnderstanding,
   viewsLoading,
+  providerStatus,
 }: {
   context: StageContext;
   understanding?: ImplementationUnderstanding;
@@ -532,6 +538,7 @@ function UnderstandingTab({
   understandingError?: UiError;
   onGenerateUnderstanding?: () => void;
   viewsLoading?: boolean;
+  providerStatus?: ProviderStatusResponse | null;
 }) {
   return (
     <div>
@@ -569,7 +576,7 @@ function UnderstandingTab({
       )}
 
       {understanding && (
-        <UnderstandingPanel understanding={understanding} />
+        <UnderstandingPanel understanding={understanding} providerStatus={providerStatus} />
       )}
 
       {!understanding && !understandingLoading && !understandingError && (
@@ -720,6 +727,7 @@ function QaTab({
   groundedAnswerError,
   onAskGroundedQuestion,
   onGroundedCitationClick,
+  providerStatus,
 }: {
   canAskGrounded: boolean;
   evidence?: EvidenceCollection;
@@ -729,6 +737,7 @@ function QaTab({
   groundedAnswerError?: UiError | null;
   onAskGroundedQuestion?: (question: string) => void;
   onGroundedCitationClick?: (citation: GroundedAnswerCitation) => void;
+  providerStatus?: ProviderStatusResponse | null;
 }) {
   if (!onAskGroundedQuestion) return null;
   return (
@@ -749,6 +758,7 @@ function QaTab({
         error={groundedAnswerError}
         onAsk={onAskGroundedQuestion}
         onCitationClick={onGroundedCitationClick}
+        providerStatus={providerStatus}
       />
     </div>
   );

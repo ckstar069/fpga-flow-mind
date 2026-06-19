@@ -57,6 +57,9 @@ pub enum ErrorCode {
     StorageVersionIncompatible,
     SessionDeleteFailed,
     InvalidSessionId,
+    LlmProviderNotConfigured,
+    LlmNetworkDisabled,
+    LlmInvalidConfig,
 }
 
 /// 源码文件的语义分类
@@ -142,6 +145,9 @@ mod tests {
             ErrorCode::StorageVersionIncompatible,
             ErrorCode::SessionDeleteFailed,
             ErrorCode::InvalidSessionId,
+            ErrorCode::LlmProviderNotConfigured,
+            ErrorCode::LlmNetworkDisabled,
+            ErrorCode::LlmInvalidConfig,
         ] {
             let json = serde_json::to_string(&code).unwrap();
             let back: ErrorCode = serde_json::from_str(&json).unwrap();

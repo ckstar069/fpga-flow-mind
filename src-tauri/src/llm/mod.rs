@@ -7,6 +7,7 @@ pub mod provider;
 pub mod real_provider;
 pub mod request_builder;
 pub mod response_parser;
+pub mod status;
 pub mod transport;
 
 pub use fake_provider::FakeProvider;
@@ -18,6 +19,7 @@ pub use provider::{BoxedLlmProvider, LlmProvider};
 pub use real_provider::RealLlmProvider;
 pub use request_builder::RequestBuilder;
 pub use response_parser::ResponseParser;
+pub use status::*;
 pub use transport::{
     FakeTransport, LlmTransport, NoNetworkTransport, RedactedString, TransportRequest,
     TransportResponse,

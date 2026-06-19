@@ -9,6 +9,7 @@ pub mod get_source_excerpt;
 pub mod list_sessions;
 pub mod load_session;
 pub mod open_workspace;
+pub mod provider_status;
 pub mod resolve_trace_target;
 pub mod save_session;
 pub mod select_stage;
