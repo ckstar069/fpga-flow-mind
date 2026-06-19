@@ -5,7 +5,7 @@ status: active
 updated: 2026-06-19
 ---
 
-> 本文档是 Phase 9 的 **验证与验收设计**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成**（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试），**未接入任何真实 LLM**，**未发起真实网络调用**。Batch B/C/D/E 尚未开始。
+> 本文档是 Phase 9 的 **验证与验收设计**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成并审核收口**；**Phase 9 Batch B 编码已完成并进入审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架），**未接入真实 LLM**，**未发起真实网络调用**；Batch C/D/E 尚未开始。Phase 10/11 尚未开始。Batch B 已完成 Transport / RequestBuilder / ResponseParser / RealLlmProvider 骨架测试，默认路径不发真实网络请求。
 >
 > 2026-06-19 卫生小修：单元测试中所有视觉上类似真实 API key 的占位字符串已替换为明显伪造值，相关 redaction/display 断言已同步更新，全部测试通过。
 >
@@ -120,7 +120,49 @@ rg -n "PASS|HOLD|正确|错误|审计结论" src src-tauri/src
 
 > 注：语义质量门槛为"优于或不劣于"基线，不做正确/错误裁决；grounding 合规与安全回归为硬门（0 容忍）。
 
-## 11. 安全边界汇总
+## 11. Batch B 测试记录
+
+Batch B（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架）已完成以下测试：
+
+### Transport 抽象测试
+
+- `NoNetworkTransport`：调用返回 `LlmError::NetworkDisabled`
+- `FakeTransport`：返回预设响应，验证全链路通过
+- `RedactedString`：Debug 输出不包含原始内容
+- `TransportRequest`：Debug 输出不包含 api_key 等敏感字段
+
+### RequestBuilder 测试
+
+- 拒绝 Mock/Fake provider 构建请求（类型不匹配）
+- 要求必须提供 `api_key`
+- OpenAI 请求形状正确（model、max_tokens、temperature 等字段）
+- 请求 payload 中的 api_key 被 redacted
+- 自定义 `base_url` 生效
+
+### ResponseParser 测试
+
+- 正常成功响应解析
+- HTTP 401/403/429 映射为 `AuthError`（4xx 不触发重试）
+- HTTP 500 映射为 `ProviderUnavailable`
+- JSON 解析失败（invalid JSON）映射为 `InvalidResponse`
+- 响应中缺少 `choices` 字段处理
+- `choices` 中 `content` 为空处理
+
+### RealLlmProvider 测试
+
+- 通过 `FakeTransport` 注入成功响应
+- 首次失败后重试成功（有界重试）
+- `AuthError` / `InvalidResponse` 不触发重试
+- 重试耗尽后返回最终 error
+- `NoNetworkTransport` 默认拦截真实调用
+
+### 边界检查
+
+- 不依赖 `reqwest` crate（仅 Batch E 可选启用）
+- 默认测试路径不发起真实网络请求
+- `#[ignore]` smoke 测试由 `FPGA_FLOW_LLM_SMOKE=1` 环境变量守卫
+
+## 12. 安全边界汇总
 
 - 目标项目只读，checksum 一致；
 - 不运行 Vivado/synthesis/implementation/bitstream；
@@ -128,15 +170,15 @@ rg -n "PASS|HOLD|正确|错误|审计结论" src src-tauri/src
 - 默认测试路径不发真实网络请求；真实调用仅 `#[ignore]` smoke；
 - 不输出 PASS/HOLD/正确/错误/审计结论裁决。
 
-## 12. 关联文档
+## 13. 关联文档
 
-- [`../requirements/phase-9-real-llm-grounding-requirements.md`](../requirements/phase-9-real-llm-grounding-requirements.md) — 需求（draft）
-- [`../design/phase-9-llm-provider-architecture.md`](../design/phase-9-llm-provider-architecture.md) — Provider 架构（draft）
-- [`../design/phase-9-grounding-and-validation-design.md`](../design/phase-9-grounding-and-validation-design.md) — grounding 设计（draft）
-- [`../ui-ux/phase-9-llm-configuration-and-grounded-qa-view.md`](../ui-ux/phase-9-llm-configuration-and-grounded-qa-view.md) — UI/UX（draft）
-- [`../planning/phase-9-implementation-plan.md`](../planning/phase-9-implementation-plan.md) — 实施计划（draft）
+- [`../requirements/phase-9-real-llm-grounding-requirements.md`](../requirements/phase-9-real-llm-grounding-requirements.md) — 需求（active）
+- [`../design/phase-9-llm-provider-architecture.md`](../design/phase-9-llm-provider-architecture.md) — Provider 架构（active）
+- [`../design/phase-9-grounding-and-validation-design.md`](../design/phase-9-grounding-and-validation-design.md) — grounding 设计（active）
+- [`../ui-ux/phase-9-llm-configuration-and-grounded-qa-view.md`](../ui-ux/phase-9-llm-configuration-and-grounded-qa-view.md) — UI/UX（active）
+- [`../planning/phase-9-implementation-plan.md`](../planning/phase-9-implementation-plan.md) — 实施计划（active）
 
-## 13. 变更记录
+## 14. 变更记录
 
 | 日期 | 变更 | 作者 |
 |------|------|------|

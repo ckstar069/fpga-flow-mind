@@ -2,10 +2,10 @@
 
 ---
 status: active
-updated: 2026-06-18
+updated: 2026-06-19
 ---
 
-> 本文档是 Phase 9（真实 LLM Provider 与 grounding 生产化）的**编码实施计划**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成**（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试），**未接入任何真实 LLM**，**未发起真实网络调用**。Batch B/C/D/E 尚未开始。
+> 本文档是 Phase 9（真实 LLM Provider 与 grounding 生产化）的**编码实施计划**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成并审核收口**（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试）；**Phase 9 Batch B 编码已完成并进入审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架），**未接入任何真实 LLM**，**未发起真实网络调用**；Batch C/D/E 尚未开始。Phase 10/11 尚未开始。
 >
 > **进入 Phase 9 编码的硬前置**：本文档与需求 / 架构 / grounding 设计 / UI/UX / 测试 5 份详细文档**全部审核通过并转 `active`** 后，方允许进入 Batch A 编码。当前该前置已满足。
 
@@ -65,7 +65,7 @@ updated: 2026-06-18
 | 完成记录 | 实现 `ApiKey`（`Debug` 输出 `[REDACTED]`，不实现 `Display`/`Serialize`，序列化时 `skip_serializing`）；`no_network_guard.rs` 拦截 `NetworkMode::Disabled`；`create_provider` 对 OpenAi/Anthropic 默认返回 `LlmError::NetworkDisabled`，`Allow` 时返回 `LlmError::NotImplemented`。 |
 | 说明 | app-owned 持久化存储与可清除接口、完整 redaction 过滤引擎（env/.git/大二进制）留在 Batch B/C 按需扩展。 |
 
-### P9-T03 RequestBuilder / ResponseParser / 可注入 Transport（Batch B）
+### P9-T03 RequestBuilder / ResponseParser / 可注入 Transport（Batch B）✅ 已完成
 
 | 项 | 内容 |
 |----|------|
@@ -79,7 +79,7 @@ updated: 2026-06-18
 | 真实网络调用 | 否 |
 | 退出条件 | 全链路 fake 测试通过 |
 
-### P9-T04 RealLlmProvider 接入 + timeout/retry/限流 + error mapping（Batch B）
+### P9-T04 RealLlmProvider 接入 + timeout/retry/限流 + error mapping（Batch B）✅ 已完成
 
 | 项 | 内容 |
 |----|------|
@@ -254,3 +254,4 @@ P9-T01 (Provider/config 模型)
 | 2026-06-18 | 初始 draft：Phase 9 编码实施计划，Batch A~E（P9-T01~P9-T10），含允许/禁止范围、输入输出、验收、必跑测试、真实网络调用开关、退出条件；明确 6 份详细文档转 active 前不得编码。`status: draft`，Phase 9 编码尚未开始，未接入真实 LLM。 |
 | 2026-06-18 | 审核通过，`status` 从 draft 转 active，作为 Phase 9 编码依据；Phase 9 Batch A 编码已完成（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试），未接入真实 LLM，未发起真实网络调用；Batch B/C/D/E 尚未开始。 | Claude |
 | 2026-06-19 | Batch A 后置卫生小修：将单元测试中 `sk-test`、`sk-secret-key`、`sk-1234567890abcdef` 等视觉上类似真实 API key 的占位字符串替换为明显伪造值（`this-is-a-fake-key-for-tests`、`deliberately-fake-api-key-for-tests`、`fake-key-used-only-in-unit-tests`），同步更新 redaction/display 断言，全部测试通过；未接入真实 LLM，未发起真实网络调用，Batch B/C/D/E 尚未开始。 | Claude |
+| 2026-06-19 | Batch B 编码完成：实现 RequestBuilder、ResponseParser、可注入 LlmTransport（NoNetworkTransport/FakeTransport/RedactedString）、RealLlmProvider 骨架与有界重试；OpenAi Allow 可创建 RealLlmProvider（默认 NoNetworkTransport），Anthropic 保留 NotImplemented 骨架；新增 33 个单元测试；未接入真实 LLM，未发起真实网络调用；Batch C/D/E 尚未开始。 | Claude |

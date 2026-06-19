@@ -5,7 +5,7 @@ status: active
 updated: 2026-06-18
 ---
 
-> 本文档是 Phase 9 的 **UI/UX 设计**（Provider 配置入口 + Grounded Q&A / understanding 体验增强）。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成**（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试），**未接入任何真实 LLM**，**未发起真实网络调用**。Batch B/C/D/E 尚未开始。
+> 本文档是 Phase 9 的 **UI/UX 设计**（Provider 配置入口 + Grounded Q&A / understanding 体验增强）。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成并审核收口**；**Phase 9 Batch B 编码已完成并进入审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架），**未接入真实 LLM**，**未发起真实网络调用**；Batch C/D/E 尚未开始。Phase 10/11 尚未开始。
 >
 > 设计基线：延续 Phase 8 工作台（三段式骨架、Artifact tabs、卡片化、蓝色强调、confidence 视觉语义），**不回退成长页面堆叠**，不膨胀为复杂设置页。
 

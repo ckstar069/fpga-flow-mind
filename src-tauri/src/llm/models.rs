@@ -318,10 +318,16 @@ pub enum LlmError {
     MissingApiKey(ProviderKind),
     /// 配置校验失败。
     InvalidConfig(String),
-    /// Provider 调用失败。
+    /// Provider 调用失败（5xx / 服务器错误，可重试）。
     ProviderCallFailed(String),
+    /// 传输层网络错误（DNS / 连接超时 / TLS，可重试）。
+    NetworkError(String),
+    /// Provider 返回认证/授权错误（4xx），不可重试。
+    AuthError(String),
     /// Batch A 占位：真实 provider 尚未实现。
     NotImplemented,
+    /// 响应解析失败（JSON 非法 / 缺少字段）。
+    InvalidResponse(String),
     /// 输入包含敏感数据且无法 redact。
     RedactionFailed(String),
     /// 输入为空或无效。
@@ -332,13 +338,16 @@ impl fmt::Display for LlmError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             LlmError::NetworkDisabled => {
-                write!(f, "真实 LLM 调用尚未在 Batch A 启用（network_mode=Disabled）")
+                write!(f, "真实 LLM 网络调用已禁用（network_mode=Disabled）")
             }
             LlmError::NotConfigured => write!(f, "LLM Provider 未配置或未启用"),
             LlmError::MissingApiKey(kind) => write!(f, "Provider {} 需要提供 api_key", kind),
             LlmError::InvalidConfig(msg) => write!(f, "配置无效: {}", msg),
             LlmError::ProviderCallFailed(msg) => write!(f, "Provider 调用失败: {}", msg),
+            LlmError::NetworkError(msg) => write!(f, "网络错误: {}", msg),
+            LlmError::AuthError(msg) => write!(f, "认证/授权失败: {}", msg),
             LlmError::NotImplemented => write!(f, "真实 LLM provider 尚未实现"),
+            LlmError::InvalidResponse(msg) => write!(f, "响应解析失败: {}", msg),
             LlmError::RedactionFailed(msg) => write!(f, "输入脱敏失败: {}", msg),
             LlmError::InvalidInput(msg) => write!(f, "输入无效: {}", msg),
         }
