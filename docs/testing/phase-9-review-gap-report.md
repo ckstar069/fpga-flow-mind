@@ -192,7 +192,7 @@ rg -n "api_key|API key|OpenAI|Anthropic|Vivado|synthesis|implementation|bitstrea
 - 本审核记录（`phase-9-review-gap-report.md`）作为第 7 份配套文档，需一同转 active；
 - 转 active 动作本身需由人工确认（非自动），确认后更新各文档 frontmatter `status: draft → active`。
 
-**当前状态：Phase 9 仍未进入编码，真实 LLM 尚未接入。** 转 active 后仍不自动进入编码；编码需等待人工触发 Batch A。
+**当前状态：Phase 9 Batch A 编码已完成并审核收口，真实 LLM 尚未接入，真实网络调用尚未启用。Batch B/C/D/E 尚未开始。** 转 active 后已由人工触发并完成 Batch A；Batch B 及后续需等待进一步授权。
 
 ## 10. 变更记录
 

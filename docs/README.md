@@ -108,7 +108,7 @@ docs/
      - `docs/testing/phase-7-real-project-quality-validation.md`（验证与验收，active）
      - `docs/planning/phase-7-implementation-plan.md`（编码实施计划，active）
 3. `docs/planning/phase-8-overview-product-ui-workbench.md`（Phase 8 overview：产品级 UI 工作台重构，draft）
-   - Phase 8 详细文档（**均已 `active`；Phase 8 已完成，Batch A/B/C/D/E 全部完成，真实 GUI 桌面验收通过，[completion review](planning/phase-8-completion-review.md) active；Phase 9 仅允许进入详细文档编制，编码尚未开始**）：
+   - Phase 8 详细文档（**均已 `active`；Phase 8 已完成，Batch A/B/C/D/E 全部完成，真实 GUI 桌面验收通过，[completion review](planning/phase-8-completion-review.md) active；Phase 9 Batch A 编码已完成（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试），未接入真实 LLM，未发起真实网络调用；Batch B/C/D/E 尚未开始；Phase 10/11 尚未开始**）：
      - `docs/requirements/phase-8-product-workbench-requirements.md`（需求 R8-001~R8-010，active）
      - `docs/design/phase-8-workbench-architecture.md`（工作台架构，active）
      - `docs/design/phase-8-ui-state-and-navigation-design.md`（UI 状态与导航，active）

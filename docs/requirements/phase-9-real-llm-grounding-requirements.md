@@ -2,10 +2,10 @@
 
 ---
 status: active
-updated: 2026-06-18
+updated: 2026-06-19
 ---
 
-> 本文档是 Phase 9（真实 LLM Provider 与 grounding 生产化）的**详细需求**。`status: active`，已审核通过。Phase 9 **编码尚未开始**，**未接入任何真实 LLM**。当前允许进入 **Phase 9 Batch A（P9-T01~P9-T02）**编码；Batch A 仅允许 Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试，不得真实联网调用。Batch B/C/D/E 尚未开始。
+> 本文档是 Phase 9（真实 LLM Provider 与 grounding 生产化）的**详细需求**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成并审核收口**（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试），**未接入任何真实 LLM**，**未发起真实网络调用**。Batch B/C/D/E 尚未开始。Phase 10/11 尚未开始。
 >
 > 上游方向性文档：[`phase-9-overview-real-llm-grounding.md`](../planning/phase-9-overview-real-llm-grounding.md)（draft）。
 

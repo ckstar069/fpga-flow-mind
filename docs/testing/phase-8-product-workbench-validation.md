@@ -9,7 +9,7 @@ updated: 2026-06-16
 >
 > 验证目标是"工作台是否把已有能力组织成用户可高效理解一个阶段的产品级形态，且不发生回归、不越界"，**不是**验证目标项目正确性。
 >
-> 本文 status 为 `active`，是 Phase 8 验证与验收设计的生效文档。**Phase 8 已完成：Batch A/B/C/D/E 全部完成，真实 GUI 桌面验收通过（见 §18.5），[completion review](../planning/phase-8-completion-review.md) active。允许进入 Phase 9 详细文档编制；Phase 9 编码尚未开始；Phase 9/10/11 overview 仍为 `draft`**。
+> 本文 status 为 `active`，是 Phase 8 验证与验收设计的生效文档。**Phase 8 已完成：Batch A/B/C/D/E 全部完成，真实 GUI 桌面验收通过（见 §18.5），[completion review](../planning/phase-8-completion-review.md) active。Phase 9 详细文档已审核通过并转 `active`；Phase 9 Batch A 编码已完成（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试），未接入真实 LLM，未发起真实网络调用；Batch B/C/D/E 尚未开始。Phase 10/11 尚未开始**。Phase 9/10/11 overview 仍为 `draft`。
 
 ## 1. 验证策略总览
 
@@ -423,7 +423,7 @@ rg -n "OpenAI|Anthropic|api_key|Vivado|synthesis|implementation|bitstream|ReactF
 
 - Phase 8 Batch E（P8-T10）已完成：自动化回归、边界 rg、checksum 只读验证、代码级桌面验收、**真实 GUI 桌面验收**（见 §18.5）均已完成。
 - **Phase 8 completion 通过**：[`completion review`](../planning/phase-8-completion-review.md) 已由 `draft` 激活为 `active`（原 `pending_desktop_acceptance` 已解除）。
-- 允许进入 Phase 9 详细文档编制；Phase 9 编码尚未开始；Phase 9/10/11 overview 仍为 `draft`。
+- **Phase 8 completion 通过**：[`completion review`](../planning/phase-8-completion-review.md) 已由 `draft` 激活为 `active`（原 `pending_desktop_acceptance` 已解除）。Phase 9 详细文档已审核通过并转 `active`；Phase 9 Batch A 编码已完成（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试），未接入真实 LLM，未发起真实网络调用；Batch B/C/D/E 尚未开始。Phase 10/11 尚未开始。Phase 9/10/11 overview 仍为 `draft`。`
 
 > 历史记录：§17.x 此前出现的“真实 GUI 桌面验收尚未完成 / completion review 仍为 draft / pending_desktop_acceptance / 不得标记为 active completion”为合并前的历史表述，已被后续 §18.5/§18.6 的真实 GUI 桌面验收与 completion 激活取代（详见 §12 变更记录 2026-06-18 末两条）。
 
@@ -522,7 +522,7 @@ rg -n "OpenAI|Anthropic|api_key|Vivado|synthesis|implementation|bitstream|ReactF
 - Phase 8 真实项目 L0/L4 质量阻塞修复已完成，所有自动化验证（构建、类型、单元测试、集成测试、边界 rg、checksum）通过。
 - 本次修复为**确定性启发式**：claim/流水线/摘要均基于 symbol/summary 关键词与阶段规则派生，未接入真实 LLM；Phase 9 仍需用 LLM 替换 heuristic 以提升语义准确性。
 - **真实 GUI 桌面验收已完成**（§18.5，9 张截图证据）；`docs/planning/phase-8-completion-review.md` 已由 `draft` 激活为 `active`，P8-T10 完成。
-- **Phase 8 completion 通过**：允许进入 Phase 9 详细文档编制；Phase 9 编码尚未开始；Phase 9~11 overview 仍为 `draft`。
+- **Phase 8 completion 通过**：Phase 9 详细文档已审核通过并转 `active`；Phase 9 Batch A 编码已完成（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试），未接入真实 LLM，未发起真实网络调用；Batch B/C/D/E 尚未开始。Phase 10/11 尚未开始。Phase 9~11 overview 仍为 `draft`。
 - 本次修复未修改目标项目、未接入真实 LLM、未引入禁用库，安全边界保持。
 
 ## 12. 变更记录
