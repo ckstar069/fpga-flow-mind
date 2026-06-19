@@ -1,4 +1,5 @@
 pub mod fake_provider;
+pub mod grounding_validator;
 pub mod mock_provider;
 pub mod models;
 pub mod no_network_guard;
@@ -9,6 +10,7 @@ pub mod response_parser;
 pub mod transport;
 
 pub use fake_provider::FakeProvider;
+pub use grounding_validator::*;
 pub use mock_provider::MockProvider;
 pub use models::*;
 pub use no_network_guard::{check_network_allowed, network_policy_summary};

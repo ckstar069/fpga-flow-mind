@@ -5,7 +5,7 @@ status: active
 updated: 2026-06-18
 ---
 
-> 本文档是 Phase 9 的 **grounding 与校验安全设计**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成并审核收口**；**Phase 9 Batch B 编码已完成并完成审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架），**未接入真实 LLM**，**未发起真实网络调用**；Batch C/D/E 尚未开始。Phase 10/11 尚未开始。
+> 本文档是 Phase 9 的 **grounding 与校验安全设计**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成并审核收口**；**Phase 9 Batch B 编码已完成并完成审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架）；**Phase 9 Batch C 编码已完成并进入审核收口**（`GroundingValidator` + citation enforcement + prompt injection / 敏感数据 / 裁决用语过滤，42 个单元测试通过），**未接入真实 LLM**，**未发起真实网络调用**；Batch D/E 尚未开始。Phase 10/11 尚未开始。
 >
 > 本文档是 Phase 9 **安全敏感度最高**的部分：它定义"如何让真实 LLM 不胡说、不伪造 citation、不泄露敏感数据"。
 

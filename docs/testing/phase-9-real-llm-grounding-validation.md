@@ -5,7 +5,7 @@ status: active
 updated: 2026-06-19
 ---
 
-> 本文档是 Phase 9 的 **验证与验收设计**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成并审核收口**；**Phase 9 Batch B 编码已完成并完成审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架），**未接入真实 LLM**，**未发起真实网络调用**；Batch C/D/E 尚未开始。Phase 10/11 尚未开始。Batch B 已完成 Transport / RequestBuilder / ResponseParser / RealLlmProvider 骨架测试、rg 边界检查、缺失测试补齐、smoke test 安全收口，默认路径不发真实网络请求。
+> 本文档是 Phase 9 的 **验证与验收设计**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成并审核收口**；**Phase 9 Batch B 编码已完成并完成审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架）；**Phase 9 Batch C 编码已完成并进入审核收口**（`GroundingValidator` + citation enforcement + prompt injection / 敏感数据 / 裁决用语过滤，42 个单元测试通过），**未接入真实 LLM**，**未发起真实网络调用**；Batch D/E 尚未开始。Phase 10/11 尚未开始。Batch B 已完成 Transport / RequestBuilder / ResponseParser / RealLlmProvider 骨架测试、rg 边界检查、缺失测试补齐、smoke test 安全收口，默认路径不发真实网络请求。Batch C 已完成 grounding validator 42 个单元测试，rg 边界检查通过。
 >
 > 2026-06-19 卫生小修：单元测试中所有视觉上类似真实 API key 的占位字符串已替换为明显伪造值，相关 redaction/display 断言已同步更新，全部测试通过。
 >

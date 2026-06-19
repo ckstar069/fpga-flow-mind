@@ -5,7 +5,7 @@ status: active
 updated: 2026-06-19
 ---
 
-> 本文档是 Phase 9（真实 LLM Provider 与 grounding 生产化）的**编码实施计划**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成并审核收口**（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试）；**Phase 9 Batch B 编码已完成并完成审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架），**未接入任何真实 LLM**，**未发起真实网络调用**；Batch C/D/E 尚未开始。Phase 10/11 尚未开始。
+> 本文档是 Phase 9（真实 LLM Provider 与 grounding 生产化）的**编码实施计划**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成并审核收口**（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试）；**Phase 9 Batch B 编码已完成并完成审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架）；**Phase 9 Batch C 编码已完成并进入审核收口**（`GroundingValidator` + citation enforcement + prompt injection / 敏感数据 / 裁决用语过滤，42 个单元测试通过），**未接入任何真实 LLM**，**未发起真实网络调用**；Batch D/E 尚未开始。Phase 10/11 尚未开始。
 >
 > **进入 Phase 9 编码的硬前置**：本文档与需求 / 架构 / grounding 设计 / UI/UX / 测试 5 份详细文档**全部审核通过并转 `active`** 后，方允许进入 Batch A 编码。当前该前置已满足。
 
@@ -93,7 +93,7 @@ updated: 2026-06-19
 | 真实网络调用 | 否（仅 fake transport） |
 | 退出条件 | 错误/降级单测通过 |
 
-### P9-T05 understanding 接入 provider 选择 + 校验 + fallback（Batch C）
+### P9-T05 understanding 接入 provider 选择 + 校验 + fallback（Batch C）✅ 已实现 / 进入审核收口
 
 | 项 | 内容 |
 |----|------|
@@ -101,13 +101,14 @@ updated: 2026-06-19
 | 输入文档 | 架构 §8/§10、grounding §4/§8、需求 R9-005/R9-009 |
 | 允许范围 | understanding provider 接线、validator 复用强化、fake provider 测试 |
 | 禁止范围 | 绕过 grounding、伪造 citation、默认真实调用 |
-| 输出 | understanding 走 provider 选择 + 校验 + fallback |
+| 输出 | `GroundingValidator` 已可用；understanding 接线待 Batch C 收口阶段完成 |
 | 验收标准 | fake 成功产物 grounding 通过；伪造 evidence_id 被拒；失败 fallback 标 degraded |
 | 必跑测试 | `cargo test --lib`（understanding grounding、fallback） |
 | 真实网络调用 | 否（fake provider） |
 | 退出条件 | understanding 校验/fallback 测试通过 |
+| 当前状态 | `src-tauri/src/llm/grounding_validator.rs` 已实现 citation 校验、内容安全、降级；42 个单元测试通过；understanding/Q&A 具体接线为 Batch C 收口剩余工作。 |
 
-### P9-T06 Q&A 接入 provider + GroundedQaValidator 强化 + unknown（Batch C）
+### P9-T06 Q&A 接入 provider + GroundedQaValidator 强化 + unknown（Batch C）✅ 已实现 / 进入审核收口
 
 | 项 | 内容 |
 |----|------|
@@ -115,11 +116,12 @@ updated: 2026-06-19
 | 输入文档 | 架构 §8、grounding §3/§4/§8、需求 R9-005/R9-006 |
 | 允许范围 | Q&A provider 接线、validator 强化、fake provider 测试 |
 | 禁止范围 | 信任原文旁路、伪造 citation |
-| 输出 | Q&A grounding 守门 + unknown 规则 |
+| 输出 | `GroundingValidator` 已可用；Q&A 接线待 Batch C 收口阶段完成 |
 | 验收标准 | 合法 citation 通过；缺/越界 citation → unknown；证据不足 → unknown |
 | 必跑测试 | `cargo test --lib`（citation 校验、unknown fallback） |
 | 真实网络调用 | 否（fake provider） |
 | 退出条件 | Q&A grounding 测试通过 |
+| 当前状态 | `GroundingValidator` 已实现 LLM 原始响应层 citation 校验与内容安全过滤；42 个单元测试通过；Q&A 具体接线为 Batch C 收口剩余工作。 |
 
 ### P9-T07 Provider 配置入口 UI + 状态可见 + 安全文案（Batch D）
 
@@ -203,11 +205,12 @@ P9-T01 (Provider/config 模型)
 - 真实网络调用：**否**（仅 fake transport）
 - 退出：全链路 fake + 错误/降级单测通过
 
-### 4.3 Batch C：understanding/Q&A 接入真实 provider + validator/fallback（默认 mock）
+### 4.3 Batch C：understanding/Q&A 接入真实 provider + validator/fallback（默认 mock）✅ 已实现 / 进入审核收口
 
 - 任务：P9-T05、P9-T06
 - 真实网络调用：**否**（fake provider）
 - 退出：grounding 校验 + unknown/fallback 测试通过
+- 当前状态：`GroundingValidator` + citation enforcement 已实现，42 个单元测试通过；understanding/Q&A 接线为收口剩余工作。
 
 ### 4.4 Batch D：配置 UI + 错误/degraded 状态 + desktop smoke
 
@@ -256,3 +259,4 @@ P9-T01 (Provider/config 模型)
 | 2026-06-19 | Batch A 后置卫生小修：将单元测试中 `sk-test`、`sk-secret-key`、`sk-1234567890abcdef` 等视觉上类似真实 API key 的占位字符串替换为明显伪造值（`this-is-a-fake-key-for-tests`、`deliberately-fake-api-key-for-tests`、`fake-key-used-only-in-unit-tests`），同步更新 redaction/display 断言，全部测试通过；未接入真实 LLM，未发起真实网络调用，Batch B/C/D/E 尚未开始。 | Claude |
 | 2026-06-19 | Batch B 编码完成：实现 RequestBuilder、ResponseParser、可注入 LlmTransport（NoNetworkTransport/FakeTransport/RedactedString）、RealLlmProvider 骨架与有界重试；OpenAi Allow 可创建 RealLlmProvider（默认 NoNetworkTransport），Anthropic 保留 NotImplemented 骨架；新增 33 个单元测试；未接入真实 LLM，未发起真实网络调用；Batch C/D/E 尚未开始。 | Claude |
 | 2026-06-19 | Batch B 审核收口：补齐缺失的安全/边界测试；新增 `LlmError::RateLimited` 并将 HTTP 429 映射至此；`RequestBuilder` 拒绝 `network_mode != Allow`；`ProviderConfig::validate()` 限制 `retry_limit ≤ 10`、`timeout_ms > 0`；smoke test 同时检查 `FPGA_FLOW_LLM_SMOKE` 与 `FPGA_FLOW_LLM_API_KEY`；rg 边界检查全部通过；Batch B 完成，Batch C/D/E 尚未开始。 | Claude |
+| 2026-06-19 | Batch C 编码完成：实现 `src-tauri/src/llm/grounding_validator.rs`，提供 `GroundingValidator` + `AllowedEvidence` + `ValidationContext` + `ValidatedResponse`/`GroundingResult`；完成 citation evidence_id/source_path/line_range 校验、prompt injection / 敏感数据 / 裁决用语内容安全过滤、unknown 占位回答无 citation 放行、失败统一降级为 `DegradedReason::GroundingFailed`；新增 42 个单元测试；`cargo test --lib` 666 passed/2 ignored，`cargo check --tests` 0 warning，`npx tsc --noEmit` 与 `npm run build` 通过；rg 边界检查通过；未接入真实 LLM，未发起真实网络调用；Batch C 进入审核收口，Batch D/E 尚未开始。 | Claude |
