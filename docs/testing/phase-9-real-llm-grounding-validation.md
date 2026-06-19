@@ -2,10 +2,12 @@
 
 ---
 status: active
-updated: 2026-06-18
+updated: 2026-06-19
 ---
 
 > 本文档是 Phase 9 的 **验证与验收设计**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成**（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试），**未接入任何真实 LLM**，**未发起真实网络调用**。Batch B/C/D/E 尚未开始。
+>
+> 2026-06-19 卫生小修：单元测试中所有视觉上类似真实 API key 的占位字符串已替换为明显伪造值，相关 redaction/display 断言已同步更新，全部测试通过。
 >
 > 核心原则：**默认测试路径不发真实网络请求**；真实 LLM 仅作为 `#[ignore]` 可选 smoke test，需显式 env/config 才运行，不进 CI 默认路径。
 

@@ -253,3 +253,4 @@ P9-T01 (Provider/config 模型)
 |------|------|------|
 | 2026-06-18 | 初始 draft：Phase 9 编码实施计划，Batch A~E（P9-T01~P9-T10），含允许/禁止范围、输入输出、验收、必跑测试、真实网络调用开关、退出条件；明确 6 份详细文档转 active 前不得编码。`status: draft`，Phase 9 编码尚未开始，未接入真实 LLM。 |
 | 2026-06-18 | 审核通过，`status` 从 draft 转 active，作为 Phase 9 编码依据；Phase 9 Batch A 编码已完成（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试），未接入真实 LLM，未发起真实网络调用；Batch B/C/D/E 尚未开始。 | Claude |
+| 2026-06-19 | Batch A 后置卫生小修：将单元测试中 `sk-test`、`sk-secret-key`、`sk-1234567890abcdef` 等视觉上类似真实 API key 的占位字符串替换为明显伪造值（`this-is-a-fake-key-for-tests`、`deliberately-fake-api-key-for-tests`、`fake-key-used-only-in-unit-tests`），同步更新 redaction/display 断言，全部测试通过；未接入真实 LLM，未发起真实网络调用，Batch B/C/D/E 尚未开始。 | Claude |

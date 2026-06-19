@@ -67,7 +67,7 @@ mod tests {
             kind: ProviderKind::OpenAi,
             model: "gpt-4".to_string(),
             enabled: true,
-            api_key: Some(ApiKey::new("sk-test")),
+            api_key: Some(ApiKey::new("this-is-a-fake-key-for-tests")),
             ..ProviderConfig::default()
         };
         assert!(matches!(
@@ -82,7 +82,7 @@ mod tests {
             kind: ProviderKind::OpenAi,
             model: "gpt-4".to_string(),
             enabled: true,
-            api_key: Some(ApiKey::new("sk-test")),
+            api_key: Some(ApiKey::new("this-is-a-fake-key-for-tests")),
             network_mode: NetworkMode::Allow,
             ..ProviderConfig::default()
         };

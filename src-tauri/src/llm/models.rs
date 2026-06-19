@@ -365,16 +365,16 @@ mod tests {
 
     #[test]
     fn api_key_redacted_in_debug() {
-        let key = ApiKey::new("sk-1234567890abcdef");
+        let key = ApiKey::new("fake-key-used-only-in-unit-tests");
         let debug = format!("{:?}", key);
-        assert!(!debug.contains("sk-1234567890abcdef"));
+        assert!(!debug.contains("fake-key-used-only-in-unit-tests"));
         assert!(debug.contains("REDACTED"));
     }
 
     #[test]
     fn api_key_masked_display() {
-        let key = ApiKey::new("sk-1234567890abcdef");
-        assert_eq!(key.masked(), "sk-1...cdef");
+        let key = ApiKey::new("fake-key-used-only-in-unit-tests");
+        assert_eq!(key.masked(), "fake...ests");
     }
 
     #[test]
@@ -409,7 +409,7 @@ mod tests {
             kind: ProviderKind::OpenAi,
             model: "gpt-4".to_string(),
             enabled: true,
-            api_key: Some(ApiKey::new("sk-test")),
+            api_key: Some(ApiKey::new("this-is-a-fake-key-for-tests")),
             ..ProviderConfig::default()
         };
         assert!(cfg.validate().is_ok());
@@ -421,7 +421,7 @@ mod tests {
             kind: ProviderKind::OpenAi,
             model: "gpt-4".to_string(),
             enabled: true,
-            api_key: Some(ApiKey::new("sk-test")),
+            api_key: Some(ApiKey::new("this-is-a-fake-key-for-tests")),
             ..ProviderConfig::default()
         };
         assert!(!cfg.would_use_network());
