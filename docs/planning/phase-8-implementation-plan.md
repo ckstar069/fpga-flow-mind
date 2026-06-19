@@ -36,7 +36,7 @@ Phase 8 不是普通 UI 改造，而是**信息架构工作台化**。三个关�
 | **以上 Phase 8 详细文档全部转为 active** | ✅ 已审核通过；Phase 8 编码已完成 |
 | Phase 8 completion review | ✅ `phase-8-completion-review.md`（active，真实 GUI 桌面验收已完成） |
 
-> 纪律：Phase 8 详细文档全部审核转 active 后，方允许进入 Batch A 编码。**Phase 8 已完成：Batch A/B/C/D/E 全部完成，P8-T10 自动化回归、代码级核验与真实 GUI 桌面验收均已完成，[`completion review`](phase-8-completion-review.md) active**。Phase 9 详细文档已审核通过并转 `active`；Phase 9 Batch A 编码已完成并审核收口；Phase 9 Batch B 编码已完成并进入审核收口（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架），未接入真实 LLM，未发起真实网络调用；Batch C/D/E 尚未开始。Phase 10/11 尚未开始。
+> 纪律：Phase 8 详细文档全部审核转 active 后，方允许进入 Batch A 编码。**Phase 8 已完成：Batch A/B/C/D/E 全部完成，P8-T10 自动化回归、代码级核验与真实 GUI 桌面验收均已完成，[`completion review`](phase-8-completion-review.md) active**。Phase 9 详细文档已审核通过并转 `active`；Phase 9 Batch A 编码已完成并审核收口；Phase 9 Batch B 编码已完成并完成审核收口（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架），未接入真实 LLM，未发起真实网络调用；Batch C/D/E 尚未开始。Phase 10/11 尚未开始。
 
 ## 2. 任务拆分
 

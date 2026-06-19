@@ -1,4 +1,4 @@
-use crate::llm::models::{ChatRequest, LlmError, ProviderConfig, ProviderKind};
+use crate::llm::models::{ChatRequest, LlmError, NetworkMode, ProviderConfig, ProviderKind};
 use crate::llm::transport::{RedactedString, TransportRequest};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -46,6 +46,11 @@ impl RequestBuilder {
             return Err(LlmError::InvalidConfig(
                 "RequestBuilder 只用于真实 provider（OpenAi/Anthropic）".to_string(),
             ));
+        }
+
+        // 拒绝非 Allow 的网络模式（防止直接构造 RealLlmProvider 时绕过 no-network guard）
+        if self.config.network_mode != NetworkMode::Allow {
+            return Err(LlmError::NetworkDisabled);
         }
 
         // 校验配置（enabled、model 非空、api_key 存在）
@@ -153,6 +158,21 @@ mod tests {
     }
 
     #[test]
+    fn request_builder_respects_disabled_network_mode() {
+        let cfg = ProviderConfig {
+            kind: ProviderKind::OpenAi,
+            model: "gpt-4".to_string(),
+            enabled: true,
+            api_key: Some(ApiKey::new("this-is-a-fake-key-for-tests")),
+            network_mode: NetworkMode::Disabled,
+            ..ProviderConfig::default()
+        };
+        let builder = RequestBuilder::new(&cfg);
+        let result = builder.build(&simple_chat_request());
+        assert!(matches!(result, Err(LlmError::NetworkDisabled)));
+    }
+
+    #[test]
     fn request_builder_rejects_mock_config() {
         let cfg = ProviderConfig::mock();
         let builder = RequestBuilder::new(&cfg);
@@ -175,6 +195,7 @@ mod tests {
             model: "gpt-4".to_string(),
             enabled: true,
             api_key: None,
+            network_mode: NetworkMode::Allow,
             ..ProviderConfig::default()
         };
         let builder = RequestBuilder::new(&cfg);

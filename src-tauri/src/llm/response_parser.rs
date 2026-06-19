@@ -52,6 +52,12 @@ impl ResponseParser {
                 response.status_code
             )));
         }
+        if response.status_code == 429 {
+            return Err(LlmError::RateLimited(format!(
+                "HTTP {}",
+                response.status_code
+            )));
+        }
         if response.status_code >= 400 {
             return Err(LlmError::AuthError(format!(
                 "HTTP {}",
@@ -169,6 +175,14 @@ mod tests {
         let parser = ResponseParser;
         let resp = transport_response(429, r#"{"error":"Rate Limited"}"#);
         let result = parser.parse(&resp, "openai", "gpt-4");
+        assert!(matches!(result, Err(LlmError::RateLimited(_))));
+    }
+
+    #[test]
+    fn parser_maps_http_400_error() {
+        let parser = ResponseParser;
+        let resp = transport_response(400, r#"{"error":"Bad Request"}"#);
+        let result = parser.parse(&resp, "openai", "gpt-4");
         assert!(matches!(result, Err(LlmError::AuthError(_))));
     }
 
@@ -210,5 +224,14 @@ mod tests {
         let result = parser.parse(&resp, "openai", "gpt-4").unwrap();
         assert_eq!(result.content, "测试内容");
         assert!(result.usage.is_none());
+    }
+
+    #[test]
+    fn parser_success_without_citations_has_no_citations() {
+        let parser = ResponseParser;
+        let resp = transport_response(200, valid_body());
+        let result = parser.parse(&resp, "openai", "gpt-4").unwrap();
+        assert!(result.citations.is_empty());
+        assert!(!result.is_degraded);
     }
 }

@@ -5,7 +5,7 @@ status: active
 updated: 2026-06-19
 ---
 
-> 本文档是 Phase 9 的 **验证与验收设计**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成并审核收口**；**Phase 9 Batch B 编码已完成并进入审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架），**未接入真实 LLM**，**未发起真实网络调用**；Batch C/D/E 尚未开始。Phase 10/11 尚未开始。Batch B 已完成 Transport / RequestBuilder / ResponseParser / RealLlmProvider 骨架测试，默认路径不发真实网络请求。
+> 本文档是 Phase 9 的 **验证与验收设计**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成并审核收口**；**Phase 9 Batch B 编码已完成并完成审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架），**未接入真实 LLM**，**未发起真实网络调用**；Batch C/D/E 尚未开始。Phase 10/11 尚未开始。Batch B 已完成 Transport / RequestBuilder / ResponseParser / RealLlmProvider 骨架测试、rg 边界检查、缺失测试补齐、smoke test 安全收口，默认路径不发真实网络请求。
 >
 > 2026-06-19 卫生小修：单元测试中所有视觉上类似真实 API key 的占位字符串已替换为明显伪造值，相关 redaction/display 断言已同步更新，全部测试通过。
 >
@@ -142,25 +142,34 @@ Batch B（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvide
 ### ResponseParser 测试
 
 - 正常成功响应解析
-- HTTP 401/403/429 映射为 `AuthError`（4xx 不触发重试）
-- HTTP 500 映射为 `ProviderUnavailable`
+- HTTP 401/403/400 映射为 `AuthError`（4xx 不触发重试）
+- HTTP 429 映射为 `RateLimited`
+- HTTP 500 映射为 `ProviderCallFailed`
 - JSON 解析失败（invalid JSON）映射为 `InvalidResponse`
 - 响应中缺少 `choices` 字段处理
 - `choices` 中 `content` 为空处理
+- 无 `usage` 字段处理
+- 成功响应默认无 citation（Batch C grounding validator 负责信任判定）
 
 ### RealLlmProvider 测试
 
 - 通过 `FakeTransport` 注入成功响应
 - 首次失败后重试成功（有界重试）
-- `AuthError` / `InvalidResponse` 不触发重试
+- `AuthError` / `InvalidResponse` / `RateLimited` 不触发重试
 - 重试耗尽后返回最终 error
 - `NoNetworkTransport` 默认拦截真实调用
+- `enabled=false`、`network_mode!=Allow`、`api_key` 缺失时分别返回明确错误
+- `timeout_ms` 正确传递到 transport
+- error Display/Debug 不泄露 `api_key` / `Bearer`
+- 成功响应默认无 citation（Batch C grounding validator 负责信任判定）
 
 ### 边界检查
 
 - 不依赖 `reqwest` crate（仅 Batch E 可选启用）
 - 默认测试路径不发起真实网络请求
-- `#[ignore]` smoke 测试由 `FPGA_FLOW_LLM_SMOKE=1` 环境变量守卫
+- `#[ignore]` smoke 测试由 `FPGA_FLOW_LLM_SMOKE=1` 与 `FPGA_FLOW_LLM_API_KEY` 共同守卫；缺一安全跳过，不 panic、不联网
+- `retry_limit` 与 `timeout_ms` 在 `ProviderConfig::validate()` 中限制合理范围
+- 错误 Display/Debug 不泄露 `api_key` / `Bearer`
 
 ## 12. 安全边界汇总
 
@@ -182,4 +191,4 @@ Batch B（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvide
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
-| 2026-06-18 | 初始 draft：单元/集成/安全/真实项目/桌面/回归验证设计，可选真实 smoke 默认 ignored，禁止项 rg。`status: draft`，未接入真实 LLM，编码未开始。 | Claude |
+| 2026-06-19 | Batch B 审核收口：补齐 `real_provider_requires_enabled_true/network_allow/api_key`、`errors_do_not_include_authorization_or_key`、`timeout_mapping`、`rate_limit_mapping`、`retry_limit_is_bounded`、`no_citation_response_is_unvalidated` 等测试；新增 `LlmError::RateLimited` 并将 HTTP 429 映射至此；`RequestBuilder` 增加 `network_mode != Allow` 拒绝路径；`ProviderConfig::validate()` 限制 `retry_limit ≤ 10` 与 `timeout_ms > 0`；smoke test 同时检查 `FPGA_FLOW_LLM_SMOKE` 与 `FPGA_FLOW_LLM_API_KEY`，缺一安全跳过；rg 边界检查通过。 | Claude |

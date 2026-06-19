@@ -7,7 +7,7 @@ updated: 2026-06-18
 
 > 本文档是 Phase 8（产品级 UI/UX 工作台重构）的完成审查。P8-T01~P8-T10 全部完成；Batch A/B/C/D/E 全部完成。
 >
-> **结论：Phase 8 completion 通过。Phase 9 详细文档已审核通过并转 `active`；Phase 9 Batch A 编码已完成并审核收口；Phase 9 Batch B 编码已完成并进入审核收口（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架），未接入真实 LLM，未发起真实网络调用；Batch C/D/E 尚未开始。Phase 10/11 尚未开始。**
+> **结论：Phase 8 completion 通过。Phase 9 详细文档已审核通过并转 `active`；Phase 9 Batch A 编码已完成并审核收口；Phase 9 Batch B 编码已完成并完成审核收口（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架），未接入真实 LLM，未发起真实网络调用；Batch C/D/E 尚未开始。Phase 10/11 尚未开始。**
 >
 > 真实 GUI 桌面验收已于真实项目 `fpga_project_coarse_sync` 完成（见 §7.5，含 9 张截图证据）。`status` 由 `draft` 激活为 `active`。
 
@@ -178,7 +178,7 @@ rg -n "OpenAI|Anthropic|api_key|Vivado|synthesis|implementation|bitstream|ReactF
 
 - **Phase 8 completion 通过**：Batch A/B/C/D/E 全部完成；自动化回归、checksum 只读验证、边界 rg 检查、代码级桌面验收、真实 GUI 桌面验收（§7.5）均已完成。
 - **`phase-8-completion-review.md` 已由 `draft` 激活为 `active`**（原 `pending_desktop_acceptance` 已解除）。
-- **Phase 8 completion 通过，允许进入 Phase 9 详细文档编制与 Batch A 编码**：Phase 9 详细文档已审核通过并转 `active`；Phase 9 Batch A 编码已完成并审核收口；Phase 9 Batch B 编码已完成并进入审核收口（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架），未接入真实 LLM，未发起真实网络调用；Batch C/D/E 尚未开始。Phase 10/11 尚未开始。
+- **Phase 8 completion 通过，允许进入 Phase 9 详细文档编制与 Batch A 编码**：Phase 9 详细文档已审核通过并转 `active`；Phase 9 Batch A 编码已完成并审核收口；Phase 9 Batch B 编码已完成并完成审核收口（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架），未接入真实 LLM，未发起真实网络调用；Batch C/D/E 尚未开始。Phase 10/11 尚未开始。
 
 ## 7. Phase 8 真实项目 L0/L4 质量阻塞修复收口
 

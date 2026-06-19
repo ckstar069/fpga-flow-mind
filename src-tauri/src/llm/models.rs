@@ -199,6 +199,18 @@ impl ProviderConfig {
             return Err(LlmError::InvalidConfig("model 不能为空".to_string()));
         }
 
+        // Batch B 审核收口：限制重试/超时在合理范围，防止无界等待或无限重试。
+        if self.retry_limit > 10 {
+            return Err(LlmError::InvalidConfig(
+                "retry_limit 不能超过 10".to_string(),
+            ));
+        }
+        if self.timeout_ms == 0 {
+            return Err(LlmError::InvalidConfig(
+                "timeout_ms 必须大于 0".to_string(),
+            ));
+        }
+
         match self.kind {
             ProviderKind::Mock | ProviderKind::Fake => Ok(()),
             ProviderKind::OpenAi | ProviderKind::Anthropic => {
@@ -322,8 +334,10 @@ pub enum LlmError {
     ProviderCallFailed(String),
     /// 传输层网络错误（DNS / 连接超时 / TLS，可重试）。
     NetworkError(String),
-    /// Provider 返回认证/授权错误（4xx），不可重试。
+    /// Provider 返回认证/授权错误（4xx，不含 429），不可重试。
     AuthError(String),
+    /// 触发速率限制（HTTP 429），不可重试。
+    RateLimited(String),
     /// Batch A 占位：真实 provider 尚未实现。
     NotImplemented,
     /// 响应解析失败（JSON 非法 / 缺少字段）。
@@ -346,6 +360,7 @@ impl fmt::Display for LlmError {
             LlmError::ProviderCallFailed(msg) => write!(f, "Provider 调用失败: {}", msg),
             LlmError::NetworkError(msg) => write!(f, "网络错误: {}", msg),
             LlmError::AuthError(msg) => write!(f, "认证/授权失败: {}", msg),
+            LlmError::RateLimited(msg) => write!(f, "触发速率限制: {}", msg),
             LlmError::NotImplemented => write!(f, "真实 LLM provider 尚未实现"),
             LlmError::InvalidResponse(msg) => write!(f, "响应解析失败: {}", msg),
             LlmError::RedactionFailed(msg) => write!(f, "输入脱敏失败: {}", msg),
@@ -425,7 +440,21 @@ mod tests {
     }
 
     #[test]
-    fn would_use_network_only_when_allowed() {
+    fn config_serialization_does_not_include_api_key() {
+        let cfg = ProviderConfig {
+            kind: ProviderKind::OpenAi,
+            model: "gpt-4".to_string(),
+            enabled: true,
+            api_key: Some(ApiKey::new("this-is-a-fake-key-for-tests")),
+            ..ProviderConfig::default()
+        };
+        let json = serde_json::to_string(&cfg).unwrap();
+        assert!(!json.contains("this-is-a-fake-key-for-tests"));
+        assert!(!json.contains("api_key"));
+    }
+
+    #[test]
+    fn retry_limit_and_timeout_are_bounded() {
         let mut cfg = ProviderConfig {
             kind: ProviderKind::OpenAi,
             model: "gpt-4".to_string(),
@@ -433,9 +462,21 @@ mod tests {
             api_key: Some(ApiKey::new("this-is-a-fake-key-for-tests")),
             ..ProviderConfig::default()
         };
-        assert!(!cfg.would_use_network());
+        cfg.retry_limit = 100;
+        assert!(matches!(cfg.validate(), Err(LlmError::InvalidConfig(_))));
 
-        cfg.network_mode = NetworkMode::Allow;
-        assert!(cfg.would_use_network());
+        cfg.retry_limit = 2;
+        cfg.timeout_ms = 0;
+        assert!(matches!(cfg.validate(), Err(LlmError::InvalidConfig(_))));
+
+        cfg.timeout_ms = 30_000;
+        assert!(cfg.validate().is_ok());
+    }
+
+    #[test]
+    fn default_config_does_not_use_real_transport() {
+        let cfg = ProviderConfig::default();
+        assert!(!cfg.would_use_network());
+        assert!(matches!(cfg.validate(), Err(LlmError::NotConfigured)));
     }
 }

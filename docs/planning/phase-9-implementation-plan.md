@@ -5,7 +5,7 @@ status: active
 updated: 2026-06-19
 ---
 
-> 本文档是 Phase 9（真实 LLM Provider 与 grounding 生产化）的**编码实施计划**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成并审核收口**（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试）；**Phase 9 Batch B 编码已完成并进入审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架），**未接入任何真实 LLM**，**未发起真实网络调用**；Batch C/D/E 尚未开始。Phase 10/11 尚未开始。
+> 本文档是 Phase 9（真实 LLM Provider 与 grounding 生产化）的**编码实施计划**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成并审核收口**（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试）；**Phase 9 Batch B 编码已完成并完成审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架），**未接入任何真实 LLM**，**未发起真实网络调用**；Batch C/D/E 尚未开始。Phase 10/11 尚未开始。
 >
 > **进入 Phase 9 编码的硬前置**：本文档与需求 / 架构 / grounding 设计 / UI/UX / 测试 5 份详细文档**全部审核通过并转 `active`** 后，方允许进入 Batch A 编码。当前该前置已满足。
 
@@ -255,3 +255,4 @@ P9-T01 (Provider/config 模型)
 | 2026-06-18 | 审核通过，`status` 从 draft 转 active，作为 Phase 9 编码依据；Phase 9 Batch A 编码已完成（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试），未接入真实 LLM，未发起真实网络调用；Batch B/C/D/E 尚未开始。 | Claude |
 | 2026-06-19 | Batch A 后置卫生小修：将单元测试中 `sk-test`、`sk-secret-key`、`sk-1234567890abcdef` 等视觉上类似真实 API key 的占位字符串替换为明显伪造值（`this-is-a-fake-key-for-tests`、`deliberately-fake-api-key-for-tests`、`fake-key-used-only-in-unit-tests`），同步更新 redaction/display 断言，全部测试通过；未接入真实 LLM，未发起真实网络调用，Batch B/C/D/E 尚未开始。 | Claude |
 | 2026-06-19 | Batch B 编码完成：实现 RequestBuilder、ResponseParser、可注入 LlmTransport（NoNetworkTransport/FakeTransport/RedactedString）、RealLlmProvider 骨架与有界重试；OpenAi Allow 可创建 RealLlmProvider（默认 NoNetworkTransport），Anthropic 保留 NotImplemented 骨架；新增 33 个单元测试；未接入真实 LLM，未发起真实网络调用；Batch C/D/E 尚未开始。 | Claude |
+| 2026-06-19 | Batch B 审核收口：补齐缺失的安全/边界测试；新增 `LlmError::RateLimited` 并将 HTTP 429 映射至此；`RequestBuilder` 拒绝 `network_mode != Allow`；`ProviderConfig::validate()` 限制 `retry_limit ≤ 10`、`timeout_ms > 0`；smoke test 同时检查 `FPGA_FLOW_LLM_SMOKE` 与 `FPGA_FLOW_LLM_API_KEY`；rg 边界检查全部通过；Batch B 完成，Batch C/D/E 尚未开始。 | Claude |

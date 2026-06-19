@@ -5,7 +5,7 @@ status: active
 updated: 2026-06-18
 ---
 
-> 本文档是 Phase 9 6 份详细文档的**正式审核记录**。`status: active`，与 6 份详细文档一同审核通过并转 `active`。**Phase 9 Batch A 编码已完成并审核收口**（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试）；**Phase 9 Batch B 编码已完成并进入审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架）。未接入真实 LLM，未发起真实网络调用。Batch C/D/E 尚未开始。Phase 10/11 尚未开始。
+> 本文档是 Phase 9 6 份详细文档的**正式审核记录**。`status: active`，与 6 份详细文档一同审核通过并转 `active`。**Phase 9 Batch A 编码已完成并审核收口**（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试）；**Phase 9 Batch B 编码已完成并完成审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架）。未接入真实 LLM，未发起真实网络调用。Batch C/D/E 尚未开始。Phase 10/11 尚未开始。
 >
 > 审核原则：不做代码实现，不接真实 LLM；审核期间未转 active，审核完成后统一转 active。
 
@@ -192,10 +192,11 @@ rg -n "api_key|API key|OpenAI|Anthropic|Vivado|synthesis|implementation|bitstrea
 - 本审核记录（`phase-9-review-gap-report.md`）作为第 7 份配套文档，需一同转 active；
 - 转 active 动作本身需由人工确认（非自动），确认后更新各文档 frontmatter `status: draft → active`。
 
-**当前状态：Phase 9 Batch A 编码已完成并审核收口，Phase 9 Batch B 编码已完成并进入审核收口，真实 LLM 尚未接入，真实网络调用尚未启用。Batch C/D/E 尚未开始。Phase 10/11 尚未开始。** 转 active 后已由人工触发并完成 Batch A/B；Batch C 及后续需等待进一步授权。
+**当前状态：Phase 9 Batch A 编码已完成并审核收口，Phase 9 Batch B 编码已完成并完成审核收口，真实 LLM 尚未接入，真实网络调用尚未启用。Batch C/D/E 尚未开始。Phase 10/11 尚未开始。** 转 active 后已由人工触发并完成 Batch A/B；Batch C 及后续需等待进一步授权。
 
 ## 10. 变更记录
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
 | 2026-06-18 | 初始审核记录：审核 6 份 Phase 9 详细文档，发现 3 IMPORTANT + 1 MINOR，全部修复。`status: draft`。 | Claude |
+| 2026-06-19 | Batch B 审核收口：代码与测试审查通过，补齐缺失测试；`LlmError::RateLimited` 新增；smoke test 双 env 守卫；rg 边界检查通过；确认 Batch B 已完成，Batch C/D/E 尚未开始。 | Claude |

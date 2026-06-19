@@ -170,23 +170,25 @@ mod tests {
     #[test]
     #[ignore]
     fn real_smoke_requires_env_and_allow() {
-        // 未设置 env 时直接跳过
-        if std::env::var("FPGA_FLOW_LLM_SMOKE").is_err() {
+        // 未设置显式 env 时直接跳过
+        let Ok(smoke) = std::env::var("FPGA_FLOW_LLM_SMOKE") else {
+            return;
+        };
+        if smoke.is_empty() {
             return;
         }
 
         // 仅在此测试中读取 env（默认测试路径不读 env）
-        let _api_key_str = std::env::var("FPGA_FLOW_LLM_API_KEY").unwrap_or_default();
+        let api_key_str = std::env::var("FPGA_FLOW_LLM_API_KEY").unwrap_or_default();
+        if api_key_str.is_empty() {
+            return;
+        }
 
         let cfg = ProviderConfig {
             kind: ProviderKind::OpenAi,
             model: "gpt-4".to_string(),
             enabled: true,
-            api_key: if _api_key_str.is_empty() {
-                None
-            } else {
-                Some(ApiKey::new(_api_key_str))
-            },
+            api_key: Some(ApiKey::new(api_key_str)),
             network_mode: NetworkMode::Allow,
             ..ProviderConfig::default()
         };

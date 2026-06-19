@@ -264,6 +264,134 @@ mod tests {
     }
 
     #[test]
+    fn real_provider_requires_enabled_true() {
+        let mut config = openai_config();
+        config.enabled = false;
+        let transport = FakeTransport::new(TransportResponse {
+            status_code: 200,
+            body: success_response_body(),
+        });
+        let provider = RealLlmProvider::new(config, transport);
+
+        let result = provider.chat(&make_request());
+        assert!(matches!(result, Err(LlmError::NotConfigured)));
+    }
+
+    #[test]
+    fn real_provider_requires_network_allow() {
+        let mut config = openai_config();
+        config.network_mode = NetworkMode::Disabled;
+        let transport = FakeTransport::new(TransportResponse {
+            status_code: 200,
+            body: success_response_body(),
+        });
+        let provider = RealLlmProvider::new(config, transport);
+
+        let result = provider.chat(&make_request());
+        assert!(matches!(result, Err(LlmError::NetworkDisabled)));
+    }
+
+    #[test]
+    fn real_provider_requires_api_key() {
+        let mut config = openai_config();
+        config.api_key = None;
+        let transport = FakeTransport::new(TransportResponse {
+            status_code: 200,
+            body: success_response_body(),
+        });
+        let provider = RealLlmProvider::new(config, transport);
+
+        let result = provider.chat(&make_request());
+        assert!(matches!(result, Err(LlmError::MissingApiKey(_))));
+    }
+
+    #[test]
+    fn real_provider_errors_do_not_leak_authorization_or_key() {
+        let key = "this-is-a-fake-key-for-errors-test";
+        let config = ProviderConfig {
+            kind: ProviderKind::OpenAi,
+            model: "gpt-4".to_string(),
+            enabled: true,
+            api_key: Some(ApiKey::new(key)),
+            base_url: None,
+            timeout_ms: 30_000,
+            retry_limit: 1,
+            rate_limit_per_min: 60,
+            network_mode: NetworkMode::Allow,
+        };
+        let transport = FakeTransport::new(TransportResponse {
+            status_code: 401,
+            body: r#"{"error":"Unauthorized"}"#.to_string(),
+        });
+        let provider = RealLlmProvider::new(config, transport);
+
+        let result = provider.chat(&make_request());
+        let err = result.unwrap_err();
+        let err_string = format!("{}", err);
+        let err_debug = format!("{:?}", err);
+        assert!(!err_string.contains(key));
+        assert!(!err_string.contains("Bearer"));
+        assert!(!err_debug.contains(key));
+        assert!(!err_debug.contains("Bearer"));
+    }
+
+    #[test]
+    fn real_provider_timeout_is_passed_to_transport() {
+        let mut config = openai_config();
+        config.timeout_ms = 4242;
+
+        let seen = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
+        struct TimeoutCapture {
+            seen: std::sync::Arc<std::sync::atomic::AtomicU64>,
+        }
+        impl LlmTransport for TimeoutCapture {
+            fn send(
+                &self,
+                _request: &TransportRequest,
+                timeout_ms: u64,
+            ) -> Result<TransportResponse, LlmError> {
+                self.seen.store(timeout_ms, std::sync::atomic::Ordering::SeqCst);
+                Ok(TransportResponse {
+                    status_code: 200,
+                    body: success_response_body(),
+                })
+            }
+        }
+
+        let transport = TimeoutCapture { seen: seen.clone() };
+        let provider = RealLlmProvider::new(config, transport);
+        provider.chat(&make_request()).unwrap();
+        assert_eq!(seen.load(std::sync::atomic::Ordering::SeqCst), 4242);
+    }
+
+    #[test]
+    fn real_provider_does_not_retry_rate_limited() {
+        let config = openai_config();
+        let transport = FakeTransport::new(TransportResponse {
+            status_code: 429,
+            body: r#"{"error":"Rate Limited"}"#.to_string(),
+        });
+        let provider = RealLlmProvider::new(config, transport);
+
+        let result = provider.chat(&make_request());
+        assert!(matches!(result, Err(LlmError::RateLimited(_))));
+    }
+
+    #[test]
+    fn real_provider_success_without_citations_is_not_trusted() {
+        let config = openai_config();
+        let transport = FakeTransport::new(TransportResponse {
+            status_code: 200,
+            body: success_response_body(),
+        });
+        let provider = RealLlmProvider::new(config, transport);
+
+        let response = provider.chat(&make_request()).unwrap();
+        assert!(response.citations.is_empty());
+        assert!(!response.is_degraded);
+    }
+
+    #[test]
     fn real_provider_capabilities_declare_full() {
         let config = openai_config();
         let transport = FakeTransport::new(TransportResponse {

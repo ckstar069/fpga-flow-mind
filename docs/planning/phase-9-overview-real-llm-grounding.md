@@ -5,7 +5,7 @@ status: draft
 updated: 2026-06-15
 ---
 
-> 本文档是 Phase 9 的**方向性 overview**。详细需求、设计、安全设计、测试设计与编码计划在进入 Phase 9 编码前另行编制并审核为 active。Phase 9 Batch A/B 编码已完成并进入审核收口，未接入真实 LLM，未发起真实网络调用；Batch C/D/E 尚未开始。Phase 10/11 尚未开始。
+> 本文档是 Phase 9 的**方向性 overview**。详细需求、设计、安全设计、测试设计与编码计划在进入 Phase 9 编码前另行编制并审核为 active。Phase 9 Batch A/B 编码已完成并完成审核收口，未接入真实 LLM，未发起真实网络调用；Batch C/D/E 尚未开始。Phase 10/11 尚未开始。
 
 ## 1. 背景与问题
 
