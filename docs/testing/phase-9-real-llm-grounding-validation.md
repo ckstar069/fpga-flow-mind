@@ -107,6 +107,27 @@ cd src-tauri && cargo test --test real_project_validation -- --ignored
 6. 清除 api_key → 状态回到未配置；
 7. 全程目标项目只读，无 PASS/HOLD/正确/错误裁决文案。
 
+### 7.1 真实 GUI 部分验收记录（2026-06-21）
+
+已在真实 Tauri 桌面窗口中完成并保存截图：
+
+| 截图 | 验收内容 |
+|------|----------|
+| `docs/screenshots/phase-9-completion/01-app-open.png` | 应用启动，底部 provider 状态默认显示 `Mock · 本地模式 · 未配置` |
+| `docs/screenshots/phase-9-completion/09-open-project-accessibility.png` | 打开真实项目 `fpga_project_coarse_sync`，识别 L0~L6/RTL |
+| `docs/screenshots/phase-9-completion/10-l0-selected.png` | 选择 L0 后显示阶段概览和 Provider=`Mock` |
+| `docs/screenshots/phase-9-completion/11-l0-evidence-collected.png` | L0 收集 evidence 完成，显示 244 项 evidence |
+| `docs/screenshots/phase-9-completion/13-l0-understanding-generated.png` | L0 生成 understanding 完成，显示 provider=`mock` / `Mock` 和 8 条声明 |
+| `docs/screenshots/phase-9-completion/14-l0-views-generated.png` | L0 生成 view 完成，显示 3 个视图，timing tab 标记为空 |
+
+本轮尚未完成以下 GUI 截图，因此 completion review 保持 `draft`：
+
+- 真实 provider 配置面板的配置、校验、清除 api_key；
+- UI 层 test connection 成功/失败；
+- L4 周期精确 timing 图；
+- Q&A grounding / citation / unknown；
+- 错误态、断网态、限流态 degraded UI。
+
 ## 8. 既有能力回归（零退化）
 
 - Phase 8 工作台 UI/状态隔离/视觉不退化；

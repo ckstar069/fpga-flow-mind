@@ -117,6 +117,36 @@ cd src-tauri && cargo test --test real_project_validation -- --ignored
 - 引用不存在的 evidence id 时触发降级；
 - 验证前后目标项目 `src/` checksum 一致。
 
+### 3.3 真实 GUI 部分验收记录（2026-06-21）
+
+本轮在真实 Tauri 桌面窗口中完成了以下可交互路径，并将截图保存到
+`docs/screenshots/phase-9-completion/`：
+
+| 截图 | 内容 |
+|------|------|
+| `01-app-open.png` | 应用启动，provider footer 默认显示 `Mock · 本地模式 · 未配置` |
+| `09-open-project-accessibility.png` | 打开真实项目 `/Users/ckstar/Repo/znxt_ofdm/fpga_project_coarse_sync`，识别 L0~L6/RTL 8 个阶段 |
+| `10-l0-selected.png` | 选择 L0，工作台显示文件、证据、声明、视图、Provider 概览 |
+| `11-l0-evidence-collected.png` | L0 收集证据完成，显示 244 项 evidence |
+| `13-l0-understanding-generated.png` | L0 生成理解完成，显示 provider=`mock` / `Mock` 与 8 条声明 |
+| `14-l0-views-generated.png` | L0 生成视图完成，显示 3 个视图，时序流水 tab 标记为空 |
+
+已完成的 GUI 验收点：
+
+- 真实项目打开与阶段识别；
+- 默认 provider 状态可见，且未配置真实 provider；
+- L0 evidence → understanding → view 工作流可由桌面 UI 触发；
+- L0 产物中 provider/model 可见；
+- L0 视图生成后，结构/数据流/时序 tab 可见，其中 timing 保持空态标记，不把算法步骤伪造成硬件时序。
+
+仍未完成的 GUI 验收点：
+
+- Provider 配置面板的真实配置、配置校验、清除 api_key；
+- UI 层“测试连接”的成功/失败状态截图；
+- L4 周期精确 timing 的桌面截图；
+- Q&A 真实/Mock grounding 展示、citation 回链、unknown 展示；
+- 错误态、断网态、限流态的 degraded UI 截图。
+
 ## 4. 安全与边界确认
 
 - 默认配置仍为 no-network-by-default：未启用真实 LLM 时不发起真实网络调用。
@@ -131,7 +161,7 @@ cd src-tauri && cargo test --test real_project_validation -- --ignored
 
 Phase 9 completion 暂不转 active，原因如下：
 
-1. **真实 GUI 桌面验收尚未完成**：需要在桌面应用中完成 provider 配置面板、状态条、配置校验、test connection、理解/Q&A grounding 状态、错误态与断网态的截图验收。
+1. **真实 GUI 桌面验收仅完成部分路径**：已完成应用启动、真实项目打开、L0 evidence/understanding/view 与默认 provider 状态截图；仍需完成 provider 配置面板、配置校验、test connection、L4 timing、Q&A grounding、错误态与断网态截图验收。
 2. **真实 LLM 语义质量仍需人工判断**：R9-012 中的“优于或不劣于 heuristic baseline”需要真实 provider 输出后人工确认，不做自动裁决。
 
 ## 6. 当前结论
@@ -144,3 +174,4 @@ Phase 9 Batch E 的自动化/只读部分与可选 DeepSeek 真实 LLM smoke 已
 |------|------|------|
 | 2026-06-21 | 新增 Phase 9 completion review 草案；记录 Batch E 自动化回归、真实项目只读 grounding 验收、安全边界、待真实 GUI 桌面验收项。 | Codex |
 | 2026-06-21 | 补充 DeepSeek OpenAI-compatible 真实 LLM smoke 结果：`real_smoke_deepseek_openai_compatible` 在显式 env/config 下通过；completion 仍因真实 GUI 桌面验收待完成而保持 draft。 | Codex |
+| 2026-06-21 | 补充真实 GUI 部分验收截图：应用启动、真实项目打开、L0 evidence/understanding/view 工作流已完成；provider 配置、test connection、L4 timing、Q&A grounding、错误/断网态仍待补验。 | Codex |
