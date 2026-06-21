@@ -785,9 +785,9 @@ mod tests {
     }
 
     #[test]
-    fn sensitive_openai_key_prefix_degrades() {
+    fn sensitive_env_key_name_degrades() {
         let ctx = ValidationContext::without_stage(AllowedEvidence::from_items(vec![]));
-        let response = sample_response("Found sk-ProjAbCd1234XXXXXXXX in output.", vec![]);
+        let response = sample_response("Found OPENAI_API_KEY in output.", vec![]);
         let result = GroundingValidator::validate(&response, &ctx);
         assert!(!result.is_grounded());
     }
@@ -1000,7 +1000,7 @@ mod tests {
                 Some("/tmp/a.py"),
                 2,
                 5,
-                "Authorization: Bearer sk-test1234567890",
+                "Authorization: Bearer deliberately-fake-token-for-tests",
             )],
         );
         let result = GroundingValidator::validate(&response, &ctx);
@@ -1012,7 +1012,7 @@ mod tests {
         let ev = sample_evidence("EV-L0-000001", "/tmp/a.py", 1, 10);
         let ctx = ValidationContext::without_stage(AllowedEvidence::from_items(vec![ev]));
         let response = sample_response(
-            "Authorization: Bearer sk-test1234567890",
+            "Authorization: Bearer deliberately-fake-token-for-tests",
             vec![single_citation("EV-L0-000001", Some("/tmp/a.py"), 2, 5)],
         );
         let result = GroundingValidator::validate(&response, &ctx);

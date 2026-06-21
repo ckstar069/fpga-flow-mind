@@ -151,17 +151,17 @@ export async function getLastSession(): Promise<SessionSummary | null> {
 
 export async function getProviderStatus(config: ProviderConfigInput & { api_key?: string }): Promise<ProviderStatusResponse> {
   const result = await invoke<CommandResult<ProviderStatusResponse>>('get_provider_status', { config });
-  return handleResult(result);
+  return handleResultWithData(result);
 }
 
 export async function validateProviderConfig(config: ProviderConfigInput & { api_key?: string }): Promise<ProviderValidationResult> {
   const result = await invoke<CommandResult<ProviderValidationResult>>('validate_provider_config', { config });
-  return handleResult(result);
+  return handleResultWithData(result);
 }
 
 export async function testProviderConnection(config: ProviderConfigInput & { api_key?: string }): Promise<ProviderTestConnectionResult> {
   const result = await invoke<CommandResult<ProviderTestConnectionResult>>('test_provider_connection', { config });
-  return handleResult(result);
+  return handleResultWithData(result);
 }
 
 function handleResult<T>(result: CommandResult<T>): T {
@@ -187,6 +187,14 @@ function handleResult<T>(result: CommandResult<T>): T {
     });
   }
   return result.data;
+}
+
+function handleResultWithData<T>(result: CommandResult<T>): T {
+  if (result.data !== undefined && result.data !== null) {
+    return result.data;
+  }
+
+  return handleResult(result);
 }
 
 function handleVoidResult(result: CommandResult<unknown>): void {

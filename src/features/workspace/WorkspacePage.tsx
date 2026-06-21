@@ -118,7 +118,7 @@ export default function WorkspacePage() {
   const [providerStatusLoading, setProviderStatusLoading] = useState(false);
   const [providerStatusError, setProviderStatusError] = useState<string | null>(null);
   const [providerConfigOpen, setProviderConfigOpen] = useState(false);
-  const [providerConfig] = useState<ProviderConfigInput>({
+  const [providerConfig, setProviderConfig] = useState<ProviderConfigInput>({
     kind: 'mock',
     model: 'mock',
     timeout_ms: 60000,
@@ -128,21 +128,33 @@ export default function WorkspacePage() {
     enabled: false,
   });
 
+  const providerStatusGuardRef = useRef<number>(0);
+
   const loadProviderStatus = useCallback(async () => {
+    const guard = ++providerStatusGuardRef.current;
     setProviderStatusLoading(true);
     setProviderStatusError(null);
     try {
       const status = await getProviderStatus(providerConfig);
-      setProviderStatus(status);
+      if (guard === providerStatusGuardRef.current) {
+        setProviderStatus(status);
+      }
     } catch (err) {
-      setProviderStatusError(err instanceof CommandError ? err.message : String(err));
+      if (guard === providerStatusGuardRef.current) {
+        setProviderStatusError(err instanceof CommandError ? err.message : String(err));
+      }
     } finally {
-      setProviderStatusLoading(false);
+      if (guard === providerStatusGuardRef.current) {
+        setProviderStatusLoading(false);
+      }
     }
   }, [providerConfig]);
 
   useEffect(() => {
     loadProviderStatus();
+    return () => {
+      providerStatusGuardRef.current++;
+    };
   }, [loadProviderStatus]);
 
   const [contextSelection, setContextSelection] = useState<ContextSelection | null>(null);
@@ -1391,11 +1403,14 @@ export default function WorkspacePage() {
         loading={providerStatusLoading}
         error={providerStatusError}
         onConfigureClick={() => setProviderConfigOpen(true)}
+        onRetry={loadProviderStatus}
       />
       <ProviderConfigPanel
         isOpen={providerConfigOpen}
+        initialConfig={providerConfig}
         onClose={() => setProviderConfigOpen(false)}
-        onStatusChange={(status) => {
+        onStatusChange={(status, config) => {
+          setProviderConfig(config);
           setProviderStatus(status);
         }}
       />

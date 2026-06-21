@@ -10,9 +10,9 @@ use crate::models::error::{CommandError, CommandResult};
 fn capabilities_for(kind: ProviderKind) -> ProviderCapabilities {
     match kind {
         ProviderKind::Mock | ProviderKind::Fake => ProviderCapabilities {
-            understanding: false,
-            qa: false,
-            structured_output: false,
+            understanding: true,
+            qa: true,
+            structured_output: true,
             max_context_tokens: 0,
         },
         ProviderKind::OpenAi | ProviderKind::Anthropic => ProviderCapabilities::default(),
@@ -40,17 +40,22 @@ pub fn get_provider_status(config: ProviderConfig) -> CommandResult<ProviderStat
 
     match config.validate() {
         Ok(()) => {
-            let can_chat = matches!(config.kind, ProviderKind::Mock | ProviderKind::Fake)
-                || (config.network_mode == NetworkMode::Allow
-                    && matches!(config.kind, ProviderKind::OpenAi | ProviderKind::Anthropic));
+            let is_local_provider = matches!(config.kind, ProviderKind::Mock | ProviderKind::Fake);
+            let is_real_provider =
+                matches!(config.kind, ProviderKind::OpenAi | ProviderKind::Anthropic);
+            let real_network_allowed =
+                config.network_mode == NetworkMode::Allow && is_real_provider;
+            let can_chat = is_local_provider || real_network_allowed;
 
-            let status = if can_chat {
+            let status = if is_local_provider {
+                ProviderStatus::Mock
+            } else if real_network_allowed {
                 ProviderStatus::Real
             } else {
                 ProviderStatus::Degraded
             };
 
-            let degraded_reason = if can_chat {
+            let degraded_reason = if is_local_provider || real_network_allowed {
                 None
             } else {
                 Some(DegradedReason::NetworkDisabled)
@@ -74,7 +79,7 @@ pub fn get_provider_status(config: ProviderConfig) -> CommandResult<ProviderStat
         Err(err) => {
             let message = err.to_string();
             CommandResult {
-                success: true,
+                success: false,
                 data: Some(ProviderStatusResponse {
                     status: ProviderStatus::Degraded,
                     kind: config.kind,
@@ -169,7 +174,7 @@ pub fn test_provider_connection(
         };
     }
 
-    if config.would_use_network() {
+    if !config.would_use_network() {
         return CommandResult {
             success: true,
             data: Some(ProviderTestConnectionResult {
@@ -255,7 +260,7 @@ mod tests {
             model: "gpt-4".to_string(),
             enabled: true,
             api_key: Some(ApiKey::new("this-is-a-fake-key-for-tests")),
-            network_mode: NetworkMode::Allow,
+            network_mode: NetworkMode::Disabled,
             ..ProviderConfig::default()
         };
         let result = test_provider_connection(config);
@@ -266,7 +271,7 @@ mod tests {
     }
 
     #[test]
-    fn command_response_does_not_include_api_key() {
+    fn provider_status_command_does_not_return_api_key() {
         let config = ProviderConfig {
             kind: ProviderKind::OpenAi,
             model: "gpt-4".to_string(),
@@ -278,6 +283,84 @@ mod tests {
         let result = get_provider_status(config);
         let json = serde_json::to_string(&result).unwrap();
         assert!(!json.contains("this-is-a-fake-key-for-tests"));
+        assert!(!json.contains("api_key"));
+    }
+
+    #[test]
+    fn validate_provider_config_does_not_persist_api_key() {
+        let config = ProviderConfig {
+            kind: ProviderKind::OpenAi,
+            model: "gpt-4".to_string(),
+            enabled: true,
+            api_key: Some(ApiKey::new("this-is-a-fake-key-for-tests")),
+            network_mode: NetworkMode::Disabled,
+            ..ProviderConfig::default()
+        };
+        let result = validate_provider_config(config);
+        let json = serde_json::to_string(&result).unwrap();
+        assert!(!json.contains("this-is-a-fake-key-for-tests"));
+        assert!(!json.contains("api_key"));
+        assert!(result.success);
+        assert!(result.data.unwrap().valid);
+    }
+
+    #[test]
+    fn test_connection_without_explicit_network_returns_disabled() {
+        let config = ProviderConfig {
+            kind: ProviderKind::OpenAi,
+            model: "gpt-4".to_string(),
+            enabled: true,
+            api_key: Some(ApiKey::new("this-is-a-fake-key-for-tests")),
+            network_mode: NetworkMode::Disabled,
+            ..ProviderConfig::default()
+        };
+        let result = test_provider_connection(config);
+        assert!(result.success);
+        let data = result.data.unwrap();
+        assert!(!data.success);
+        assert_eq!(data.code, "network_disabled");
+
+        let config_not_enabled = ProviderConfig::default();
+        let result = test_provider_connection(config_not_enabled);
+        assert!(result.success);
+        let data = result.data.unwrap();
+        assert!(!data.success);
+        assert_eq!(data.code, "not_enabled");
+    }
+
+    #[test]
+    fn command_result_redacts_sensitive_fields() {
+        let config = ProviderConfig {
+            kind: ProviderKind::OpenAi,
+            model: "gpt-4".to_string(),
+            enabled: true,
+            api_key: Some(ApiKey::new("this-is-a-fake-key-for-tests")),
+            network_mode: NetworkMode::Disabled,
+            ..ProviderConfig::default()
+        };
+        let status_json = serde_json::to_string(&get_provider_status(config.clone())).unwrap();
+        let validate_json =
+            serde_json::to_string(&validate_provider_config(config.clone())).unwrap();
+        let test_json = serde_json::to_string(&test_provider_connection(config)).unwrap();
+
+        for json in [&status_json, &validate_json, &test_json] {
+            assert!(
+                !json.contains("this-is-a-fake-key-for-tests"),
+                "json must not contain plaintext key"
+            );
+            assert!(
+                !json.contains("api_key"),
+                "json must not contain api_key field"
+            );
+            assert!(
+                !json.contains("Authorization"),
+                "json must not contain Authorization header"
+            );
+            assert!(
+                !json.contains("Bearer"),
+                "json must not contain Bearer token"
+            );
+        }
     }
 
     #[test]
@@ -285,6 +368,10 @@ mod tests {
         let config = ProviderConfig::default();
         let result = get_provider_status(config);
         assert!(result.success);
+        assert!(
+            !result.data.unwrap().can_chat,
+            "默认配置不得触发真实 provider"
+        );
     }
 
     #[test]
@@ -309,7 +396,28 @@ mod tests {
         let status = result.data.unwrap();
         assert_eq!(status.status, ProviderStatus::Degraded);
         assert!(!status.can_chat);
-        assert_eq!(status.degraded_reason, Some(DegradedReason::NetworkDisabled));
+        assert_eq!(
+            status.degraded_reason,
+            Some(DegradedReason::NetworkDisabled)
+        );
+    }
+
+    #[test]
+    fn enabled_mock_status_remains_mock() {
+        let config = ProviderConfig {
+            kind: ProviderKind::Mock,
+            model: "mock-model".to_string(),
+            enabled: true,
+            network_mode: NetworkMode::Allow,
+            ..ProviderConfig::default()
+        };
+
+        let result = get_provider_status(config);
+        assert!(result.success);
+        let status = result.data.unwrap();
+        assert_eq!(status.status, ProviderStatus::Mock);
+        assert!(status.can_chat);
+        assert_eq!(status.degraded_reason, None);
     }
 
     #[test]
@@ -323,7 +431,7 @@ mod tests {
             ..ProviderConfig::default()
         };
         let result = get_provider_status(config);
-        assert!(result.success);
+        assert!(!result.success);
         let status = result.data.unwrap();
         assert_eq!(status.status, ProviderStatus::Degraded);
         assert_eq!(status.degraded_reason, Some(DegradedReason::NotConfigured));

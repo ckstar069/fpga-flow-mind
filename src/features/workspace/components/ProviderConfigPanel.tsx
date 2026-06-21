@@ -12,8 +12,9 @@ import { ACCENT, FONT, SURFACE } from './workbenchTheme';
 
 export interface ProviderConfigPanelProps {
   isOpen: boolean;
+  initialConfig: ProviderConfigInput;
   onClose: () => void;
-  onStatusChange: (status: ProviderStatusResponse) => void;
+  onStatusChange: (status: ProviderStatusResponse, config: ProviderConfigInput) => void;
 }
 
 const KIND_OPTIONS: { value: ProviderKind; label: string }[] = [
@@ -29,13 +30,17 @@ const NETWORK_OPTIONS: { value: NetworkMode; label: string }[] = [
   { value: 'allow', label: '允许真实网络' },
 ];
 
-export default function ProviderConfigPanel({ isOpen, onClose, onStatusChange }: ProviderConfigPanelProps) {
+export default function ProviderConfigPanel({
+  isOpen,
+  initialConfig,
+  onClose,
+  onStatusChange,
+}: ProviderConfigPanelProps) {
   const [enabled, setEnabled] = useState(false);
   const [kind, setKind] = useState<ProviderKind>('mock');
   const [model, setModel] = useState('mock');
   const [baseUrl, setBaseUrl] = useState('');
   const [apiKeyInput, setApiKeyInput] = useState('');
-  const [hasApiKey, setHasApiKey] = useState(false);
   const [networkMode, setNetworkMode] = useState<NetworkMode>('disabled');
   const [retryLimit, setRetryLimit] = useState(2);
   const [timeoutMs, setTimeoutMs] = useState(60000);
@@ -47,12 +52,20 @@ export default function ProviderConfigPanel({ isOpen, onClose, onStatusChange }:
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
+      setEnabled(initialConfig.enabled);
+      setKind(initialConfig.kind);
+      setModel(initialConfig.model);
+      setBaseUrl(initialConfig.base_url ?? '');
+      setNetworkMode(initialConfig.network_mode);
+      setRetryLimit(initialConfig.retry_limit);
+      setTimeoutMs(initialConfig.timeout_ms);
+    } else {
       setApiKeyInput('');
       setTestResult(null);
       setValidation(null);
     }
-  }, [isOpen]);
+  }, [initialConfig, isOpen]);
 
   const buildConfig = useCallback((): ProviderConfigInput & { api_key?: string } => {
     return {
@@ -68,11 +81,31 @@ export default function ProviderConfigPanel({ isOpen, onClose, onStatusChange }:
     };
   }, [enabled, kind, model, baseUrl, apiKeyInput, networkMode, retryLimit, timeoutMs, rateLimitPerMin]);
 
+  const buildSanitizedConfig = useCallback((): ProviderConfigInput => {
+    const config = buildConfig();
+    return {
+      enabled: config.enabled,
+      kind: config.kind,
+      model: config.model,
+      base_url: config.base_url,
+      timeout_ms: config.timeout_ms,
+      retry_limit: config.retry_limit,
+      rate_limit_per_min: config.rate_limit_per_min,
+      network_mode: config.network_mode,
+    };
+  }, [buildConfig]);
+
   const handleValidate = useCallback(async () => {
     setLoading(true);
     try {
       const result = await validateProviderConfig(buildConfig());
       setValidation(result);
+    } catch (err) {
+      setValidation({
+        valid: false,
+        network_enabled: false,
+        issues: [err instanceof Error ? err.message : String(err)],
+      });
     } finally {
       setLoading(false);
     }
@@ -84,6 +117,12 @@ export default function ProviderConfigPanel({ isOpen, onClose, onStatusChange }:
     try {
       const result = await testProviderConnection(buildConfig());
       setTestResult(result);
+    } catch (err) {
+      setTestResult({
+        success: false,
+        code: 'command_error',
+        message: err instanceof Error ? err.message : String(err),
+      });
     } finally {
       setTesting(false);
     }
@@ -92,21 +131,24 @@ export default function ProviderConfigPanel({ isOpen, onClose, onStatusChange }:
   const handleApply = useCallback(async () => {
     setLoading(true);
     try {
-      const status = await getProviderStatus(buildConfig());
-      onStatusChange(status);
-      if (apiKeyInput.trim()) {
-        setHasApiKey(true);
-      }
+      const sanitizedConfig = buildSanitizedConfig();
+      const status = await getProviderStatus(sanitizedConfig);
+      onStatusChange(status, sanitizedConfig);
       setApiKeyInput('');
       onClose();
+    } catch (err) {
+      setValidation({
+        valid: false,
+        network_enabled: false,
+        issues: [err instanceof Error ? err.message : String(err)],
+      });
     } finally {
       setLoading(false);
     }
-  }, [buildConfig, onStatusChange, onClose, apiKeyInput]);
+  }, [buildSanitizedConfig, onStatusChange, onClose]);
 
   const handleClearKey = useCallback(() => {
     setApiKeyInput('');
-    setHasApiKey(false);
   }, []);
 
   if (!isOpen) {
@@ -114,8 +156,8 @@ export default function ProviderConfigPanel({ isOpen, onClose, onStatusChange }:
   }
 
   return (
-    <button
-      type="button"
+    <div
+      role="presentation"
       style={{
         position: 'fixed',
         inset: 0,
@@ -128,7 +170,7 @@ export default function ProviderConfigPanel({ isOpen, onClose, onStatusChange }:
       }}
       onClick={onClose}
       onKeyDown={(e) => {
-        if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+        if (e.key === 'Escape') {
           onClose();
         }
       }}
@@ -233,15 +275,12 @@ export default function ProviderConfigPanel({ isOpen, onClose, onStatusChange }:
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: FONT.caption, color: SURFACE.textMuted }}>API Key</span>
-            {hasApiKey && (
-              <span style={{ fontSize: FONT.micro, color: ACCENT.slate }}>已设置（掩码）</span>
-            )}
           </div>
           <input
             type="password"
             value={apiKeyInput}
             onChange={(e) => setApiKeyInput(e.target.value)}
-            placeholder={hasApiKey ? '输入新 key 以替换' : '输入 API Key'}
+            placeholder="输入 API Key（仅本次面板打开期间保留）"
             style={{
               padding: '6px 8px',
               borderRadius: 4,
@@ -368,7 +407,7 @@ export default function ProviderConfigPanel({ isOpen, onClose, onStatusChange }:
             }}
           >
             {validation.valid
-              ? `配置格式有效${validation.network_enabled ? '，真实网络已启用' : ''}`
+              ? `配置格式有效${validation.network_enabled ? '，真实网络模式为允许（未发起连接）' : ''}`
               : validation.issues.join('；')}
           </div>
         )}
@@ -402,9 +441,9 @@ export default function ProviderConfigPanel({ isOpen, onClose, onStatusChange }:
           }}
         >
           <strong style={{ fontSize: FONT.body }}>安全说明</strong>
-          <span>API Key 仅在本次会话内存中使用，不会被写入磁盘或日志。</span>
+          <span>API Key 仅在本次配置面板打开期间保存在内存中，不会被写入 localStorage、sessionStorage、磁盘或日志。</span>
           <span>关闭“启用真实 LLM”后，所有分析将回退到本地 Mock 模式，不发起任何网络请求。</span>
-          <span>连接测试不会发送您的项目数据，仅验证 API 端点可达性。</span>
+          <span>连接测试不会发送您的项目数据，仅验证配置格式（Batch D 占位，真实网络未启用）。</span>
         </div>
 
         <button
@@ -425,6 +464,6 @@ export default function ProviderConfigPanel({ isOpen, onClose, onStatusChange }:
           {loading ? '应用中...' : '应用'}
         </button>
       </div>
-    </button>
+    </div>
   );
 }

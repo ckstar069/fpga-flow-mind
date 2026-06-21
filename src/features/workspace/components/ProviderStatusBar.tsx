@@ -1,3 +1,4 @@
+import type { KeyboardEvent } from 'react';
 import type { ProviderStatus, ProviderStatusResponse } from '../../../types/workspace';
 import { ACCENT, FONT } from './workbenchTheme';
 
@@ -6,6 +7,7 @@ export interface ProviderStatusBarProps {
   loading?: boolean;
   error?: string | null;
   onConfigureClick: () => void;
+  onRetry?: () => void;
 }
 
 const STATUS_CONFIG: Record<
@@ -71,6 +73,7 @@ export default function ProviderStatusBar({
   loading,
   error,
   onConfigureClick,
+  onRetry,
 }: ProviderStatusBarProps) {
   let key: keyof typeof STATUS_CONFIG = 'uninitialized';
   if (loading) {
@@ -84,11 +87,19 @@ export default function ProviderStatusBar({
   const config = STATUS_CONFIG[key];
   const reasonText = status?.degraded_reason ? degradedReasonText(status.degraded_reason) : '';
   const label = reasonText ? `${config.label} · ${reasonText}` : config.label;
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onConfigureClick();
+    }
+  };
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onConfigureClick}
+      onKeyDown={handleKeyDown}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -125,11 +136,32 @@ export default function ProviderStatusBar({
         />
       )}
       <span>{label}</span>
+      {key === 'error' && onRetry && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRetry();
+          }}
+          style={{
+            marginLeft: 8,
+            padding: '2px 6px',
+            borderRadius: 3,
+            background: ACCENT.slateSoft,
+            color: ACCENT.slate,
+            fontSize: 11,
+            cursor: 'pointer',
+            border: 'none',
+          }}
+        >
+          重试
+        </button>
+      )}
       <style>{`
         @keyframes provider-spin {
           to { transform: rotate(360deg); }
         }
       `}</style>
-    </button>
+    </div>
   );
 }
