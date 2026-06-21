@@ -5,7 +5,7 @@ status: draft
 updated: 2026-06-15
 ---
 
-> 本文档是 Phase 9 的**方向性 overview**。详细需求、设计、安全设计、测试设计与编码计划在进入 Phase 9 编码前另行编制并审核为 active。Phase 9 Batch A/B 编码已完成并完成审核收口；Phase 9 Batch C 编码已完成并进入审核收口（`GroundingValidator` + citation enforcement，42 个单元测试通过），未接入真实 LLM，未发起真实网络调用；Batch D/E 尚未开始。Phase 10/11 尚未开始。
+> 本文档是 Phase 9 的**方向性 overview**。详细需求、设计、安全设计、测试设计与编码计划已编制并审核为 active。Phase 9 Batch A/B/C/D 已完成并审核收口；Batch E 自动化/真实项目只读验收与 DeepSeek OpenAI-compatible 真实 LLM smoke 已完成；真实 GUI 桌面验收尚未完成，Phase 9 completion review 仍为 `draft`。默认产品路径不接入真实 LLM，默认不发起真实网络调用。Phase 10/11 尚未开始。
 
 ## 1. 背景与问题
 

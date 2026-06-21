@@ -5,7 +5,7 @@ status: active
 updated: 2026-06-18
 ---
 
-> 本文档是 Phase 9 的 **Provider 架构设计**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成并审核收口**；**Phase 9 Batch B 编码已完成并完成审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架），**未接入真实 LLM**，**未发起真实网络调用**；Batch C/D/E 尚未开始。Phase 10/11 尚未开始。
+> 本文档是 Phase 9 的 **Provider 架构设计**。`status: active`，已审核通过。Phase 9 Batch A/B/C/D 已完成并审核收口；Batch E 自动化/真实项目只读验收与 DeepSeek OpenAI-compatible 真实 LLM smoke 已完成；真实 GUI 桌面验收尚未完成，Phase 9 completion review 仍为 `draft`。默认产品路径不接入真实 LLM，默认不发起真实网络调用。Phase 10/11 尚未开始。
 >
 > 上游：[`phase-9-overview-real-llm-grounding.md`](../planning/phase-9-overview-real-llm-grounding.md)、需求 [`phase-9-real-llm-grounding-requirements.md`](../requirements/phase-9-real-llm-grounding-requirements.md)。
 

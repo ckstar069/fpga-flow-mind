@@ -192,7 +192,7 @@ mod tests {
             kind: ProviderKind::OpenAi,
             model: "gpt-4".to_string(),
             enabled: true,
-            api_key: Some(ApiKey::new(api_key_str)),
+            api_key: Some(ApiKey::new(api_key_str.clone())),
             network_mode: NetworkMode::Allow,
             ..ProviderConfig::default()
         };
@@ -213,5 +213,105 @@ mod tests {
         };
         let result = provider.chat(&request);
         assert!(matches!(result, Err(LlmError::NetworkDisabled)));
+    }
+
+    /// 真实网络 smoke 测试：仅在显式设置 env 后访问 OpenAI-compatible endpoint。
+    ///
+    /// 默认跳过，不属于常规测试路径。用于人工验收 DeepSeek / OpenAI-compatible provider
+    /// 的最小真实链路：RequestBuilder -> HTTP transport -> ResponseParser。
+    ///
+    /// 运行方式示例：
+    /// ```bash
+    /// FPGA_FLOW_LLM_SMOKE=1 \
+    /// FPGA_FLOW_LLM_API_KEY=... \
+    /// FPGA_FLOW_LLM_BASE_URL=https://api.deepseek.com \
+    /// FPGA_FLOW_LLM_MODEL=deepseek-chat \
+    /// cargo test --lib real_smoke_deepseek_openai_compatible -- --ignored
+    /// ```
+    #[test]
+    #[ignore]
+    fn real_smoke_deepseek_openai_compatible() {
+        let Ok(smoke) = std::env::var("FPGA_FLOW_LLM_SMOKE") else {
+            return;
+        };
+        if smoke != "1" {
+            return;
+        }
+
+        let api_key_str = std::env::var("FPGA_FLOW_LLM_API_KEY").unwrap_or_default();
+        if api_key_str.is_empty() {
+            return;
+        }
+
+        struct HttpSmokeTransport;
+
+        impl LlmTransport for HttpSmokeTransport {
+            fn send(
+                &self,
+                request: &TransportRequest,
+                timeout_ms: u64,
+            ) -> Result<TransportResponse, LlmError> {
+                let base_url = request
+                    .base_url
+                    .as_deref()
+                    .ok_or_else(|| LlmError::InvalidConfig("缺少 base_url".to_string()))?;
+                let url = format!("{}/chat/completions", base_url.trim_end_matches('/'));
+                let client = reqwest::blocking::Client::builder()
+                    .timeout(std::time::Duration::from_millis(timeout_ms))
+                    .build()
+                    .map_err(|e| LlmError::NetworkError(format!("HTTP client 构建失败: {}", e)))?;
+
+                let mut builder = client.post(url);
+                for (name, value) in &request.headers {
+                    builder = builder.header(name, value.expose_secret());
+                }
+
+                let response = builder
+                    .body(request.body.clone())
+                    .send()
+                    .map_err(|e| LlmError::NetworkError(format!("HTTP 请求失败: {}", e)))?;
+                let status_code = response.status().as_u16();
+                let body = response
+                    .text()
+                    .map_err(|e| LlmError::NetworkError(format!("HTTP 响应读取失败: {}", e)))?;
+                Ok(TransportResponse { status_code, body })
+            }
+        }
+
+        let model =
+            std::env::var("FPGA_FLOW_LLM_MODEL").unwrap_or_else(|_| "deepseek-chat".to_string());
+        let base_url = std::env::var("FPGA_FLOW_LLM_BASE_URL")
+            .unwrap_or_else(|_| "https://api.deepseek.com".to_string());
+
+        let cfg = ProviderConfig {
+            kind: ProviderKind::OpenAi,
+            model: model.clone(),
+            enabled: true,
+            api_key: Some(ApiKey::new(api_key_str.clone())),
+            base_url: Some(base_url),
+            timeout_ms: 30_000,
+            retry_limit: 0,
+            rate_limit_per_min: 1,
+            network_mode: NetworkMode::Allow,
+        };
+
+        let provider = RealLlmProvider::new(cfg, HttpSmokeTransport);
+        let request = ChatRequest {
+            messages: vec![ChatMessage {
+                role: ChatRole::User,
+                content: "请用一句中文回答：DeepSeek smoke test 是否连通？".to_string(),
+            }],
+            system_prompt: None,
+            temperature: Some(0.0),
+            max_tokens: Some(64),
+        };
+
+        let response = provider.chat(&request).expect("真实 LLM smoke 应返回响应");
+        assert_eq!(response.provider, "openai");
+        assert_eq!(response.model, model);
+        assert!(!response.content.trim().is_empty());
+        let response_debug = format!("{:?}", response);
+        assert!(!response_debug.contains("FPGA_FLOW_LLM_API_KEY"));
+        assert!(!response_debug.contains(&api_key_str));
     }
 }

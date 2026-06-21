@@ -61,7 +61,7 @@ MVP 是**技术闭环** MVP，不等于产品可用性完成。后续围绕真�
 
 - 总体路线图：[`docs/planning/post-mvp-roadmap.md`](docs/planning/post-mvp-roadmap.md)
 
-**当前状态**：MVP / Phase 0–6 已完成并 tag `v0.1.0-mvp`。Phase 7 已完成，[`completion review`](docs/planning/phase-7-completion-review.md) active。**Phase 8 已完成**，真实 GUI 桌面验收通过，[`completion review`](docs/planning/phase-8-completion-review.md) active。**Phase 9 Batch A/B/C/D 已完成并审核收口；Batch E 自动化/真实项目只读验收已完成（`real_project_validation --ignored` 6 项通过），但真实 GUI 桌面验收与可选真实 LLM smoke 尚未完成，[`completion review`](docs/planning/phase-9-completion-review.md) 仍为 draft；默认不接入真实 LLM，默认不发起真实网络调用。Phase 10/11 尚未开始**。Phase 9~11 overview 仍为 `draft`。
+**当前状态**：MVP / Phase 0–6 已完成并 tag `v0.1.0-mvp`。Phase 7 已完成，[`completion review`](docs/planning/phase-7-completion-review.md) active。**Phase 8 已完成**，真实 GUI 桌面验收通过，[`completion review`](docs/planning/phase-8-completion-review.md) active。**Phase 9 Batch A/B/C/D 已完成并审核收口；Batch E 自动化/真实项目只读验收已完成（`real_project_validation --ignored` 6 项通过），DeepSeek OpenAI-compatible 真实 LLM smoke 已完成；但真实 GUI 桌面验收尚未完成，[`completion review`](docs/planning/phase-9-completion-review.md) 仍为 draft；默认不接入真实 LLM，默认不发起真实网络调用。Phase 10/11 尚未开始**。Phase 9~11 overview 仍为 `draft`。
 
 ## 本地运行
 

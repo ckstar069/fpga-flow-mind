@@ -7,7 +7,7 @@ updated: 2026-06-21
 
 > 本文档是 Phase 9（真实 LLM Provider 与 grounding 生产化）的完成审查草案。
 >
-> **当前结论**：Phase 9 Batch A/B/C/D 已完成并审核收口；Batch E 的自动化回归、真实项目只读 grounding 验收、安全 rg 与 checksum 验证已完成。真实 GUI 桌面验收与可选真实 LLM smoke 尚未完成，因此本文档保持 `status: draft`，Phase 9 completion 暂不激活。Phase 10/11 尚未开始。
+> **当前结论**：Phase 9 Batch A/B/C/D 已完成并审核收口；Batch E 的自动化回归、真实项目只读 grounding 验收、安全 rg、checksum 验证与 DeepSeek OpenAI-compatible 真实 LLM smoke 已完成。真实 GUI 桌面验收尚未完成，因此本文档保持 `status: draft`，Phase 9 completion 暂不激活。Phase 10/11 尚未开始。
 
 ## 1. 任务完成状态
 
@@ -56,7 +56,7 @@ cd src-tauri && cargo check --tests
 cd src-tauri && cargo test --lib
 ```
 
-当前结果：`686 passed; 0 failed; 2 ignored`。
+当前结果：`686 passed; 0 failed; 3 ignored`。
 
 ### 2.5 LLM 模块回归
 
@@ -64,9 +64,24 @@ cd src-tauri && cargo test --lib
 cd src-tauri && cargo test --lib llm::
 ```
 
-当前结果：`121 passed; 0 failed; 1 ignored`。ignored 项为显式真实 LLM smoke，未设置 env 时安全跳过。
+当前结果：`121 passed; 0 failed; 2 ignored`。ignored 项为显式真实 LLM smoke，默认测试路径安全跳过。
 
-### 2.6 Provider status command 回归
+### 2.6 可选真实 LLM smoke
+
+```bash
+cd src-tauri && cargo test --lib real_smoke_deepseek_openai_compatible -- --ignored
+```
+
+当前结果：`1 passed; 0 failed`。
+
+说明：
+
+- Provider：DeepSeek OpenAI-compatible endpoint（`https://api.deepseek.com`，model `deepseek-chat`）。
+- API key 仅通过环境变量传入，不写入仓库、文档、session 或日志。
+- 测试不打印响应正文。
+- 默认产品路径仍使用 no-network guard；默认测试路径仍不联网。
+
+### 2.7 Provider status command 回归
 
 ```bash
 cd src-tauri && cargo test --lib commands::provider_status
@@ -117,15 +132,15 @@ cd src-tauri && cargo test --test real_project_validation -- --ignored
 Phase 9 completion 暂不转 active，原因如下：
 
 1. **真实 GUI 桌面验收尚未完成**：需要在桌面应用中完成 provider 配置面板、状态条、配置校验、test connection、理解/Q&A grounding 状态、错误态与断网态的截图验收。
-2. **可选真实 LLM smoke 尚未执行**：如用户提供显式配置和 API key，可运行 ignored smoke；若不执行，应在最终 completion 中记录为“未执行可选 real smoke，不阻塞默认安全路径”。
-3. **真实 LLM 语义质量仍需人工判断**：R9-012 中的“优于或不劣于 heuristic baseline”需要真实 provider 输出后人工确认，不做自动裁决。
+2. **真实 LLM 语义质量仍需人工判断**：R9-012 中的“优于或不劣于 heuristic baseline”需要真实 provider 输出后人工确认，不做自动裁决。
 
 ## 6. 当前结论
 
-Phase 9 Batch E 的自动化/只读部分已完成：P9-T09 可视为自动化验收通过；P9-T10 仍待真实 GUI 桌面验收与最终 completion 激活。当前不允许进入 Phase 10 编码。
+Phase 9 Batch E 的自动化/只读部分与可选 DeepSeek 真实 LLM smoke 已完成：P9-T09 可视为自动化验收通过；P9-T10 仍待真实 GUI 桌面验收与最终 completion 激活。当前不允许进入 Phase 10 编码。
 
 ## 7. 变更记录
 
 | 日期 | 变更 | 作者 |
 |------|------|------|
 | 2026-06-21 | 新增 Phase 9 completion review 草案；记录 Batch E 自动化回归、真实项目只读 grounding 验收、安全边界、待真实 GUI 桌面验收项。 | Codex |
+| 2026-06-21 | 补充 DeepSeek OpenAI-compatible 真实 LLM smoke 结果：`real_smoke_deepseek_openai_compatible` 在显式 env/config 下通过；completion 仍因真实 GUI 桌面验收待完成而保持 draft。 | Codex |

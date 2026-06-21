@@ -5,7 +5,7 @@ status: active
 updated: 2026-06-18
 ---
 
-> 本文档是 Phase 9 的 **UI/UX 设计**（Provider 配置入口 + Grounded Q&A / understanding 体验增强）。`status: active`，已审核通过。Phase 9 Batch A/B/C/D 已完成并审核收口；Batch E 自动化/真实项目只读验收已完成，真实 GUI 桌面验收与可选真实 LLM smoke 尚未完成；`phase-9-completion-review.md` 保持 `draft`。默认不接入真实 LLM，默认不发起真实网络调用。Phase 10/11 尚未开始。
+> 本文档是 Phase 9 的 **UI/UX 设计**（Provider 配置入口 + Grounded Q&A / understanding 体验增强）。`status: active`，已审核通过。Phase 9 Batch A/B/C/D 已完成并审核收口；Batch E 自动化/真实项目只读验收与 DeepSeek OpenAI-compatible 真实 LLM smoke 已完成；真实 GUI 桌面验收尚未完成，`phase-9-completion-review.md` 保持 `draft`。默认产品路径不接入真实 LLM，默认不发起真实网络调用。Phase 10/11 尚未开始。
 >
 > 设计基线：延续 Phase 8 工作台（三段式骨架、Artifact tabs、卡片化、蓝色强调、confidence 视觉语义），**不回退成长页面堆叠**，不膨胀为复杂设置页。
 
