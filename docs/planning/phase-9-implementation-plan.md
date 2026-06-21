@@ -5,7 +5,7 @@ status: active
 updated: 2026-06-19
 ---
 
-> 本文档是 Phase 9（真实 LLM Provider 与 grounding 生产化）的**编码实施计划**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成并审核收口**（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试）；**Phase 9 Batch B 编码已完成并完成审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架）；**Phase 9 Batch C 编码已完成并完成审核收口修复**（`GroundingValidator` + citation enforcement + prompt injection / 敏感数据 / 裁决用语过滤；stage mismatch 校验与 prompt injection-as-data 修复，51 个单元测试通过）；**Phase 9 Batch D 编码已完成并完成审核收口**（provider 状态/配置入口/grounding 状态安全接入工作台 UI，11 个后端 command 测试 + 前端 type/build 通过），**未接入任何真实 LLM**，**未发起真实网络调用**；Batch E 尚未开始。Phase 10/11 尚未开始。
+> 本文档是 Phase 9（真实 LLM Provider 与 grounding 生产化）的**编码实施计划**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成并审核收口**（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试）；**Phase 9 Batch B 编码已完成并完成审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架）；**Phase 9 Batch C 编码已完成并完成审核收口修复**（`GroundingValidator` + citation enforcement + prompt injection / 敏感数据 / 裁决用语过滤；stage mismatch 校验与 prompt injection-as-data 修复，51 个单元测试通过）；**Phase 9 Batch D 编码已完成并完成审核收口**（provider 状态/配置入口/grounding 状态安全接入工作台 UI，11 个后端 command 测试 + 前端 type/build 通过）；**Phase 9 Batch E 自动化/真实项目只读验收已完成**（real_project_validation 6 项通过，含真实项目 L0 grounding safety），真实 GUI 桌面验收与可选真实 LLM smoke 尚未完成，`phase-9-completion-review.md` 保持 `draft`。Phase 10/11 尚未开始。
 >
 > **进入 Phase 9 编码的硬前置**：本文档与需求 / 架构 / grounding 设计 / UI/UX / 测试 5 份详细文档**全部审核通过并转 `active`** 后，方允许进入 Batch A 编码。当前该前置已满足。
 
@@ -153,7 +153,7 @@ updated: 2026-06-19
 | 退出条件 | 错误态 + 审计 UI 通过 |
 | 当前状态 | **Batch D 审核收口完成**：新增 provider 状态响应模型与 Tauri command（`get_provider_status`/`validate_provider_config`/`test_provider_connection`）；统一 `get_provider_status` 配置校验失败时 `success=false` 且保留结构化降级数据；修正 Mock/Fake 能力声明并确保 Mock/Fake 不被标记为 real；状态条呈现 mock/real/degraded/disabled/unknown；degraded reason 包括 network_disabled/not_configured/provider_error/cancelled/grounding_failed；错误/审计 UI 不暴露 api_key、不输出裁决文案；11 个后端 command 单元测试通过；前端修复 api_key 状态不一致、无效嵌套 button、mount guard、错误重试。 |
 
-### P9-T09 真实项目验收 + 安全回归 + checksum（Batch E）
+### P9-T09 真实项目验收 + 安全回归 + checksum（Batch E）✅ 自动化/只读验收完成
 
 | 项 | 内容 |
 |----|------|
@@ -165,9 +165,9 @@ updated: 2026-06-19
 | 验收标准 | grounding 守住；不启用 real 时零回归；checksum 一致；redaction 断言通过 |
 | 必跑测试 | `cargo test --lib` / `cargo test --test real_project_validation -- --ignored` |
 | 真实网络调用 | 仅可选 `#[ignore]` smoke（显式 config） |
-| 退出条件 | 验收 + 安全回归通过 |
+| 退出条件 | 自动化真实项目验收 + 安全回归已通过；真实 GUI 桌面验收留给 P9-T10 |
 
-### P9-T10 回归 + 桌面验收 + Phase 9 完成审查（Batch E）
+### P9-T10 回归 + 桌面验收 + Phase 9 完成审查（Batch E）⏳ pending_desktop_acceptance
 
 | 项 | 内容 |
 |----|------|
@@ -175,11 +175,11 @@ updated: 2026-06-19
 | 输入文档 | 测试 §7/§10、UI/UX §2~§7 |
 | 允许范围 | 回归、桌面验收（fake + 可选 real）、完成审查文档 |
 | 禁止范围 | 默认真实调用、裁决化文案、修改目标项目 |
-| 输出 | `phase-9-completion-review.md`（草案） |
+| 输出 | `phase-9-completion-review.md`（草案，当前 `status: draft`） |
 | 验收标准 | Phase 8 零退化；安全边界保持；全量构建/测试通过 |
 | 必跑测试 | tsc/build/cargo check --tests/cargo test --lib/real_project_validation --ignored |
 | 真实网络调用 | 仅桌面手工可选（显式 config） |
-| 退出条件 | 桌面验收通过 → 完成审查转 active（由真实桌面验收决定） |
+| 退出条件 | 真实 GUI 桌面验收通过 → 完成审查转 active（由真实桌面验收决定） |
 
 ## 3. 依赖关系
 
@@ -224,6 +224,7 @@ P9-T01 (Provider/config 模型)
 ### 4.5 Batch E：真实项目验收 + 完成审查
 
 - 任务：P9-T09、P9-T10
+- 当前状态：P9-T09 自动化/真实项目只读验收已完成；P9-T10 真实 GUI 桌面验收待完成，`phase-9-completion-review.md` 保持 draft。
 - 真实网络调用：**仅可选 `#[ignore]` smoke / 手工**（显式 config）
 - 退出：真实项目验收 + 安全回归 + checksum + 桌面验收通过 → 完成审查转 active
 
@@ -264,3 +265,4 @@ P9-T01 (Provider/config 模型)
 | 2026-06-19 | Batch B 审核收口：补齐缺失的安全/边界测试；新增 `LlmError::RateLimited` 并将 HTTP 429 映射至此；`RequestBuilder` 拒绝 `network_mode != Allow`；`ProviderConfig::validate()` 限制 `retry_limit ≤ 10`、`timeout_ms > 0`；smoke test 同时检查 `FPGA_FLOW_LLM_SMOKE` 与 `FPGA_FLOW_LLM_API_KEY`；rg 边界检查全部通过；Batch B 完成，Batch C/D/E 尚未开始。 | Claude |
 | 2026-06-19 | Batch C 编码完成：实现 `src-tauri/src/llm/grounding_validator.rs`，提供 `GroundingValidator` + `AllowedEvidence` + `ValidationContext` + `ValidatedResponse`/`GroundingResult`；完成 citation evidence_id/source_path/line_range 校验、prompt injection / 敏感数据 / 裁决用语内容安全过滤、unknown 占位回答无 citation 放行、失败统一降级为 `DegradedReason::GroundingFailed`；新增 42 个单元测试；`cargo test --lib` 666 passed/2 ignored，`cargo check --tests` 0 warning，`npx tsc --noEmit` 与 `npm run build` 通过；rg 边界检查通过；未接入真实 LLM，未发起真实网络调用；Batch C 进入审核收口，Batch D/E 尚未开始。 | Claude |
 | 2026-06-20 | Batch D 审核收口修复：统一 `get_provider_status` 配置校验失败时 `success=false` 且保留结构化降级数据；修正 `capabilities_for` 对 Mock/Fake 的能力声明为 `understanding/qa/structured_output=true`，并确保 Mock/Fake 不被标记为 real；补齐 `provider_status_command_does_not_return_api_key`、`validate_provider_config_does_not_persist_api_key`、`test_connection_without_explicit_network_returns_disabled`、`command_result_redacts_sensitive_fields`、`enabled_mock_status_remains_mock` 等测试；前端修复 `ProviderConfigPanel` api_key 状态不一致、配置状态未同步、无效嵌套 button、`loadProviderStatus` mount guard、`ProviderStatusBar` 错误重试；同步更新安全说明文案；`cargo test --lib commands::provider_status` 11 passed、`cargo test --lib llm::` 121 passed/1 ignored、`cargo test --lib` 686 passed/2 ignored、`cargo check --tests` 0 warning、`npx tsc --noEmit` 与 `npm run build` 通过；rg 边界检查通过；未接入真实 LLM，未发起真实网络调用；Batch D 审核收口完成，Batch E 尚未开始。 | Codex |
+| 2026-06-21 | Batch E 自动化/只读验收完成：新增 `primary_sample_phase9_grounding_safety_on_real_evidence` ignored 集成测试，在真实项目 L0/L4 evidence 上验证合法 citation grounded、跨阶段 citation 降级、伪造 evidence_id 降级、目标项目 checksum 一致；`cargo test --test real_project_validation -- --ignored` 6 passed；新增 `phase-9-completion-review.md` 草案（draft / pending_desktop_acceptance）。真实 GUI 桌面验收与可选真实 LLM smoke 尚未完成，Phase 9 completion 暂不激活。 | Codex |
