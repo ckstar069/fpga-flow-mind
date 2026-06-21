@@ -1,5 +1,6 @@
 use crate::llm::models::{LlmError, ProviderKind};
 use std::fmt;
+use std::time::Duration;
 
 /// 脱敏字符串包装。
 ///
@@ -99,6 +100,53 @@ pub trait LlmTransport: Send + Sync {
         request: &TransportRequest,
         timeout_ms: u64,
     ) -> Result<TransportResponse, LlmError>;
+}
+
+/// 真实 HTTP 传输层。
+///
+/// 仅在调用方已经完成显式 opt-in（enabled + network_mode=allow + api_key）后使用。
+/// 默认 provider 工厂仍使用 `NoNetworkTransport`，避免普通分析路径隐式联网。
+pub struct HttpTransport;
+
+impl LlmTransport for HttpTransport {
+    fn send(
+        &self,
+        request: &TransportRequest,
+        timeout_ms: u64,
+    ) -> Result<TransportResponse, LlmError> {
+        let base_url = request
+            .base_url
+            .as_deref()
+            .ok_or_else(|| LlmError::InvalidConfig("缺少 base_url".to_string()))?;
+        let url = chat_completions_url(base_url);
+        let client = reqwest::blocking::Client::builder()
+            .timeout(Duration::from_millis(timeout_ms.max(1)))
+            .build()
+            .map_err(|_err| LlmError::NetworkError("HTTP client 初始化失败".to_string()))?;
+
+        let mut builder = client.post(url).body(request.body.clone());
+        for (name, value) in &request.headers {
+            let header_name = reqwest::header::HeaderName::from_bytes(name.as_bytes())
+                .map_err(|_err| LlmError::InvalidConfig("HTTP header 名称无效".to_string()))?;
+            let header_value = reqwest::header::HeaderValue::from_str(value.expose_secret())
+                .map_err(|_err| LlmError::InvalidConfig("HTTP header 值无效".to_string()))?;
+            builder = builder.header(header_name, header_value);
+        }
+
+        let response = builder
+            .send()
+            .map_err(|_err| LlmError::NetworkError("HTTP 请求失败".to_string()))?;
+        let status_code = response.status().as_u16();
+        let body = response
+            .text()
+            .map_err(|_err| LlmError::NetworkError("HTTP 响应读取失败".to_string()))?;
+
+        Ok(TransportResponse { status_code, body })
+    }
+}
+
+fn chat_completions_url(base_url: &str) -> String {
+    format!("{}/chat/completions", base_url.trim_end_matches('/'))
 }
 
 /// 禁止网络的传输层。
@@ -274,7 +322,8 @@ mod tests {
 
     #[test]
     fn fake_transport_returns_preset_error() {
-        let transport = FakeTransport::new_error(LlmError::NetworkError("模拟网络故障".to_string()));
+        let transport =
+            FakeTransport::new_error(LlmError::NetworkError("模拟网络故障".to_string()));
         let req = TransportRequest {
             request_id: "test".to_string(),
             provider: ProviderKind::OpenAi,
@@ -286,5 +335,17 @@ mod tests {
         };
         let result = transport.send(&req, 1000);
         assert!(matches!(result, Err(LlmError::NetworkError(_))));
+    }
+
+    #[test]
+    fn chat_completions_url_appends_path_and_trims_slash() {
+        assert_eq!(
+            chat_completions_url("https://api.deepseek.com"),
+            "https://api.deepseek.com/chat/completions"
+        );
+        assert_eq!(
+            chat_completions_url("https://api.deepseek.com/"),
+            "https://api.deepseek.com/chat/completions"
+        );
     }
 }

@@ -21,8 +21,8 @@ pub use request_builder::RequestBuilder;
 pub use response_parser::ResponseParser;
 pub use status::*;
 pub use transport::{
-    FakeTransport, LlmTransport, NoNetworkTransport, RedactedString, TransportRequest,
-    TransportResponse,
+    FakeTransport, HttpTransport, LlmTransport, NoNetworkTransport, RedactedString,
+    TransportRequest, TransportResponse,
 };
 
 /// 根据配置创建对应 provider 实例。
@@ -75,7 +75,7 @@ pub fn create_provider(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::llm::models::{ApiKey, ChatMessage, ChatRole, ChatRequest};
+    use crate::llm::models::{ApiKey, ChatMessage, ChatRequest, ChatRole};
 
     #[test]
     fn create_mock_provider() {

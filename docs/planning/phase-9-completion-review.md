@@ -7,7 +7,7 @@ updated: 2026-06-21
 
 > 本文档是 Phase 9（真实 LLM Provider 与 grounding 生产化）的完成审查草案。
 >
-> **当前结论**：Phase 9 Batch A/B/C/D 已完成并审核收口；Batch E 的自动化回归、真实项目只读 grounding 验收、安全 rg、checksum 验证与 DeepSeek OpenAI-compatible 真实 LLM smoke 已完成。真实 GUI 桌面验收尚未完成，因此本文档保持 `status: draft`，Phase 9 completion 暂不激活。Phase 10/11 尚未开始。
+> **当前结论**：Phase 9 Batch A/B/C/D 已完成并审核收口；Batch E 的自动化回归、真实项目只读 grounding 验收、安全 rg、checksum 验证、DeepSeek OpenAI-compatible 真实 LLM smoke 与命令级连接测试 smoke 已完成。真实 GUI 桌面验收尚未完成，因此本文档保持 `status: draft`，Phase 9 completion 暂不激活。Phase 10/11 尚未开始。
 
 ## 1. 任务完成状态
 
@@ -79,7 +79,17 @@ cd src-tauri && cargo test --lib real_smoke_deepseek_openai_compatible -- --igno
 - Provider：DeepSeek OpenAI-compatible endpoint（`https://api.deepseek.com`，model `deepseek-chat`）。
 - API key 仅通过环境变量传入，不写入仓库、文档、session 或日志。
 - 测试不打印响应正文。
-- 默认产品路径仍使用 no-network guard；默认测试路径仍不联网。
+- 默认分析路径仍使用 no-network guard；默认测试路径仍不联网。
+
+同时补充验证配置面板使用的 `test_provider_connection` 命令路径：
+
+```bash
+cd src-tauri && cargo test --lib test_connection_deepseek_real_smoke -- --ignored
+```
+
+当前结果：`1 passed; 0 failed`。
+
+边界：仅在显式 env/config 下发送最小 ping，不发送项目源码、evidence、Q&A、session 或截图。
 
 ### 2.7 Provider status command 回归
 
@@ -87,7 +97,7 @@ cd src-tauri && cargo test --lib real_smoke_deepseek_openai_compatible -- --igno
 cd src-tauri && cargo test --lib commands::provider_status
 ```
 
-当前结果：`11 passed; 0 failed`。
+当前结果：`15 passed; 0 failed`。
 
 ## 3. 真实项目只读验收
 
@@ -166,7 +176,7 @@ Phase 9 completion 暂不转 active，原因如下：
 
 ## 6. 当前结论
 
-Phase 9 Batch E 的自动化/只读部分与可选 DeepSeek 真实 LLM smoke 已完成：P9-T09 可视为自动化验收通过；P9-T10 仍待真实 GUI 桌面验收与最终 completion 激活。当前不允许进入 Phase 10 编码。
+Phase 9 Batch E 的自动化/只读部分、可选 DeepSeek 真实 LLM smoke 与命令级连接测试 smoke 已完成：P9-T09 可视为自动化验收通过；P9-T10 仍待真实 GUI 桌面验收与最终 completion 激活。当前不允许进入 Phase 10 编码。
 
 ## 7. 变更记录
 
@@ -175,3 +185,4 @@ Phase 9 Batch E 的自动化/只读部分与可选 DeepSeek 真实 LLM smoke 已
 | 2026-06-21 | 新增 Phase 9 completion review 草案；记录 Batch E 自动化回归、真实项目只读 grounding 验收、安全边界、待真实 GUI 桌面验收项。 | Codex |
 | 2026-06-21 | 补充 DeepSeek OpenAI-compatible 真实 LLM smoke 结果：`real_smoke_deepseek_openai_compatible` 在显式 env/config 下通过；completion 仍因真实 GUI 桌面验收待完成而保持 draft。 | Codex |
 | 2026-06-21 | 补充真实 GUI 部分验收截图：应用启动、真实项目打开、L0 evidence/understanding/view 工作流已完成；provider 配置、test connection、L4 timing、Q&A grounding、错误/断网态仍待补验。 | Codex |
+| 2026-06-21 | 补充配置面板连接测试真实 ping 收口：`test_provider_connection` 在显式 DeepSeek env/config 下通过；默认分析路径仍不联网，真实 GUI 桌面验收仍待完成。 | Codex |

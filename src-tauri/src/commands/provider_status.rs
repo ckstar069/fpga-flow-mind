@@ -1,9 +1,13 @@
 use crate::llm::models::{
-    DegradedReason, NetworkMode, ProviderCapabilities, ProviderConfig, ProviderKind, ProviderStatus,
+    ChatMessage, ChatRequest, ChatRole, DegradedReason, LlmError, NetworkMode,
+    ProviderCapabilities, ProviderConfig, ProviderKind, ProviderStatus,
 };
+use crate::llm::provider::LlmProvider;
+use crate::llm::real_provider::RealLlmProvider;
 use crate::llm::status::{
     ProviderStatusResponse, ProviderTestConnectionResult, ProviderValidationResult,
 };
+use crate::llm::transport::{HttpTransport, LlmTransport};
 use crate::models::enums::ErrorCode;
 use crate::models::error::{CommandError, CommandResult};
 
@@ -180,22 +184,80 @@ pub fn test_provider_connection(
             data: Some(ProviderTestConnectionResult {
                 success: false,
                 code: "network_disabled".to_string(),
-                message: "真实网络调用未启用（Batch D 占位）".to_string(),
+                message: "真实网络调用未启用；测试连接未发起请求".to_string(),
             }),
             error: None,
             warnings: Vec::new(),
         };
     }
 
+    let data = test_provider_connection_with_transport(config, HttpTransport);
     CommandResult {
         success: true,
-        data: Some(ProviderTestConnectionResult {
-            success: true,
-            code: "format_ok".to_string(),
-            message: "配置格式校验通过（未发起网络调用）".to_string(),
-        }),
+        data: Some(data),
         error: None,
         warnings: Vec::new(),
+    }
+}
+
+fn test_provider_connection_with_transport<T: LlmTransport>(
+    config: ProviderConfig,
+    transport: T,
+) -> ProviderTestConnectionResult {
+    if config.kind != ProviderKind::OpenAi {
+        return provider_test_result_from_error(&LlmError::NotImplemented);
+    }
+
+    let provider = RealLlmProvider::new(config, transport);
+    match provider.chat(&connection_probe_request()) {
+        Ok(_response) => ProviderTestConnectionResult {
+            success: true,
+            code: "connection_ok".to_string(),
+            message: "连接成功：已发送最小 ping 请求，未发送项目源码、evidence 或 session 数据"
+                .to_string(),
+        },
+        Err(err) => provider_test_result_from_error(&err),
+    }
+}
+
+fn connection_probe_request() -> ChatRequest {
+    ChatRequest {
+        messages: vec![ChatMessage {
+            role: ChatRole::User,
+            content: "请用一句中文回复：连接测试。".to_string(),
+        }],
+        system_prompt: Some(
+            "这是 fpga-flow-mind 的 LLM provider 连接测试；不得要求或依赖任何项目源码。"
+                .to_string(),
+        ),
+        temperature: Some(0.0),
+        max_tokens: Some(32),
+    }
+}
+
+fn provider_test_result_from_error(err: &LlmError) -> ProviderTestConnectionResult {
+    let (code, message) = match err {
+        LlmError::NetworkDisabled => ("network_disabled", "真实网络调用未启用；测试连接未发起请求"),
+        LlmError::NotConfigured => ("not_configured", "LLM Provider 未配置或未启用"),
+        LlmError::MissingApiKey(_) => ("missing_api_key", "Provider 需要提供 API Key"),
+        LlmError::InvalidConfig(_) => ("invalid_config", "Provider 配置无效"),
+        LlmError::ProviderCallFailed(_) => ("provider_error", "Provider 服务端调用失败"),
+        LlmError::NetworkError(_) => (
+            "network_error",
+            "网络连接失败，请检查 Base URL、代理或超时设置",
+        ),
+        LlmError::AuthError(_) => ("auth_error", "认证或授权失败，请检查 API Key 与模型权限"),
+        LlmError::RateLimited(_) => ("rate_limited", "Provider 返回速率限制，请稍后重试"),
+        LlmError::NotImplemented => ("not_implemented", "该 Provider 的真实连接测试尚未实现"),
+        LlmError::InvalidResponse(_) => ("invalid_response", "Provider 响应格式无法解析"),
+        LlmError::RedactionFailed(_) => ("redaction_failed", "输入脱敏失败，未发起可信连接"),
+        LlmError::InvalidInput(_) => ("invalid_input", "连接测试输入无效"),
+    };
+
+    ProviderTestConnectionResult {
+        success: false,
+        code: code.to_string(),
+        message: message.to_string(),
     }
 }
 
@@ -224,6 +286,7 @@ fn map_llm_error_to_degraded_reason(err: &crate::llm::models::LlmError) -> Degra
 mod tests {
     use super::*;
     use crate::llm::models::ApiKey;
+    use crate::llm::transport::{FakeTransport, TransportResponse};
 
     #[test]
     fn provider_status_default_mock_disabled_no_network() {
@@ -372,6 +435,110 @@ mod tests {
             !result.data.unwrap().can_chat,
             "默认配置不得触发真实 provider"
         );
+    }
+
+    #[test]
+    fn test_connection_allowed_openai_uses_transport() {
+        let config = ProviderConfig {
+            kind: ProviderKind::OpenAi,
+            model: "deepseek-chat".to_string(),
+            enabled: true,
+            api_key: Some(ApiKey::new("this-is-a-fake-key-for-tests")),
+            base_url: Some("https://api.deepseek.com".to_string()),
+            network_mode: NetworkMode::Allow,
+            ..ProviderConfig::default()
+        };
+        let transport = FakeTransport::new(TransportResponse {
+            status_code: 200,
+            body: r#"{"choices":[{"message":{"content":"连接测试成功"}}]}"#.to_string(),
+        });
+
+        let data = test_provider_connection_with_transport(config, transport);
+        assert!(data.success);
+        assert_eq!(data.code, "connection_ok");
+        assert!(data.message.contains("未发送项目源码"));
+    }
+
+    #[test]
+    fn test_connection_allowed_openai_maps_auth_error_without_key() {
+        let key = "this-is-a-fake-key-for-tests";
+        let config = ProviderConfig {
+            kind: ProviderKind::OpenAi,
+            model: "deepseek-chat".to_string(),
+            enabled: true,
+            api_key: Some(ApiKey::new(key)),
+            base_url: Some("https://api.deepseek.com".to_string()),
+            network_mode: NetworkMode::Allow,
+            ..ProviderConfig::default()
+        };
+        let transport =
+            FakeTransport::new_error(LlmError::AuthError(format!("fake key {} rejected", key)));
+
+        let data = test_provider_connection_with_transport(config, transport);
+        let json = serde_json::to_string(&data).unwrap();
+        assert!(!data.success);
+        assert_eq!(data.code, "auth_error");
+        assert!(!json.contains(key));
+        assert!(!json.contains("Bearer"));
+        assert!(!json.contains("api_key"));
+    }
+
+    #[test]
+    fn test_connection_anthropic_allowed_returns_not_implemented() {
+        let config = ProviderConfig {
+            kind: ProviderKind::Anthropic,
+            model: "claude-compatible".to_string(),
+            enabled: true,
+            api_key: Some(ApiKey::new("this-is-a-fake-key-for-tests")),
+            network_mode: NetworkMode::Allow,
+            ..ProviderConfig::default()
+        };
+        let result = test_provider_connection(config);
+        assert!(result.success);
+        let data = result.data.unwrap();
+        assert!(!data.success);
+        assert_eq!(data.code, "not_implemented");
+    }
+
+    #[test]
+    #[ignore]
+    fn test_connection_deepseek_real_smoke() {
+        let Ok(smoke) = std::env::var("FPGA_FLOW_LLM_SMOKE") else {
+            return;
+        };
+        if smoke != "1" {
+            return;
+        }
+
+        let api_key = std::env::var("FPGA_FLOW_LLM_API_KEY").unwrap_or_default();
+        if api_key.is_empty() {
+            return;
+        }
+
+        let config = ProviderConfig {
+            kind: ProviderKind::OpenAi,
+            model: std::env::var("FPGA_FLOW_LLM_MODEL")
+                .unwrap_or_else(|_| "deepseek-chat".to_string()),
+            enabled: true,
+            api_key: Some(ApiKey::new(api_key.clone())),
+            base_url: Some(
+                std::env::var("FPGA_FLOW_LLM_BASE_URL")
+                    .unwrap_or_else(|_| "https://api.deepseek.com".to_string()),
+            ),
+            timeout_ms: 30_000,
+            retry_limit: 0,
+            rate_limit_per_min: 60,
+            network_mode: NetworkMode::Allow,
+        };
+
+        let result = test_provider_connection(config);
+        let json = serde_json::to_string(&result).unwrap();
+        assert!(result.success);
+        assert!(result.data.unwrap().success);
+        assert!(!json.contains(&api_key));
+        assert!(!json.contains("Authorization"));
+        assert!(!json.contains("Bearer"));
+        assert!(!json.contains("api_key"));
     }
 
     #[test]

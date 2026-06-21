@@ -5,7 +5,7 @@ status: active
 updated: 2026-06-21
 ---
 
-> 本文档是 Phase 9 的 **验证与验收设计**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成并审核收口**；**Phase 9 Batch B 编码已完成并完成审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架）；**Phase 9 Batch C 编码已完成并完成审核收口修复**（`GroundingValidator` + citation enforcement + prompt injection / 敏感数据 / 裁决用语过滤；stage mismatch 校验与 prompt injection-as-data 修复，51 个单元测试通过）；**Phase 9 Batch D 编码已完成并完成审核收口**（provider 状态/配置入口/grounding 状态安全接入工作台 UI，11 个后端 command 测试 + 前端 type/build 通过）；**Phase 9 Batch E 自动化/真实项目只读验收已完成**（`real_project_validation --ignored` 6 项通过，含真实项目 L0 grounding safety），DeepSeek OpenAI-compatible 真实 LLM smoke 已完成；真实 GUI 桌面验收尚未完成，`phase-9-completion-review.md` 保持 `draft`。Phase 10/11 尚未开始。
+> 本文档是 Phase 9 的 **验证与验收设计**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成并审核收口**；**Phase 9 Batch B 编码已完成并完成审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架）；**Phase 9 Batch C 编码已完成并完成审核收口修复**（`GroundingValidator` + citation enforcement + prompt injection / 敏感数据 / 裁决用语过滤；stage mismatch 校验与 prompt injection-as-data 修复，51 个单元测试通过）；**Phase 9 Batch D 编码已完成并完成审核收口**（provider 状态/配置入口/grounding 状态安全接入工作台 UI，连接测试在显式 opt-in 下发送最小 ping，不发送项目数据）；**Phase 9 Batch E 自动化/真实项目只读验收已完成**（`real_project_validation --ignored` 6 项通过，含真实项目 L0 grounding safety），DeepSeek OpenAI-compatible 真实 LLM smoke 已完成；真实 GUI 桌面验收尚未完成，`phase-9-completion-review.md` 保持 `draft`。Phase 10/11 尚未开始。
 >
 > 2026-06-19 卫生小修：单元测试中所有视觉上类似真实 API key 的占位字符串已替换为明显伪造值，相关 redaction/display 断言已同步更新，全部测试通过。
 >
@@ -54,6 +54,7 @@ updated: 2026-06-21
 2026-06-21 实测：
 
 - `cargo test --lib real_smoke_deepseek_openai_compatible -- --ignored`：`1 passed`
+- `cargo test --lib test_connection_deepseek_real_smoke -- --ignored`：`1 passed`（配置面板 `test_provider_connection` 命令路径）
 - Provider：DeepSeek OpenAI-compatible endpoint（`https://api.deepseek.com`）
 - Model：`deepseek-chat`
 - API key 仅通过环境变量传入，未写入仓库、文档、session 或日志；测试不打印响应正文。
@@ -222,7 +223,7 @@ Batch B（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvide
 
 ### 边界检查
 
-- 默认产品路径不依赖真实 HTTP transport；`reqwest` 仅作为 dev-dependency 用于 Batch E ignored smoke
+- 默认分析路径不依赖真实 HTTP transport；`reqwest` 仅由显式 opt-in 的连接测试与 ignored smoke 使用
 - 默认测试路径不发起真实网络请求
 - `#[ignore]` smoke 测试由 `FPGA_FLOW_LLM_SMOKE=1` 与 `FPGA_FLOW_LLM_API_KEY` 共同守卫；缺一安全跳过，不 panic、不联网
 - `retry_limit` 与 `timeout_ms` 在 `ProviderConfig::validate()` 中限制合理范围
@@ -233,7 +234,7 @@ Batch B（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvide
 - 目标项目只读，checksum 一致；
 - 不运行 Vivado/synthesis/implementation/bitstream；
 - 不调用真实 LLM 除非显式启用；凭据不落日志/session/目标项目；
-- 默认测试路径不发真实网络请求；真实调用仅 `#[ignore]` smoke；
+- 默认测试路径不发真实网络请求；真实调用仅显式连接测试 / `#[ignore]` smoke；
 - 不输出 PASS/HOLD/正确/错误/审计结论裁决。
 
 ## 14. Batch C 测试记录
@@ -341,7 +342,8 @@ Batch B（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvide
 | 2026-06-19 | Batch B 审核收口：补齐 `real_provider_requires_enabled_true/network_allow/api_key`、`errors_do_not_include_authorization_or_key`、`timeout_mapping`、`rate_limit_mapping`、`retry_limit_is_bounded`、`no_citation_response_is_unvalidated` 等测试；新增 `LlmError::RateLimited` 并将 HTTP 429 映射至此；`RequestBuilder` 增加 `network_mode != Allow` 拒绝路径；`ProviderConfig::validate()` 限制 `retry_limit ≤ 10` 与 `timeout_ms > 0`；smoke test 同时检查 `FPGA_FLOW_LLM_SMOKE` 与 `FPGA_FLOW_LLM_API_KEY`，缺一安全跳过；rg 边界检查通过。 | Claude |
 | 2026-06-19 | Batch C 编码完成：实现 `src-tauri/src/llm/grounding_validator.rs`，提供 `GroundingValidator` + `AllowedEvidence` + `ValidationContext` + `ValidatedResponse`/`GroundingResult`；完成 citation evidence_id/source_path/line_range 校验、prompt injection / 敏感数据 / 裁决用语内容安全过滤、unknown 占位回答无 citation 放行、失败统一降级为 `DegradedReason::GroundingFailed`；新增 42 个单元测试；`cargo test --lib` 666 passed/2 ignored，`cargo check --tests` 0 warning，`npx tsc --noEmit` 与 `npm run build` 通过；rg 边界检查通过；未接入真实 LLM，未发起真实网络调用；Batch C 进入审核收口，Batch D/E 尚未开始。 | Claude |
 | 2026-06-19 | Batch C 审核收口修复：新增 `CitationCheckResult::StageMismatch` 与 `parse_stage_from_evidence_id`，修复 `ValidationContext.stage_id` 未用于 citation stage 校验的问题；修复 `check_content_safety` 将 citation excerpt 原文拼接进安全扫描导致 prompt injection-as-data 误判的问题，改为仅扫描 `response.content`；新增 9 个单元测试覆盖 stage mismatch 4 例与 excerpt-as-data 5 例；grounding_validator 模块 51 个测试通过；`cargo test --lib llm::` 121 passed/1 ignored、`cargo test --lib` 675 passed/2 ignored、`cargo check --tests` 0 warning、`npx tsc --noEmit` 与 `npm run build` 通过；rg 边界检查通过；未接入真实 LLM，未发起真实网络调用；Batch C 审核收口修复完成，Batch D/E 尚未开始。 | Claude |
-| 2026-06-19 | Batch D 编码完成：新增 `src-tauri/src/llm/status.rs` provider 状态响应类型与 `src-tauri/src/commands/provider_status.rs` 3 个 command + 7 个单元测试；前端新增 `ProviderStatusBar`、`ProviderConfigPanel`、Understanding/Q&A provider badge、`StageOverviewBar` provider 标签；api_key 不持久化、不泄露；test connection 为安全占位，不发起真实网络；`cargo test --lib commands::provider_status` 7 passed、`cargo test --lib llm::` 122 passed/1 ignored、`cargo test --lib` 682 passed/2 ignored、`cargo check --tests` 0 warning、`npx tsc --noEmit` 与 `npm run build` 通过；rg 边界检查通过；未接入真实 LLM，未发起真实网络调用；Batch D 进入审核收口，Batch E 尚未开始。 | Claude |
+| 2026-06-19 | Batch D 编码完成：新增 `src-tauri/src/llm/status.rs` provider 状态响应类型与 `src-tauri/src/commands/provider_status.rs` 3 个 command + 7 个单元测试；前端新增 `ProviderStatusBar`、`ProviderConfigPanel`、Understanding/Q&A provider badge、`StageOverviewBar` provider 标签；api_key 不持久化、不泄露；当时 test connection 为安全占位，不发起真实网络（后续 2026-06-21 已收口为显式 opt-in 最小 ping）；`cargo test --lib commands::provider_status` 7 passed、`cargo test --lib llm::` 122 passed/1 ignored、`cargo test --lib` 682 passed/2 ignored、`cargo check --tests` 0 warning、`npx tsc --noEmit` 与 `npm run build` 通过；rg 边界检查通过；未接入真实 LLM，未发起真实网络调用；Batch D 进入审核收口，Batch E 尚未开始。 | Claude |
 | 2026-06-20 | Batch D 审核收口修复：provider command wrapper 保留 `success=false` 响应中的结构化降级数据；Mock/Fake 本地 provider 不再被标记为 real；配置面板应用时仅保存无密钥配置，api_key 只在面板打开期间临时使用；修复配置面板/状态条无效嵌套 button 结构；补齐 `enabled_mock_status_remains_mock` 等测试；`cargo test --lib commands::provider_status` 11 passed；未接入真实 LLM，未发起真实网络调用；Batch D 审核收口完成，Batch E 尚未开始。 | Codex |
 | 2026-06-21 | Batch E 自动化/真实项目只读验收完成：新增 `primary_sample_phase9_grounding_safety_on_real_evidence` ignored 集成测试，真实项目 L0 合法 citation grounded、跨阶段 citation 降级、伪造 evidence id 降级、checksum 一致；`real_project_validation --ignored` 6 passed；新增 `phase-9-completion-review.md` 草案；当时真实 GUI 桌面验收与可选真实 LLM smoke 待完成，后续下一行已补做 DeepSeek smoke。 | Codex |
 | 2026-06-21 | Batch E 可选真实 LLM smoke 完成：新增测试专用 `real_smoke_deepseek_openai_compatible`，使用显式 env/config 调用 DeepSeek OpenAI-compatible endpoint；`cargo test --lib real_smoke_deepseek_openai_compatible -- --ignored` 1 passed；默认产品路径和默认测试路径仍不联网。 | Codex |
+| 2026-06-21 | 连接测试真实 ping 收口：新增产品 `HttpTransport`，`test_provider_connection` 仅在 `enabled=true`、`network_mode=allow`、存在 API key 且 OpenAI-compatible provider 时发送最小 ping；不发送项目源码/evidence/Q&A/session；默认分析路径仍不联网。新增命令级 DeepSeek ignored smoke：`cargo test --lib test_connection_deepseek_real_smoke -- --ignored` 1 passed。 | Codex |

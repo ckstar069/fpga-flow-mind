@@ -443,7 +443,7 @@ export default function ProviderConfigPanel({
           <strong style={{ fontSize: FONT.body }}>安全说明</strong>
           <span>API Key 仅在本次配置面板打开期间保存在内存中，不会被写入 localStorage、sessionStorage、磁盘或日志。</span>
           <span>关闭“启用真实 LLM”后，所有分析将回退到本地 Mock 模式，不发起任何网络请求。</span>
-          <span>连接测试不会发送您的项目数据，仅验证配置格式（Batch D 占位，真实网络未启用）。</span>
+          <span>连接测试仅在启用真实 LLM、选择允许真实网络并提供 API Key 时发送最小 ping；不会发送项目源码、evidence、Q&A、session 或截图。</span>
         </div>
 
         <button
