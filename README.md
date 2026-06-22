@@ -61,7 +61,7 @@ MVP 是**技术闭环** MVP，不等于产品可用性完成。后续围绕真�
 
 - 总体路线图：[`docs/planning/post-mvp-roadmap.md`](docs/planning/post-mvp-roadmap.md)
 
-**当前状态**：MVP / Phase 0–6 已完成并 tag `v0.1.0-mvp`。Phase 7 已完成，[`completion review`](docs/planning/phase-7-completion-review.md) active。**Phase 8 已完成**，真实 GUI 桌面验收通过，[`completion review`](docs/planning/phase-8-completion-review.md) active。**Phase 9 Batch A/B/C/D 已完成并审核收口；Batch E 自动化/真实项目只读验收已完成（`real_project_validation --ignored` 6 项通过），DeepSeek OpenAI-compatible 真实 LLM smoke 已完成；但真实 GUI 桌面验收尚未完成，[`completion review`](docs/planning/phase-9-completion-review.md) 仍为 draft；默认不接入真实 LLM，默认不发起真实网络调用。Phase 10/11 尚未开始**。Phase 9~11 overview 仍为 `draft`。
+**当前状态**：MVP / Phase 0–6 已完成并 tag `v0.1.0-mvp`。Phase 7 已完成，[`completion review`](docs/planning/phase-7-completion-review.md) active。**Phase 8 已完成**，真实 GUI 桌面验收通过，[`completion review`](docs/planning/phase-8-completion-review.md) active。**Phase 9 Batch A/B/C/D 已完成并审核收口；Batch E 自动化/真实项目只读验收已完成（`real_project_validation --ignored` 6 项通过）。真实 LLM 在默认路径仍关闭；用户显式启用 provider、允许网络并提供 API key 后，`generate_understanding` 主链路可调用 OpenAI-compatible provider，DeepSeek smoke 已通过。真实 GUI 桌面验收尚未完成，[`completion review`](docs/planning/phase-9-completion-review.md) 仍为 draft。Phase 10/11 尚未开始**。Phase 9~11 overview 仍为 `draft`。
 
 ## 本地运行
 
@@ -82,6 +82,6 @@ cd src-tauri && cargo check
 
 - 目标项目只读：不修改目标 FPGA 项目源码。
 - 不运行 Vivado / synthesis / implementation / bitstream。
-- 默认不调用真实 LLM API；真实调用只允许显式配置 / 可选 smoke。
+- 默认不调用真实 LLM API；真实调用只允许显式配置，并仅用于已接线的 provider 连接测试与生成理解链路。
 - 持久化只写 app-owned storage。
 - 不输出 PASS/HOLD/正确/错误等审计结论。

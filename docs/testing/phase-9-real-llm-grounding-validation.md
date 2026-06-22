@@ -2,14 +2,14 @@
 
 ---
 status: active
-updated: 2026-06-21
+updated: 2026-06-22
 ---
 
-> 本文档是 Phase 9 的 **验证与验收设计**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成并审核收口**；**Phase 9 Batch B 编码已完成并完成审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架）；**Phase 9 Batch C 编码已完成并完成审核收口修复**（`GroundingValidator` + citation enforcement + prompt injection / 敏感数据 / 裁决用语过滤；stage mismatch 校验与 prompt injection-as-data 修复，51 个单元测试通过）；**Phase 9 Batch D 编码已完成并完成审核收口**（provider 状态/配置入口/grounding 状态安全接入工作台 UI，连接测试在显式 opt-in 下发送最小 ping，不发送项目数据）；**Phase 9 Batch E 自动化/真实项目只读验收已完成**（`real_project_validation --ignored` 6 项通过，含真实项目 L0 grounding safety），DeepSeek OpenAI-compatible 真实 LLM smoke 已完成；真实 GUI 桌面验收尚未完成，`phase-9-completion-review.md` 保持 `draft`。Phase 10/11 尚未开始。
+> 本文档是 Phase 9 的 **验证与验收设计**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成并审核收口**；**Phase 9 Batch B 编码已完成并完成审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架）；**Phase 9 Batch C 编码已完成并完成审核收口修复**（`GroundingValidator` + citation enforcement + prompt injection / 敏感数据 / 裁决用语过滤；stage mismatch 校验与 prompt injection-as-data 修复，51 个单元测试通过）；**Phase 9 Batch D 编码已完成并完成审核收口**（provider 状态/配置入口/grounding 状态安全接入工作台 UI，连接测试在显式 opt-in 下发送最小 ping，不发送项目数据）；**Phase 9 Batch E 自动化/真实项目只读验收已完成**（`real_project_validation --ignored` 6 项通过，含真实项目 L0 grounding safety）。默认仍不调用真实网络；显式启用 provider、允许网络并提供 API key 后，`generate_understanding` 主链路可调用 OpenAI-compatible provider，DeepSeek smoke 已通过。真实 GUI 桌面验收尚未完成，`phase-9-completion-review.md` 保持 `draft`。Phase 10/11 尚未开始。
 >
 > 2026-06-19 卫生小修：单元测试中所有视觉上类似真实 API key 的占位字符串已替换为明显伪造值，相关 redaction/display 断言已同步更新，全部测试通过。
 >
-> 核心原则：**默认测试路径不发真实网络请求**；真实 LLM 仅作为 `#[ignore]` 可选 smoke test，需显式 env/config 才运行，不进 CI 默认路径。
+> 核心原则：**默认测试路径不发真实网络请求**；真实 LLM 只在用户/测试显式 env/config 启用时运行，不进 CI 默认路径。当前已覆盖连接测试 smoke 与生成理解主链路 smoke。
 
 ## 1. 验证策略总览
 
@@ -309,7 +309,7 @@ Batch B（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvide
 ### 前端展示/行为检查
 
 - `ProviderStatusBar`：mock/disabled 状态默认显示；degraded 状态显示琥珀提示与 reason。
-- `ProviderConfigPanel`：api_key 为 password 输入；关闭面板或应用后清空输入框；应用配置仅保存无密钥配置；不写入 localStorage/sessionStorage。
+- `ProviderConfigPanel`：api_key 为 password 输入；关闭面板或应用后清空输入框；应用配置仅保存无密钥展示配置；api_key 只进入前端运行态内存用于本次 app 会话的显式 provider 调用，不写入 localStorage/sessionStorage/session artifact。
 - `StageOverviewBar`：显示 provider 标签（mock/real/degraded/disabled/unknown）。
 - `UnderstandingPanel` / `GroundedQAPanel`：产物顶部显示 provider badge；degraded 时显示降级原因；unknown/evidence_gap 可见。
 - 默认打开工作区不触发 provider 真实网络调用；test connection 为显式动作且当前为占位。
@@ -324,6 +324,7 @@ Batch B（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvide
 - `npx tsc --noEmit`：通过
 - `npm run build`：通过
 - `cargo test --lib real_smoke_requires_env_and_allow -- --ignored`：1 passed（env 未设置，安全跳过）
+- `cargo test --lib commands::generate_understanding::tests::und_11_real_llm_generate_understanding_smoke -- --ignored`：1 passed（DeepSeek OpenAI-compatible，显式 env/config）
 - rg 边界检查：通过（产品代码无新增默认联网、无 api_key 持久化、无目标项目写入、无用户可见裁决文案）
 
 ## 16. 关联文档
@@ -347,3 +348,4 @@ Batch B（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvide
 | 2026-06-21 | Batch E 自动化/真实项目只读验收完成：新增 `primary_sample_phase9_grounding_safety_on_real_evidence` ignored 集成测试，真实项目 L0 合法 citation grounded、跨阶段 citation 降级、伪造 evidence id 降级、checksum 一致；`real_project_validation --ignored` 6 passed；新增 `phase-9-completion-review.md` 草案；当时真实 GUI 桌面验收与可选真实 LLM smoke 待完成，后续下一行已补做 DeepSeek smoke。 | Codex |
 | 2026-06-21 | Batch E 可选真实 LLM smoke 完成：新增测试专用 `real_smoke_deepseek_openai_compatible`，使用显式 env/config 调用 DeepSeek OpenAI-compatible endpoint；`cargo test --lib real_smoke_deepseek_openai_compatible -- --ignored` 1 passed；默认产品路径和默认测试路径仍不联网。 | Codex |
 | 2026-06-21 | 连接测试真实 ping 收口：新增产品 `HttpTransport`，`test_provider_connection` 仅在 `enabled=true`、`network_mode=allow`、存在 API key 且 OpenAI-compatible provider 时发送最小 ping；不发送项目源码/evidence/Q&A/session；默认分析路径仍不联网。新增命令级 DeepSeek ignored smoke：`cargo test --lib test_connection_deepseek_real_smoke -- --ignored` 1 passed。 | Codex |
+| 2026-06-22 | 生成理解主链路接入真实 provider：`generate_understanding` 接收运行态 `ProviderConfig`，默认仍 mock/no-network；显式 OpenAI-compatible + allow + API key 时调用 `RealLlmProvider<HttpTransport>`，LLM 输出经 JSON 提取、确定性 ID/meta/stats 归一化与 schema validator；失败时 mock fallback 并给出 warning。`RequestBuilder` 开始发送 system prompt。前端 api_key 仅保留运行态内存，不写入 session/localStorage。DeepSeek 主链路 smoke 通过。Q&A 主链路仍待后续接真实 provider。 | Codex |

@@ -19,6 +19,7 @@ import type {
   QualityReport,
   ProviderStatusResponse,
   ProviderConfigInput,
+  ProviderRuntimeConfigInput,
 } from '../../types/workspace';
 import {
   openWorkspace,
@@ -75,6 +76,16 @@ type AppState =
   | { phase: 'views_loaded'; profile: WorkspaceProfile; stageId: string; context: StageContext; evidence?: EvidenceCollection; understanding: ImplementationUnderstanding; views: ViewGraph[] }
   | { phase: 'views_error'; profile: WorkspaceProfile; stageId: string; context: StageContext; evidence?: EvidenceCollection; understanding: ImplementationUnderstanding; viewsError: UiError };
 
+const DEFAULT_PROVIDER_CONFIG: ProviderConfigInput = {
+  kind: 'mock',
+  model: 'mock',
+  timeout_ms: 60000,
+  retry_limit: 2,
+  rate_limit_per_min: 60,
+  network_mode: 'disabled',
+  enabled: false,
+};
+
 function makeUiError(err: unknown): UiError {
   return err instanceof CommandError
     ? (err as unknown as CommandErrorType)
@@ -118,15 +129,9 @@ export default function WorkspacePage() {
   const [providerStatusLoading, setProviderStatusLoading] = useState(false);
   const [providerStatusError, setProviderStatusError] = useState<string | null>(null);
   const [providerConfigOpen, setProviderConfigOpen] = useState(false);
-  const [providerConfig, setProviderConfig] = useState<ProviderConfigInput>({
-    kind: 'mock',
-    model: 'mock',
-    timeout_ms: 60000,
-    retry_limit: 2,
-    rate_limit_per_min: 60,
-    network_mode: 'disabled',
-    enabled: false,
-  });
+  const [providerConfig, setProviderConfig] = useState<ProviderConfigInput>(DEFAULT_PROVIDER_CONFIG);
+  const [providerRuntimeConfig, setProviderRuntimeConfig] =
+    useState<ProviderRuntimeConfigInput>(DEFAULT_PROVIDER_CONFIG);
 
   const providerStatusGuardRef = useRef<number>(0);
 
@@ -135,7 +140,7 @@ export default function WorkspacePage() {
     setProviderStatusLoading(true);
     setProviderStatusError(null);
     try {
-      const status = await getProviderStatus(providerConfig);
+      const status = await getProviderStatus(providerRuntimeConfig);
       if (guard === providerStatusGuardRef.current) {
         setProviderStatus(status);
       }
@@ -148,7 +153,7 @@ export default function WorkspacePage() {
         setProviderStatusLoading(false);
       }
     }
-  }, [providerConfig]);
+  }, [providerRuntimeConfig]);
 
   useEffect(() => {
     loadProviderStatus();
@@ -360,7 +365,11 @@ export default function WorkspacePage() {
     setQaHistoriesMap((prev) => { const { [stageId]: _, ...rest } = prev; return rest; });
     setState({ phase: 'understanding_loading', profile, stageId, context, evidence });
     try {
-      const understanding = await generateUnderstanding(profile.root_path, stageId);
+      const understanding = await generateUnderstanding(
+        profile.root_path,
+        stageId,
+        providerRuntimeConfig
+      );
       setUnderstandingsMap((prev) => ({ ...prev, [stageId]: understanding }));
       setState({ phase: 'understanding_loaded', profile, stageId, context, evidence, understanding });
     } catch (err) {
@@ -373,7 +382,7 @@ export default function WorkspacePage() {
         understandingError: makeUiError(err),
       });
     }
-  }, [state, clearTraceState, clearQualityState, isLoadingSession]);
+  }, [state, clearTraceState, clearQualityState, isLoadingSession, providerRuntimeConfig]);
 
   // ─── 生成视图 ───
   const handleGenerateViews = useCallback(async () => {
@@ -1409,8 +1418,9 @@ export default function WorkspacePage() {
         isOpen={providerConfigOpen}
         initialConfig={providerConfig}
         onClose={() => setProviderConfigOpen(false)}
-        onStatusChange={(status, config) => {
+        onStatusChange={(status, config, runtimeConfig) => {
           setProviderConfig(config);
+          setProviderRuntimeConfig(runtimeConfig);
           setProviderStatus(status);
         }}
       />

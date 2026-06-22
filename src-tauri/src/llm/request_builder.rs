@@ -69,7 +69,16 @@ impl RequestBuilder {
             serde_json::Value::String(self.config.model.clone()),
         );
 
-        let messages: Vec<serde_json::Value> = chat_request
+        let mut messages: Vec<serde_json::Value> = Vec::new();
+        if let Some(system_prompt) = chat_request.system_prompt.as_deref() {
+            if !system_prompt.trim().is_empty() {
+                messages.push(serde_json::json!({
+                    "role": "system",
+                    "content": system_prompt,
+                }));
+            }
+        }
+        messages.extend(chat_request
             .messages
             .iter()
             .map(|m| {
@@ -77,8 +86,7 @@ impl RequestBuilder {
                     "role": m.role,
                     "content": m.content,
                 })
-            })
-            .collect();
+            }));
         body_map.insert("messages".to_string(), serde_json::Value::Array(messages));
 
         if let Some(temp) = chat_request.temperature {
@@ -236,13 +244,12 @@ mod tests {
         let body: serde_json::Value =
             serde_json::from_str(&transport_req.body).expect("body 应为合法 JSON");
         assert_eq!(body["model"], "gpt-4");
-        assert_eq!(body["messages"][0]["role"], "user");
-        assert_eq!(body["messages"][0]["content"], "解释一下这段代码");
+        assert_eq!(body["messages"][0]["role"], "system");
+        assert_eq!(body["messages"][0]["content"], "你是一个 FPGA 专家");
+        assert_eq!(body["messages"][1]["role"], "user");
+        assert_eq!(body["messages"][1]["content"], "解释一下这段代码");
         assert!((body["temperature"].as_f64().unwrap() - 0.7).abs() < 0.001);
         assert_eq!(body["max_tokens"], 1024);
-
-        // 验证 system_prompt 在当前设计中不单独作为 message 发送
-        // （Batch B 默认不处理 system_prompt，留待后续扩展）
     }
 
     #[test]

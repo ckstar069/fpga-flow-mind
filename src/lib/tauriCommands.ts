@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { CommandResult, WorkspaceProfile, StageContext, EvidenceCollection, ImplementationUnderstanding, ViewGraph, SelectedTraceTarget, TraceRefResolved, SourceLocation, SourceExcerpt, GroundedQuestion, GroundedAnswer, SessionState, SaveSessionResult, LoadSessionResult, SessionSummary, QualityReport, ProviderStatusResponse, ProviderValidationResult, ProviderTestConnectionResult, ProviderConfigInput } from '../types/workspace';
+import type { CommandResult, WorkspaceProfile, StageContext, EvidenceCollection, ImplementationUnderstanding, ViewGraph, SelectedTraceTarget, TraceRefResolved, SourceLocation, SourceExcerpt, GroundedQuestion, GroundedAnswer, SessionState, SaveSessionResult, LoadSessionResult, SessionSummary, QualityReport, ProviderStatusResponse, ProviderValidationResult, ProviderTestConnectionResult, ProviderRuntimeConfigInput } from '../types/workspace';
 
 export class CommandError extends Error {
   error_code: string;
@@ -43,10 +43,15 @@ export async function collectEvidence(rootPath: string, stageId: string): Promis
   return handleResult(result);
 }
 
-export async function generateUnderstanding(rootPath: string, stageId: string): Promise<ImplementationUnderstanding> {
+export async function generateUnderstanding(
+  rootPath: string,
+  stageId: string,
+  providerConfig?: ProviderRuntimeConfigInput
+): Promise<ImplementationUnderstanding> {
   const result = await invoke<CommandResult<ImplementationUnderstanding>>('generate_understanding', {
     rootPath: rootPath,
     stageId: stageId,
+    providerConfig: providerConfig ?? null,
   });
   return handleResult(result);
 }
@@ -149,17 +154,17 @@ export async function getLastSession(): Promise<SessionSummary | null> {
   return handleNullableResult(result);
 }
 
-export async function getProviderStatus(config: ProviderConfigInput & { api_key?: string }): Promise<ProviderStatusResponse> {
+export async function getProviderStatus(config: ProviderRuntimeConfigInput): Promise<ProviderStatusResponse> {
   const result = await invoke<CommandResult<ProviderStatusResponse>>('get_provider_status', { config });
   return handleResultWithData(result);
 }
 
-export async function validateProviderConfig(config: ProviderConfigInput & { api_key?: string }): Promise<ProviderValidationResult> {
+export async function validateProviderConfig(config: ProviderRuntimeConfigInput): Promise<ProviderValidationResult> {
   const result = await invoke<CommandResult<ProviderValidationResult>>('validate_provider_config', { config });
   return handleResultWithData(result);
 }
 
-export async function testProviderConnection(config: ProviderConfigInput & { api_key?: string }): Promise<ProviderTestConnectionResult> {
+export async function testProviderConnection(config: ProviderRuntimeConfigInput): Promise<ProviderTestConnectionResult> {
   const result = await invoke<CommandResult<ProviderTestConnectionResult>>('test_provider_connection', { config });
   return handleResultWithData(result);
 }

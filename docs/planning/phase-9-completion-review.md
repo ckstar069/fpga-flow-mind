@@ -2,12 +2,12 @@
 
 ---
 status: draft
-updated: 2026-06-21
+updated: 2026-06-22
 ---
 
 > 本文档是 Phase 9（真实 LLM Provider 与 grounding 生产化）的完成审查草案。
 >
-> **当前结论**：Phase 9 Batch A/B/C/D 已完成并审核收口；Batch E 的自动化回归、真实项目只读 grounding 验收、安全 rg、checksum 验证、DeepSeek OpenAI-compatible 真实 LLM smoke 与命令级连接测试 smoke 已完成。真实 GUI 桌面验收尚未完成，因此本文档保持 `status: draft`，Phase 9 completion 暂不激活。Phase 10/11 尚未开始。
+> **当前结论**：Phase 9 Batch A/B/C/D 已完成并审核收口；Batch E 的自动化回归、真实项目只读 grounding 验收、安全 rg、checksum 验证、DeepSeek OpenAI-compatible 真实 LLM smoke、命令级连接测试 smoke 与生成理解主链路真实 provider smoke 已完成。真实 GUI 桌面验收尚未完成，因此本文档保持 `status: draft`，Phase 9 completion 暂不激活。Phase 10/11 尚未开始。
 
 ## 1. 任务完成状态
 
@@ -149,6 +149,21 @@ cd src-tauri && cargo test --test real_project_validation -- --ignored
 - L0 产物中 provider/model 可见；
 - L0 视图生成后，结构/数据流/时序 tab 可见，其中 timing 保持空态标记，不把算法步骤伪造成硬件时序。
 
+### 2.7 生成理解主链路真实 LLM smoke
+
+```bash
+cd src-tauri && cargo test --lib commands::generate_understanding::tests::und_11_real_llm_generate_understanding_smoke -- --ignored
+```
+
+当前结果：`1 passed; 0 failed`。
+
+说明：
+
+- Provider：DeepSeek OpenAI-compatible endpoint（`https://api.deepseek.com`，model `deepseek-chat`）。
+- API key 仅通过环境变量传入，不写入仓库、文档、session、localStorage、目标项目或日志。
+- 测试覆盖 `generate_understanding` 主链路：前置 evidence collection → `RealLlmProvider<HttpTransport>` → JSON 提取 → 本地 ID/meta/stats 归一化 → schema validator → `ImplementationUnderstanding`。
+- 若真实 provider 失败或输出不满足 schema，产品路径会降级为 mock fallback 并产生 warning；本次 smoke 未发生降级。
+
 仍未完成的 GUI 验收点：
 
 - Provider 配置面板的真实配置、配置校验、清除 api_key；
@@ -176,7 +191,7 @@ Phase 9 completion 暂不转 active，原因如下：
 
 ## 6. 当前结论
 
-Phase 9 Batch E 的自动化/只读部分、可选 DeepSeek 真实 LLM smoke 与命令级连接测试 smoke 已完成：P9-T09 可视为自动化验收通过；P9-T10 仍待真实 GUI 桌面验收与最终 completion 激活。当前不允许进入 Phase 10 编码。
+Phase 9 Batch E 的自动化/只读部分、可选 DeepSeek 真实 LLM smoke、命令级连接测试 smoke 与生成理解主链路真实 provider smoke 已完成：P9-T09 可视为自动化验收通过；P9-T10 仍待真实 GUI 桌面验收与最终 completion 激活。当前不允许进入 Phase 10 编码。
 
 ## 7. 变更记录
 
@@ -186,3 +201,4 @@ Phase 9 Batch E 的自动化/只读部分、可选 DeepSeek 真实 LLM smoke 与
 | 2026-06-21 | 补充 DeepSeek OpenAI-compatible 真实 LLM smoke 结果：`real_smoke_deepseek_openai_compatible` 在显式 env/config 下通过；completion 仍因真实 GUI 桌面验收待完成而保持 draft。 | Codex |
 | 2026-06-21 | 补充真实 GUI 部分验收截图：应用启动、真实项目打开、L0 evidence/understanding/view 工作流已完成；provider 配置、test connection、L4 timing、Q&A grounding、错误/断网态仍待补验。 | Codex |
 | 2026-06-21 | 补充配置面板连接测试真实 ping 收口：`test_provider_connection` 在显式 DeepSeek env/config 下通过；默认分析路径仍不联网，真实 GUI 桌面验收仍待完成。 | Codex |
+| 2026-06-22 | 补充生成理解主链路真实 provider 接线：`generate_understanding` 在显式 provider config 下可调用 DeepSeek/OpenAI-compatible provider，输出通过本地 schema validator；默认仍 mock/no-network，api_key 仅运行态内存，不持久化；Q&A 主链路仍待后续接真实 provider。 | Codex |

@@ -96,7 +96,7 @@ docs/
 
 ### Post-MVP 路线图 / 后续阶段规划任务
 
-> MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP，不等于产品可用性完成。下列 Post-MVP 文档中，**Phase 7 详细文档已 `active`**；**Phase 7 已全部完成（Batch A/B/C/D，[completion review](planning/phase-7-completion-review.md) active）**；Phase 7 overview 与 Phase 9~11 overview 仍为 `draft`。**Phase 8 详细文档均已 `active`；Phase 8 已完成（Batch A/B/C/D/E 全部完成，真实 GUI 桌面验收通过，[completion review](planning/phase-8-completion-review.md) active）**。**Phase 9 Batch A/B/C/D 已完成并审核收口；Batch E 自动化/真实项目只读验收已完成（`real_project_validation --ignored` 6 项通过），DeepSeek OpenAI-compatible 真实 LLM smoke 已完成；但真实 GUI 桌面验收尚未完成，[completion review](planning/phase-9-completion-review.md) 仍为 `draft`；默认不接入真实 LLM，默认不发起真实网络调用。Phase 10/11 尚未开始**。Phase 9~11 overview 仍为 `draft`。
+> MVP（Phase 0–6 / tag `v0.1.0-mvp`）是技术闭环 MVP，不等于产品可用性完成。下列 Post-MVP 文档中，**Phase 7 详细文档已 `active`**；**Phase 7 已全部完成（Batch A/B/C/D，[completion review](planning/phase-7-completion-review.md) active）**；Phase 7 overview 与 Phase 9~11 overview 仍为 `draft`。**Phase 8 详细文档均已 `active`；Phase 8 已完成（Batch A/B/C/D/E 全部完成，真实 GUI 桌面验收通过，[completion review](planning/phase-8-completion-review.md) active）**。**Phase 9 Batch A/B/C/D 已完成并审核收口；Batch E 自动化/真实项目只读验收已完成（`real_project_validation --ignored` 6 项通过）。真实 LLM 默认关闭；显式启用 provider、允许网络并提供 API key 后，`generate_understanding` 主链路可调用 OpenAI-compatible provider，DeepSeek smoke 已通过；真实 GUI 桌面验收尚未完成，[completion review](planning/phase-9-completion-review.md) 仍为 `draft`。Phase 10/11 尚未开始**。Phase 9~11 overview 仍为 `draft`。
 
 1. `docs/planning/post-mvp-roadmap.md`（Post-MVP 总体路线图：Phase 7~11 阶段关系、依赖顺序、进入纪律，draft）
 2. `docs/planning/phase-7-overview-real-project-quality.md`（Phase 7 overview：真实项目质量补强，draft）
@@ -116,7 +116,7 @@ docs/
      - `docs/testing/phase-8-product-workbench-validation.md`（验证与验收，active）
      - `docs/planning/phase-8-implementation-plan.md`（编码实施计划，active）
 4. `docs/planning/phase-9-overview-real-llm-grounding.md`（Phase 9 overview：真实 LLM 与 grounding 生产化，draft）
-   - Phase 9 详细文档（**均已审核通过并转 `active`**；Batch A/B/C/D 已完成并审核收口；Batch E 自动化/真实项目只读验收与 DeepSeek OpenAI-compatible 真实 LLM smoke 已完成，completion review 仍为 `draft / pending_desktop_acceptance`；真实 GUI 桌面验收尚未完成；Phase 10/11 尚未开始）：
+   - Phase 9 详细文档（**均已审核通过并转 `active`**；Batch A/B/C/D 已完成并审核收口；Batch E 自动化/真实项目只读验收已完成；显式启用真实 provider 后，生成理解主链路可调用 OpenAI-compatible provider；completion review 仍为 `draft / pending_desktop_acceptance`；真实 GUI 桌面验收尚未完成；Phase 10/11 尚未开始）：
      - `docs/requirements/phase-9-real-llm-grounding-requirements.md`（需求 R9-001~R9-012，active）
      - `docs/design/phase-9-llm-provider-architecture.md`（Provider 架构，active）
      - `docs/design/phase-9-grounding-and-validation-design.md`（grounding 与校验设计，active）

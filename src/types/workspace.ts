@@ -826,3 +826,6 @@ export interface ProviderConfigInput {
   network_mode: NetworkMode;
   enabled: boolean;
 }
+
+// 仅用于当前前端运行态调用，不允许写入 session/localStorage 或持久化文档。
+export type ProviderRuntimeConfigInput = ProviderConfigInput & { api_key?: string };

@@ -2,16 +2,16 @@
 
 ---
 status: active
-updated: 2026-06-19
+updated: 2026-06-22
 ---
 
-> 本文档是 Phase 9（真实 LLM Provider 与 grounding 生产化）的**编码实施计划**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成并审核收口**（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试）；**Phase 9 Batch B 编码已完成并完成审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架）；**Phase 9 Batch C 编码已完成并完成审核收口修复**（`GroundingValidator` + citation enforcement + prompt injection / 敏感数据 / 裁决用语过滤；stage mismatch 校验与 prompt injection-as-data 修复，51 个单元测试通过）；**Phase 9 Batch D 编码已完成并完成审核收口**（provider 状态/配置入口/grounding 状态安全接入工作台 UI；连接测试在显式 opt-in 下发送最小 ping，不发送项目数据）；**Phase 9 Batch E 自动化/真实项目只读验收已完成**（real_project_validation 6 项通过，含真实项目 L0 grounding safety），DeepSeek OpenAI-compatible 真实 LLM smoke 已完成；真实 GUI 桌面验收尚未完成，`phase-9-completion-review.md` 保持 `draft`。Phase 10/11 尚未开始。
+> 本文档是 Phase 9（真实 LLM Provider 与 grounding 生产化）的**编码实施计划**。`status: active`，已审核通过。Phase 9 **Batch A 编码已完成并审核收口**（Provider 抽象、配置模型、Fake/Mock transport、no-network-by-default 守卫与测试）；**Phase 9 Batch B 编码已完成并完成审核收口**（RequestBuilder / ResponseParser / 可注入 Transport / RealLlmProvider 骨架）；**Phase 9 Batch C 编码已完成并完成审核收口修复**（`GroundingValidator` + citation enforcement + prompt injection / 敏感数据 / 裁决用语过滤；stage mismatch 校验与 prompt injection-as-data 修复，51 个单元测试通过）；**Phase 9 Batch D 编码已完成并完成审核收口**（provider 状态/配置入口/grounding 状态安全接入工作台 UI；连接测试在显式 opt-in 下发送最小 ping，不发送项目数据）；**Phase 9 Batch E 自动化/真实项目只读验收已完成**（real_project_validation 6 项通过，含真实项目 L0 grounding safety）。默认仍不调用真实网络；用户显式启用 provider、允许网络并提供 API key 后，`generate_understanding` 主链路可调用 OpenAI-compatible provider，DeepSeek smoke 已通过。真实 GUI 桌面验收尚未完成，`phase-9-completion-review.md` 保持 `draft`。Phase 10/11 尚未开始。
 >
 > **进入 Phase 9 编码的硬前置**：本文档与需求 / 架构 / grounding 设计 / UI/UX / 测试 5 份详细文档**全部审核通过并转 `active`** 后，方允许进入 Batch A 编码。当前该前置已满足。
 
 ## 0. 核心方向（先读）
 
-1. **默认不发真实网络请求**：全程默认 disabled；真实调用仅出现在用户显式 opt-in 的连接测试、Batch E 的可选 `#[ignore]` smoke / 手工验收。
+1. **默认不发真实网络请求**：全程默认 disabled；真实调用仅出现在用户显式 opt-in 的连接测试、生成理解主链路、Batch E 的可选 `#[ignore]` smoke / 手工验收。
 2. **先 grounding/降级骨架，后真实 provider**：Batch A/B 先把 Provider 抽象、凭据安全、redaction、降级骨架做实（用 fake provider / mock transport 验证），Batch C 才把 understanding/Q&A 接入，Batch D 做 UI 与状态可见，Batch E 做真实项目验收。
 3. **可注入 Transport**：真实 HTTP 调用封装为可注入 Transport，测试用 fake，避免任何默认路径发真实请求。
 4. **heuristic 保留**：Phase 8 确定性派生保留为 fallback / 辅助，不删除。
@@ -30,7 +30,7 @@ updated: 2026-06-19
 | Phase 9 实施计划 active | ✅ 本文档（active） |
 | **以上 Phase 9 详细文档全部转 active** | ✅ 已审核通过 |
 
-> 纪律：Phase 9 详细文档全部审核转 `active` 后，方允许进入 Batch A 编码。当前该前置已满足；Batch A 编码已完成，未接入真实 LLM，未发起真实网络调用。
+> 纪律：Phase 9 详细文档全部审核转 `active` 后，方允许进入 Batch A 编码。当前该前置已满足；Batch A/B/C/D/E 自动化与主链路接线已推进完成。默认仍不联网；真实 LLM 仅在显式配置后用于连接测试与生成理解主链路。
 
 ## 2. 任务拆分
 
@@ -136,7 +136,7 @@ updated: 2026-06-19
 | 必跑测试 | `npx tsc --noEmit` / `npm run build` |
 | 真实网络调用 | 否 |
 | 退出条件 | build/tsc 通过，配置入口可用 |
-| 当前状态 | **Batch D 审核收口完成**：新增 `ProviderStatusBar`、`ProviderConfigPanel`、Understanding/Q&A provider badge、`StageOverviewBar` provider 标签；配置面板支持 enable/provider/model/base_url/api_key/test connection；api_key 密码输入仅在面板打开期间保存在内存中，关闭或应用后清空，不进入 `WorkspacePage` 状态、session 或浏览器存储；test connection 走 `test_provider_connection` command 占位，不发起真实网络；为 `loadProviderStatus` 增加 unmount guard 与错误重试；前端 type/build 通过。 |
+| 当前状态 | **Batch D 审核收口完成，并在 2026-06-22 完成生成理解主链路接线**：新增 `ProviderStatusBar`、`ProviderConfigPanel`、Understanding/Q&A provider badge、`StageOverviewBar` provider 标签；配置面板支持 enable/provider/model/base_url/api_key/test connection；api_key 密码输入仅在面板打开期间采集，应用后进入前端运行态内存用于本次 app 会话的显式 provider 调用，但不进入 session/localStorage/目标项目/日志；test connection 走 `test_provider_connection` command，显式 opt-in 下发送最小 ping；为 `loadProviderStatus` 增加 unmount guard 与错误重试；前端 type/build 通过。 |
 
 ### P9-T08 错误/degraded 状态 UI + 审计可见性 + desktop smoke（Batch D）
 
@@ -224,7 +224,7 @@ P9-T01 (Provider/config 模型)
 ### 4.5 Batch E：真实项目验收 + 完成审查
 
 - 任务：P9-T09、P9-T10
-- 当前状态：P9-T09 自动化/真实项目只读验收已完成；DeepSeek OpenAI-compatible 真实 LLM smoke 已在显式 env/config 下通过；P9-T10 真实 GUI 桌面验收待完成，`phase-9-completion-review.md` 保持 draft。
+- 当前状态：P9-T09 自动化/真实项目只读验收已完成；DeepSeek OpenAI-compatible 真实 LLM smoke 已在显式 env/config 下通过；2026-06-22 已将真实 provider 接入 `generate_understanding` 主链路并通过 DeepSeek smoke；P9-T10 真实 GUI 桌面验收待完成，`phase-9-completion-review.md` 保持 draft。
 - 真实网络调用：**仅显式连接测试 / 可选 `#[ignore]` smoke / 手工**（显式 config）；默认分析路径和默认测试路径仍不联网。
 - 退出：真实项目验收 + 安全回归 + checksum + 桌面验收通过 → 完成审查转 active
 
@@ -242,7 +242,7 @@ P9-T01 (Provider/config 模型)
 
 - 目标项目只读，checksum 一致；
 - 不运行 Vivado / synthesis / implementation / bitstream；
-- 不默认调用真实 LLM；真实调用仅显式连接测试、Batch E 可选 smoke（显式 config + `#[ignore]`）；
+- 不默认调用真实 LLM；真实调用仅显式连接测试、生成理解主链路、Batch E 可选 smoke（显式 config + `#[ignore]`）；
 - 凭据不落日志 / session / 目标项目 / 审计明文；
 - 持久化只写 app-owned storage；
 - 不输出 PASS/HOLD/正确/错误/审计结论裁决；
@@ -268,3 +268,4 @@ P9-T01 (Provider/config 模型)
 | 2026-06-21 | Batch E 自动化/只读验收完成：新增 `primary_sample_phase9_grounding_safety_on_real_evidence` ignored 集成测试，在真实项目 L0/L4 evidence 上验证合法 citation grounded、跨阶段 citation 降级、伪造 evidence_id 降级、目标项目 checksum 一致；`cargo test --test real_project_validation -- --ignored` 6 passed；新增 `phase-9-completion-review.md` 草案（draft / pending_desktop_acceptance）。 | Codex |
 | 2026-06-21 | Batch E 可选真实 LLM smoke 完成：新增测试专用 `real_smoke_deepseek_openai_compatible`，仅在显式 `FPGA_FLOW_LLM_SMOKE=1`、API key、base_url 与 model env 下使用当时的 smoke-only transport 发起 OpenAI-compatible 请求；DeepSeek `https://api.deepseek.com` + `deepseek-chat` smoke 通过。当时常规分析路径使用 no-network guard，不保存 API key，不默认联网；真实 GUI 桌面验收尚未完成，Phase 9 completion 暂不激活。 | Codex |
 | 2026-06-21 | 连接测试真实 ping 收口：将 `reqwest` 提升为受控产品依赖，新增 `HttpTransport`；`test_provider_connection` 仅在显式启用真实 LLM、允许网络、提供 API key 且 OpenAI-compatible provider 时发送最小 ping，不发送项目源码/evidence/Q&A/session；新增命令级 DeepSeek ignored smoke。默认分析路径仍使用 no-network guard，不默认联网。 | Codex |
+| 2026-06-22 | 真实 provider 接入生成理解主链路：`generate_understanding` 新增运行态 `ProviderConfig` 参数，默认仍走 Mock/no-network；显式启用 OpenAI-compatible provider + `network_mode=allow` + API key 时使用 `RealLlmProvider<HttpTransport>` 生成 IU JSON，经本地 schema validator 校验；失败时降级为 mock fallback 并输出 warning。前端将 api_key 仅保存在运行态内存，不写入 session/localStorage。`RequestBuilder` 开始发送 system prompt。新增 DeepSeek 主链路 ignored smoke，实测通过。Q&A 主链路仍未接真实 provider。 | Codex |
